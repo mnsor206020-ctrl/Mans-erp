@@ -16,7 +16,7 @@ This Definition of Done (DoD) establishes a shared, objective standard for what 
 - **The codebase** — every sprint leaves the system in a better state than it found it.
 - **The team** — rework caused by ambiguous acceptance is prevented at the definition level, not discovered in production.
 
-Every criterion in this document must be treated as a hard gate, not a soft guideline. A sprint that passes 16 of 17 sections is not done.
+Every criterion in this document must be treated as a hard gate, not a soft guideline. A sprint that passes 17 of 18 sections is not done.
 
 ---
 
@@ -36,18 +36,59 @@ A feature that partially satisfies acceptance criteria is **not done**. Partial 
 
 ---
 
-## 3. Definition of Done — Sprint Level
+## 3. Definition of Ready — Sprint Level
 
-A **sprint** is considered done only after all six release gates pass in order (see §16). In addition:
+A sprint is **ready to begin implementation** only when all of the following conditions are met and confirmed in writing by the technical architect. A sprint that fails any condition below must be returned for revision before a single line of implementation code is written.
+
+1. **Sprint scope is approved.** The sprint plan document has been reviewed and the architect has given explicit written approval of the scope — what is included and what is explicitly out of scope.
+
+2. **TDD / design document is approved.** Where a Technical Design Document (TDD) or design specification governs the sprint's domain, it has been reviewed and any conflicts with the sprint plan are resolved before implementation begins.
+
+3. **Acceptance criteria are defined and unambiguous.** Every acceptance criterion in the sprint plan is written in a verifiable form — it can be tested or demonstrated. Vague criteria ("works correctly", "looks good") are not acceptable and must be rewritten before the sprint opens.
+
+4. **Dependencies are identified.** All external dependencies required by the sprint — other modules, APIs, third-party services, infrastructure changes, or preceding sprints — are explicitly listed and confirmed to be available before implementation begins.
+
+5. **Out-of-scope is documented.** The sprint plan explicitly states what is NOT included. This prevents scope creep and ensures deferred features are tracked with a named future sprint reference.
+
+6. **Architecture conflicts are resolved.** If the sprint introduces a pattern, technology, or structure that diverges from an existing convention or conflicts with the Project Constitution, the conflict has been raised and resolved — in writing — before any code is written.
+
+7. **Required decisions are recorded in `DECISIONS.md`.** Any architectural decision that must be made before implementation begins — choice of approach, schema design tradeoff, naming convention, third-party library — is recorded as a new ADR entry before the sprint opens.
+
+8. **Risks are identified.** The sprint plan includes a risks table. Every identified risk has a stated mitigation strategy. No risk is left without a response.
+
+9. **Required API and database changes are understood.** Every new endpoint, modified endpoint, new table, new column, new migration, and new enum is listed in the sprint plan with its request/response shape or schema. No sprint begins with undefined data contracts.
+
+10. **Written architect approval to begin implementation received.** The architect has confirmed in writing: "Sprint X is approved for implementation." No implementation code is written before this confirmation.
+
+### Definition of Ready Checklist
+
+This checklist is submitted alongside the sprint plan when requesting architect approval. All items must be satisfied before the sprint is opened.
+
+- [ ] Sprint scope documented and approved; out-of-scope items explicitly listed
+- [ ] TDD / design document reviewed; any conflicts with the sprint plan resolved
+- [ ] All acceptance criteria are specific and verifiable — no vague criteria remain
+- [ ] All dependencies identified and confirmed available before sprint start
+- [ ] Architecture conflicts raised and resolved in writing before implementation
+- [ ] All pre-implementation decisions recorded as ADR entries in `DECISIONS.md`
+- [ ] Risks table complete; every risk has a stated mitigation strategy
+- [ ] All API changes (new/modified endpoints) listed with request/response shapes
+- [ ] All database changes (tables, columns, migrations, enums) listed in the sprint plan
+- [ ] Written architect approval to begin implementation received
+
+---
+
+## 4. Definition of Done — Sprint Level
+
+A **sprint** is considered done only after all six release gates pass in order (see §17). In addition:
 
 1. Every feature in the sprint scope meets the Feature Definition of Done (§2).
 2. The sprint completion report is delivered, documenting every section of this DoD as either: ✅ Satisfied, N/A (justified), or ⚠️ Exception (documented with follow-up sprint).
-3. The Final Completion Checklist (§17) is filled out with no unchecked boxes — except those explicitly marked N/A or Exception.
+3. The Final Completion Checklist (§18) is filled out with no unchecked boxes — except those explicitly marked N/A or Exception.
 4. The technical architect has given **written approval** before the next sprint plan is activated.
 
 ---
 
-## 4. Architecture Requirements
+## 5. Architecture Requirements
 
 - **Layering is enforced.** The request path must follow: Route → Controller → Service → Repository → Database. No layer may be skipped. No database query may appear in a route handler or a React component.
 - **Business rules live in services.** Route handlers validate inputs, call services, and return responses. No business logic, domain decisions, or financial rules may exist in a route handler.
@@ -58,7 +99,7 @@ A **sprint** is considered done only after all six release gates pass in order (
 
 ---
 
-## 5. Backend Requirements
+## 6. Backend Requirements
 
 - **Every input is validated with Zod.** Every request body, every query parameter, and every route parameter has an explicit Zod schema. Raw `req.body` or `req.query` values are never passed directly to Prisma or any service function.
 - **Zod schemas are co-located with their domain.** Schemas used by a single route live in a dedicated utility file alongside the route. Schemas shared across routes or packages are exported from the relevant `lib/` package.
@@ -72,7 +113,7 @@ A **sprint** is considered done only after all six release gates pass in order (
 
 ---
 
-## 6. Frontend Requirements
+## 7. Frontend Requirements
 
 - **Every page implements all five UI states:**
 
@@ -93,7 +134,7 @@ A **sprint** is considered done only after all six release gates pass in order (
 
 ---
 
-## 7. Database Requirements
+## 8. Database Requirements
 
 - **Every schema change goes through a Prisma migration.** No direct SQL DDL is permitted. Every column, table, index, relation, or enum change is made via `prisma migrate dev` in development and verified with `prisma migrate deploy` in CI/production.
 - **Soft delete is mandatory.** `prisma.entity.delete()` is never called. Every delete is `prisma.entity.update({ data: { deletedAt: new Date() } })`. Every list query includes `where: { deletedAt: null }`.
@@ -105,7 +146,7 @@ A **sprint** is considered done only after all six release gates pass in order (
 
 ---
 
-## 8. API Requirements
+## 9. API Requirements
 
 - **RESTful conventions are followed.** HTTP verbs map to operations: `GET` (read), `POST` (create or action), `PATCH` (partial update), `PUT` (full replace — rare), `DELETE` (soft-delete). The correct status code is returned: `200` OK, `201` Created, `400` Bad Request, `401` Unauthenticated, `403` Forbidden, `404` Not Found, `409` Conflict, `422` Unprocessable Entity, `500` Server Error.
 - **Error responses are consistent.** Every error response uses the shape `{ error: string, details?: unknown }`. No raw error objects, stack traces, or database error messages are exposed to the client.
@@ -117,7 +158,7 @@ A **sprint** is considered done only after all six release gates pass in order (
 
 ---
 
-## 9. Security Requirements
+## 10. Security Requirements
 
 - **No secrets in code.** API keys, database URLs, tokens, and passwords live exclusively in environment variables or Replit Secrets. No secret value appears in any source file, log, or API response.
 - **All user input is validated and sanitised.** Zod schemas are the validation boundary. Input that fails schema validation is rejected with a 400 before reaching any service or database layer.
@@ -129,7 +170,7 @@ A **sprint** is considered done only after all six release gates pass in order (
 
 ---
 
-## 10. Accessibility Requirements (WCAG 2.1 AA)
+## 11. Accessibility Requirements (WCAG 2.1 AA)
 
 All interactive UI delivered in a sprint must meet WCAG 2.1 Level AA. The following are the minimum mandatory criteria:
 
@@ -146,7 +187,7 @@ All interactive UI delivered in a sprint must meet WCAG 2.1 Level AA. The follow
 
 ---
 
-## 11. Performance Requirements
+## 12. Performance Requirements
 
 - **Initial page load — Time to Interactive ≤ 3 seconds** on a 10 Mbps connection for authenticated pages in production.
 - **API response time — P95 ≤ 500 ms** for all list endpoints under normal load (up to 10,000 records, organisation-scoped). Measured at the server; excludes network transit.
@@ -159,7 +200,7 @@ All interactive UI delivered in a sprint must meet WCAG 2.1 Level AA. The follow
 
 ---
 
-## 12. Internationalization Requirements
+## 13. Internationalization Requirements
 
 - **Completeness: 100%.** Every string that appears in the UI — labels, placeholders, button text, toast messages, error messages, empty state descriptions, column headers, status badge labels, confirmation dialog text, and ARIA labels — has a translation entry in both `en` (English) and `ar` (Arabic).
 - **No hardcoded strings in JSX.** All user-facing strings are accessed through the `t()` function from `useLanguage()`. No string literal that a user might read is written directly in JSX markup.
@@ -171,7 +212,7 @@ All interactive UI delivered in a sprint must meet WCAG 2.1 Level AA. The follow
 
 ---
 
-## 13. Testing Requirements
+## 14. Testing Requirements
 
 ### Required test coverage per sprint
 
@@ -195,7 +236,7 @@ All interactive UI delivered in a sprint must meet WCAG 2.1 Level AA. The follow
 
 ---
 
-## 14. Documentation Requirements
+## 15. Documentation Requirements
 
 - **Sprint completion report is delivered.** Every completed sprint is accompanied by a structured completion report covering: all acceptance criteria (✅ / N/A / ⚠️), test results (verbatim output), TypeScript baseline table, UI screenshots, and a list of any open exceptions with follow-up sprint references.
 - **OpenAPI spec is current.** `lib/api-spec/openapi.yaml` reflects every endpoint introduced or modified in the sprint. Codegen has been re-run and any generated client code is committed.
@@ -206,7 +247,7 @@ All interactive UI delivered in a sprint must meet WCAG 2.1 Level AA. The follow
 
 ---
 
-## 15. Code Review Requirements
+## 16. Code Review Requirements
 
 - **Every change is reviewed before the sprint is closed.** The technical architect reviews the implementation against this DoD and the sprint's acceptance criteria. No sprint advances without this review.
 - **Review covers all layers.** The review must include: API routes, service logic, Prisma queries, Zod schemas, React components, translation keys, test files, OpenAPI spec, and Prisma migrations.
@@ -216,7 +257,7 @@ All interactive UI delivered in a sprint must meet WCAG 2.1 Level AA. The follow
 
 ---
 
-## 16. Release Requirements
+## 17. Release Requirements
 
 A sprint passes release only when all six gates are cleared **in this order**. No gate may be bypassed.
 
@@ -233,7 +274,7 @@ A sprint passes release only when all six gates are cleared **in this order**. N
 
 ---
 
-## 17. Final Completion Checklist
+## 18. Final Completion Checklist
 
 This checklist must be completed and submitted as part of every sprint completion report. Each item must be marked ✅, N/A (with justification), or ⚠️ Exception (with a follow-up sprint reference). No sprint is approved with an unchecked item.
 
@@ -360,7 +401,8 @@ This checklist must be completed and submitted as part of every sprint completio
 
 ---
 
-*Document version: 1.0*
+*Document version: 1.1*
 *Created: 2026-06-30*
+*Last updated: 2026-06-30*
 *Owner: Technical Architect — Mans ERP Project*
 *Authority: Subordinate to `PROJECT_RULES.md`; supersedes all other quality criteria*
