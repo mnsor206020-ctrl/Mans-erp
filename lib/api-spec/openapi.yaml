@@ -430,6 +430,543 @@ paths:
         "404":
           description: Not found
 
+  /fiscal-years:
+    get:
+      operationId: listFiscalYears
+      tags: [fiscal-years]
+      summary: List fiscal years
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: organizationId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: status
+          in: query
+          schema: { type: string, enum: [OPEN, CLOSED, LOCKED] }
+      responses:
+        "200":
+          description: List of fiscal years
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FiscalYear"
+    post:
+      operationId: createFiscalYear
+      tags: [fiscal-years]
+      summary: Create fiscal year
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateFiscalYearInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FiscalYear"
+
+  /cost-centers:
+    get:
+      operationId: listCostCenters
+      tags: [cost-centers]
+      summary: List cost centers
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: organizationId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: isActive
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: List of cost centers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CostCenter"
+
+  /journal-entries:
+    get:
+      operationId: listJournalEntries
+      tags: [journal-entries]
+      summary: List journal entries (paginated)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: organizationId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: fiscalYearId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: status
+          in: query
+          schema: { type: string }
+        - name: type
+          in: query
+          schema: { type: string }
+        - name: search
+          in: query
+          schema: { type: string }
+        - name: startDate
+          in: query
+          schema: { type: string, format: date }
+        - name: endDate
+          in: query
+          schema: { type: string, format: date }
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: pageSize
+          in: query
+          schema: { type: integer, default: 20 }
+      responses:
+        "200":
+          description: Paginated journal entries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedJournalEntries"
+    post:
+      operationId: createJournalEntry
+      tags: [journal-entries]
+      summary: Create a journal entry (draft)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateJournalEntryInput"
+      responses:
+        "201":
+          description: Created journal entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JournalEntry"
+        "400":
+          description: Validation error (unbalanced, inactive account, closed year, etc.)
+
+  /journal-entries/{id}:
+    get:
+      operationId: getJournalEntry
+      tags: [journal-entries]
+      summary: Get journal entry detail with lines and approval history
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Journal entry detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JournalEntryDetail"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateJournalEntry
+      tags: [journal-entries]
+      summary: Update a journal entry (DRAFT or UNDER_REVIEW only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateJournalEntryInput"
+      responses:
+        "200":
+          description: Updated journal entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JournalEntry"
+    delete:
+      operationId: deleteJournalEntry
+      tags: [journal-entries]
+      summary: Soft-delete a DRAFT journal entry
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                required: [success]
+
+  /journal-entries/{id}/submit:
+    post:
+      operationId: submitJournalEntry
+      tags: [journal-entries]
+      summary: Submit for review (DRAFT → UNDER_REVIEW)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                comment: { type: string }
+      responses:
+        "200":
+          description: Updated entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JournalEntry"
+
+  /journal-entries/{id}/approve:
+    post:
+      operationId: approveJournalEntry
+      tags: [journal-entries]
+      summary: Approve (UNDER_REVIEW → APPROVED)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                comment: { type: string }
+      responses:
+        "200":
+          description: Updated entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JournalEntry"
+
+  /journal-entries/{id}/reject:
+    post:
+      operationId: rejectJournalEntry
+      tags: [journal-entries]
+      summary: Reject back to DRAFT
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                comment: { type: string }
+      responses:
+        "200":
+          description: Updated entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JournalEntry"
+
+  /journal-entries/{id}/post:
+    post:
+      operationId: postJournalEntry
+      tags: [journal-entries]
+      summary: Post (APPROVED → POSTED)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Updated entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JournalEntry"
+
+  /journal-entries/{id}/lock:
+    post:
+      operationId: lockJournalEntry
+      tags: [journal-entries]
+      summary: Lock (POSTED → LOCKED)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Updated entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JournalEntry"
+
+  /journal-entries/{id}/reverse:
+    post:
+      operationId: reverseJournalEntry
+      tags: [journal-entries]
+      summary: Reverse (creates reversal draft, marks original REVERSED)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reverseDate: { type: string, format: date }
+                reason: { type: string }
+      responses:
+        "200":
+          description: Reversal entry (draft)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JournalEntry"
+
+  /journal-entries/{id}/copy:
+    post:
+      operationId: copyJournalEntry
+      tags: [journal-entries]
+      summary: Copy as new DRAFT
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                entryDate: { type: string, format: date }
+      responses:
+        "201":
+          description: Copied entry (draft)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JournalEntry"
+
+  /journal-entries/{id}/void:
+    post:
+      operationId: voidJournalEntry
+      tags: [journal-entries]
+      summary: Void a POSTED entry
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason: { type: string }
+              required: [reason]
+      responses:
+        "200":
+          description: Voided entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JournalEntry"
+
+  /journal-entry-templates:
+    get:
+      operationId: listJournalEntryTemplates
+      tags: [journal-entry-templates]
+      summary: List journal entry templates
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: organizationId
+          in: query
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: List of templates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/JournalEntryTemplate"
+    post:
+      operationId: createJournalEntryTemplate
+      tags: [journal-entry-templates]
+      summary: Create a journal entry template
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateJournalEntryTemplateInput"
+      responses:
+        "201":
+          description: Created template
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JournalEntryTemplate"
+
+  /journal-entry-templates/{id}:
+    get:
+      operationId: getJournalEntryTemplate
+      tags: [journal-entry-templates]
+      summary: Get template detail
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Template
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JournalEntryTemplate"
+    patch:
+      operationId: updateJournalEntryTemplate
+      tags: [journal-entry-templates]
+      summary: Update template
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateJournalEntryTemplateInput"
+      responses:
+        "200":
+          description: Updated template
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JournalEntryTemplate"
+    delete:
+      operationId: deleteJournalEntryTemplate
+      tags: [journal-entry-templates]
+      summary: Delete template
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+
+  /journal-entry-templates/{id}/use:
+    post:
+      operationId: useJournalEntryTemplate
+      tags: [journal-entry-templates]
+      summary: Create a journal entry from a template
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fiscalYearId: { type: string, format: uuid }
+                entryDate: { type: string, format: date }
+                exchangeRate: { type: number }
+              required: [fiscalYearId]
+      responses:
+        "201":
+          description: Created journal entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JournalEntry"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -887,3 +1424,542 @@ components:
           type: ["string", "null"]
         notes:
           type: ["string", "null"]
+
+    FiscalYear:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        organizationId:
+          type: string
+          format: uuid
+        nameEn:
+          type: string
+        nameAr:
+          type: string
+        startDate:
+          type: string
+          format: date-time
+        endDate:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [OPEN, CLOSED, LOCKED]
+        isDefault:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - organizationId
+        - nameEn
+        - nameAr
+        - startDate
+        - endDate
+        - status
+        - isDefault
+        - createdAt
+
+    CreateFiscalYearInput:
+      type: object
+      properties:
+        organizationId:
+          type: string
+          format: uuid
+        nameEn:
+          type: string
+        nameAr:
+          type: string
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        isDefault:
+          type: boolean
+      required:
+        - nameEn
+        - nameAr
+        - startDate
+        - endDate
+
+    CostCenter:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        organizationId:
+          type: string
+          format: uuid
+        code:
+          type: string
+        nameEn:
+          type: string
+        nameAr:
+          type: string
+        isActive:
+          type: boolean
+        parentId:
+          type: ["string", "null"]
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - organizationId
+        - code
+        - nameEn
+        - nameAr
+        - isActive
+        - createdAt
+
+    JournalEntryLine:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        journalEntryId:
+          type: string
+          format: uuid
+        accountId:
+          type: string
+          format: uuid
+        costCenterId:
+          type: ["string", "null"]
+          format: uuid
+        lineNumber:
+          type: integer
+        descriptionEn:
+          type: ["string", "null"]
+        descriptionAr:
+          type: ["string", "null"]
+        debit:
+          type: number
+        credit:
+          type: number
+        debitBase:
+          type: number
+        creditBase:
+          type: number
+        reference:
+          type: ["string", "null"]
+        account:
+          type: object
+          nullable: true
+          properties:
+            id: { type: string }
+            code: { type: string }
+            nameEn: { type: string }
+            nameAr: { type: string }
+            type: { type: string }
+            nature: { type: string }
+        costCenter:
+          type: object
+          nullable: true
+          properties:
+            id: { type: string }
+            code: { type: string }
+            nameEn: { type: string }
+            nameAr: { type: string }
+      required:
+        - id
+        - journalEntryId
+        - accountId
+        - lineNumber
+        - debit
+        - credit
+        - debitBase
+        - creditBase
+
+    JournalEntryApprovalRecord:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        journalEntryId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        action:
+          type: string
+        comment:
+          type: ["string", "null"]
+        fromStatus:
+          type: ["string", "null"]
+        toStatus:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        user:
+          type: object
+          nullable: true
+          properties:
+            id: { type: string }
+            firstNameEn: { type: ["string", "null"] }
+            lastNameEn: { type: ["string", "null"] }
+            email: { type: string }
+      required:
+        - id
+        - journalEntryId
+        - userId
+        - action
+        - createdAt
+
+    JournalEntry:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        organizationId:
+          type: string
+          format: uuid
+        fiscalYearId:
+          type: string
+          format: uuid
+        number:
+          type: string
+        entryDate:
+          type: string
+          format: date-time
+        type:
+          type: string
+          enum: [MANUAL, AUTOMATIC, OPENING, CLOSING, ADJUSTMENT]
+        status:
+          type: string
+          enum: [DRAFT, UNDER_REVIEW, APPROVED, POSTED, LOCKED, REVERSED, VOIDED]
+        currencyCode:
+          type: string
+        exchangeRate:
+          type: number
+        totalDebit:
+          type: number
+        totalCredit:
+          type: number
+        descriptionEn:
+          type: ["string", "null"]
+        descriptionAr:
+          type: ["string", "null"]
+        reference:
+          type: ["string", "null"]
+        isReversal:
+          type: boolean
+        reversalOfEntryId:
+          type: ["string", "null"]
+          format: uuid
+        reversedByEntryId:
+          type: ["string", "null"]
+          format: uuid
+        postedAt:
+          type: ["string", "null"]
+          format: date-time
+        submittedAt:
+          type: ["string", "null"]
+          format: date-time
+        approvedAt:
+          type: ["string", "null"]
+          format: date-time
+        voidedAt:
+          type: ["string", "null"]
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        createdBy:
+          type: object
+          nullable: true
+          properties:
+            id: { type: string }
+            firstNameEn: { type: ["string", "null"] }
+            lastNameEn: { type: ["string", "null"] }
+            email: { type: string }
+        fiscalYear:
+          type: object
+          nullable: true
+          properties:
+            id: { type: string }
+            nameEn: { type: string }
+            nameAr: { type: string }
+        _count:
+          type: object
+          nullable: true
+          properties:
+            lines: { type: integer }
+      required:
+        - id
+        - organizationId
+        - fiscalYearId
+        - number
+        - entryDate
+        - type
+        - status
+        - currencyCode
+        - exchangeRate
+        - totalDebit
+        - totalCredit
+        - isReversal
+        - createdAt
+        - updatedAt
+
+    JournalEntryDetail:
+      allOf:
+        - $ref: "#/components/schemas/JournalEntry"
+        - type: object
+          properties:
+            lines:
+              type: array
+              items:
+                $ref: "#/components/schemas/JournalEntryLine"
+            approvals:
+              type: array
+              items:
+                $ref: "#/components/schemas/JournalEntryApprovalRecord"
+            reversalOf:
+              type: object
+              nullable: true
+              properties:
+                id: { type: string }
+                number: { type: string }
+                entryDate: { type: string }
+            reversals:
+              type: array
+              items:
+                type: object
+                properties:
+                  id: { type: string }
+                  number: { type: string }
+                  entryDate: { type: string }
+            submittedBy:
+              type: object
+              nullable: true
+              properties:
+                id: { type: string }
+                firstNameEn: { type: ["string", "null"] }
+                lastNameEn: { type: ["string", "null"] }
+                email: { type: string }
+            approvedBy:
+              type: object
+              nullable: true
+              properties:
+                id: { type: string }
+                firstNameEn: { type: ["string", "null"] }
+                lastNameEn: { type: ["string", "null"] }
+                email: { type: string }
+            postedBy:
+              type: object
+              nullable: true
+              properties:
+                id: { type: string }
+                firstNameEn: { type: ["string", "null"] }
+                lastNameEn: { type: ["string", "null"] }
+                email: { type: string }
+
+    PaginatedJournalEntries:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/JournalEntry"
+        meta:
+          type: object
+          properties:
+            page: { type: integer }
+            pageSize: { type: integer }
+            total: { type: integer }
+            totalPages: { type: integer }
+          required: [page, pageSize, total, totalPages]
+      required:
+        - data
+        - meta
+
+    JournalEntryLineInput:
+      type: object
+      properties:
+        accountId:
+          type: string
+          format: uuid
+        costCenterId:
+          type: ["string", "null"]
+          format: uuid
+        lineNumber:
+          type: integer
+        descriptionEn:
+          type: ["string", "null"]
+        descriptionAr:
+          type: ["string", "null"]
+        debit:
+          type: number
+          minimum: 0
+          default: 0
+        credit:
+          type: number
+          minimum: 0
+          default: 0
+        reference:
+          type: ["string", "null"]
+      required:
+        - accountId
+        - lineNumber
+
+    CreateJournalEntryInput:
+      type: object
+      properties:
+        organizationId:
+          type: string
+          format: uuid
+        fiscalYearId:
+          type: string
+          format: uuid
+        entryDate:
+          type: string
+          format: date
+        type:
+          type: string
+          enum: [MANUAL, AUTOMATIC, OPENING, CLOSING, ADJUSTMENT]
+          default: MANUAL
+        currencyCode:
+          type: string
+          default: SAR
+        exchangeRate:
+          type: number
+          default: 1
+        descriptionEn:
+          type: ["string", "null"]
+        descriptionAr:
+          type: ["string", "null"]
+        reference:
+          type: ["string", "null"]
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/JournalEntryLineInput"
+          minItems: 2
+      required:
+        - fiscalYearId
+        - entryDate
+        - lines
+
+    UpdateJournalEntryInput:
+      type: object
+      properties:
+        fiscalYearId:
+          type: string
+          format: uuid
+        entryDate:
+          type: string
+          format: date
+        type:
+          type: string
+          enum: [MANUAL, AUTOMATIC, OPENING, CLOSING, ADJUSTMENT]
+        currencyCode:
+          type: string
+        exchangeRate:
+          type: number
+        descriptionEn:
+          type: ["string", "null"]
+        descriptionAr:
+          type: ["string", "null"]
+        reference:
+          type: ["string", "null"]
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/JournalEntryLineInput"
+
+    JournalEntryTemplate:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        organizationId:
+          type: string
+          format: uuid
+        nameEn:
+          type: string
+        nameAr:
+          type: string
+        descriptionEn:
+          type: ["string", "null"]
+        descriptionAr:
+          type: ["string", "null"]
+        type:
+          type: string
+        currencyCode:
+          type: string
+        isActive:
+          type: boolean
+        lines:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              lineNumber: { type: integer }
+              accountId: { type: string }
+              debit: { type: number }
+              credit: { type: number }
+              descriptionEn: { type: ["string", "null"] }
+              descriptionAr: { type: ["string", "null"] }
+              account:
+                type: object
+                nullable: true
+                properties:
+                  id: { type: string }
+                  code: { type: string }
+                  nameEn: { type: string }
+                  nameAr: { type: string }
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - organizationId
+        - nameEn
+        - nameAr
+        - type
+        - currencyCode
+        - isActive
+        - createdAt
+
+    CreateJournalEntryTemplateInput:
+      type: object
+      properties:
+        organizationId:
+          type: string
+          format: uuid
+        nameEn:
+          type: string
+        nameAr:
+          type: string
+        descriptionEn:
+          type: ["string", "null"]
+        descriptionAr:
+          type: ["string", "null"]
+        type:
+          type: string
+          enum: [MANUAL, AUTOMATIC, OPENING, CLOSING, ADJUSTMENT]
+        currencyCode:
+          type: string
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/JournalEntryLineInput"
+      required:
+        - nameEn
+        - nameAr

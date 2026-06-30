@@ -21,22 +21,45 @@ import type {
 
 import type {
   ActivityItem,
+  ApproveJournalEntryBody,
   ChartOfAccount,
   ChartOfAccountDetail,
   ChartOfAccountNode,
+  CopyJournalEntryBody,
+  CostCenter,
   CreateChartOfAccountInput,
+  CreateFiscalYearInput,
+  CreateJournalEntryInput,
+  CreateJournalEntryTemplateInput,
   DashboardStats,
   DeleteChartOfAccount200,
+  DeleteJournalEntry200,
+  DeleteJournalEntryTemplate200,
+  FiscalYear,
   GetChartOfAccountsTreeParams,
   HealthStatus,
+  JournalEntry,
+  JournalEntryDetail,
+  JournalEntryTemplate,
   ListChartOfAccountsParams,
+  ListCostCentersParams,
+  ListFiscalYearsParams,
+  ListJournalEntriesParams,
+  ListJournalEntryTemplatesParams,
   Organization,
   OrganizationInput,
   OrganizationUpdate,
   PaginatedChartOfAccounts,
+  PaginatedJournalEntries,
+  RejectJournalEntryBody,
+  ReverseJournalEntryBody,
+  SubmitJournalEntryBody,
   UpdateChartOfAccountInput,
+  UpdateJournalEntryInput,
+  UseJournalEntryTemplateBody,
   UserProfile,
-  UserProfileUpdate
+  UserProfileUpdate,
+  VoidJournalEntryBody
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -1345,5 +1368,1624 @@ export const useToggleChartOfAccountActive = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getToggleChartOfAccountActiveMutationOptions(options));
+    }
+
+export const getListFiscalYearsUrl = (params?: ListFiscalYearsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/fiscal-years?${stringifiedParams}` : `/api/fiscal-years`
+}
+
+/**
+ * @summary List fiscal years
+ */
+export const listFiscalYears = async (params?: ListFiscalYearsParams, options?: RequestInit): Promise<FiscalYear[]> => {
+
+  return customFetch<FiscalYear[]>(getListFiscalYearsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListFiscalYearsQueryKey = (params?: ListFiscalYearsParams,) => {
+    return [
+    `/api/fiscal-years`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListFiscalYearsQueryOptions = <TData = Awaited<ReturnType<typeof listFiscalYears>>, TError = ErrorType<unknown>>(params?: ListFiscalYearsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listFiscalYears>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListFiscalYearsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listFiscalYears>>> = ({ signal }) => listFiscalYears(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listFiscalYears>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListFiscalYearsQueryResult = NonNullable<Awaited<ReturnType<typeof listFiscalYears>>>
+export type ListFiscalYearsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List fiscal years
+ */
+
+export function useListFiscalYears<TData = Awaited<ReturnType<typeof listFiscalYears>>, TError = ErrorType<unknown>>(
+ params?: ListFiscalYearsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listFiscalYears>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListFiscalYearsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateFiscalYearUrl = () => {
+
+
+
+
+  return `/api/fiscal-years`
+}
+
+/**
+ * @summary Create fiscal year
+ */
+export const createFiscalYear = async (createFiscalYearInput: CreateFiscalYearInput, options?: RequestInit): Promise<FiscalYear> => {
+
+  return customFetch<FiscalYear>(getCreateFiscalYearUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createFiscalYearInput)
+  }
+);}
+
+
+
+
+export const getCreateFiscalYearMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createFiscalYear>>, TError,{data: BodyType<CreateFiscalYearInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createFiscalYear>>, TError,{data: BodyType<CreateFiscalYearInput>}, TContext> => {
+
+const mutationKey = ['createFiscalYear'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createFiscalYear>>, {data: BodyType<CreateFiscalYearInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createFiscalYear(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateFiscalYearMutationResult = NonNullable<Awaited<ReturnType<typeof createFiscalYear>>>
+    export type CreateFiscalYearMutationBody = BodyType<CreateFiscalYearInput>
+    export type CreateFiscalYearMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Create fiscal year
+ */
+export const useCreateFiscalYear = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createFiscalYear>>, TError,{data: BodyType<CreateFiscalYearInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createFiscalYear>>,
+        TError,
+        {data: BodyType<CreateFiscalYearInput>},
+        TContext
+      > => {
+      return useMutation(getCreateFiscalYearMutationOptions(options));
+    }
+
+export const getListCostCentersUrl = (params?: ListCostCentersParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/cost-centers?${stringifiedParams}` : `/api/cost-centers`
+}
+
+/**
+ * @summary List cost centers
+ */
+export const listCostCenters = async (params?: ListCostCentersParams, options?: RequestInit): Promise<CostCenter[]> => {
+
+  return customFetch<CostCenter[]>(getListCostCentersUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCostCentersQueryKey = (params?: ListCostCentersParams,) => {
+    return [
+    `/api/cost-centers`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListCostCentersQueryOptions = <TData = Awaited<ReturnType<typeof listCostCenters>>, TError = ErrorType<unknown>>(params?: ListCostCentersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCostCenters>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCostCentersQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCostCenters>>> = ({ signal }) => listCostCenters(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCostCenters>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCostCentersQueryResult = NonNullable<Awaited<ReturnType<typeof listCostCenters>>>
+export type ListCostCentersQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List cost centers
+ */
+
+export function useListCostCenters<TData = Awaited<ReturnType<typeof listCostCenters>>, TError = ErrorType<unknown>>(
+ params?: ListCostCentersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCostCenters>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCostCentersQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListJournalEntriesUrl = (params?: ListJournalEntriesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/journal-entries?${stringifiedParams}` : `/api/journal-entries`
+}
+
+/**
+ * @summary List journal entries (paginated)
+ */
+export const listJournalEntries = async (params?: ListJournalEntriesParams, options?: RequestInit): Promise<PaginatedJournalEntries> => {
+
+  return customFetch<PaginatedJournalEntries>(getListJournalEntriesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListJournalEntriesQueryKey = (params?: ListJournalEntriesParams,) => {
+    return [
+    `/api/journal-entries`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListJournalEntriesQueryOptions = <TData = Awaited<ReturnType<typeof listJournalEntries>>, TError = ErrorType<unknown>>(params?: ListJournalEntriesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listJournalEntries>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListJournalEntriesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listJournalEntries>>> = ({ signal }) => listJournalEntries(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listJournalEntries>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListJournalEntriesQueryResult = NonNullable<Awaited<ReturnType<typeof listJournalEntries>>>
+export type ListJournalEntriesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List journal entries (paginated)
+ */
+
+export function useListJournalEntries<TData = Awaited<ReturnType<typeof listJournalEntries>>, TError = ErrorType<unknown>>(
+ params?: ListJournalEntriesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listJournalEntries>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListJournalEntriesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateJournalEntryUrl = () => {
+
+
+
+
+  return `/api/journal-entries`
+}
+
+/**
+ * @summary Create a journal entry (draft)
+ */
+export const createJournalEntry = async (createJournalEntryInput: CreateJournalEntryInput, options?: RequestInit): Promise<JournalEntry> => {
+
+  return customFetch<JournalEntry>(getCreateJournalEntryUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createJournalEntryInput)
+  }
+);}
+
+
+
+
+export const getCreateJournalEntryMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createJournalEntry>>, TError,{data: BodyType<CreateJournalEntryInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createJournalEntry>>, TError,{data: BodyType<CreateJournalEntryInput>}, TContext> => {
+
+const mutationKey = ['createJournalEntry'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createJournalEntry>>, {data: BodyType<CreateJournalEntryInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createJournalEntry(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateJournalEntryMutationResult = NonNullable<Awaited<ReturnType<typeof createJournalEntry>>>
+    export type CreateJournalEntryMutationBody = BodyType<CreateJournalEntryInput>
+    export type CreateJournalEntryMutationError = ErrorType<void>
+
+    /**
+ * @summary Create a journal entry (draft)
+ */
+export const useCreateJournalEntry = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createJournalEntry>>, TError,{data: BodyType<CreateJournalEntryInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createJournalEntry>>,
+        TError,
+        {data: BodyType<CreateJournalEntryInput>},
+        TContext
+      > => {
+      return useMutation(getCreateJournalEntryMutationOptions(options));
+    }
+
+export const getGetJournalEntryUrl = (id: string,) => {
+
+
+
+
+  return `/api/journal-entries/${id}`
+}
+
+/**
+ * @summary Get journal entry detail with lines and approval history
+ */
+export const getJournalEntry = async (id: string, options?: RequestInit): Promise<JournalEntryDetail> => {
+
+  return customFetch<JournalEntryDetail>(getGetJournalEntryUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetJournalEntryQueryKey = (id: string,) => {
+    return [
+    `/api/journal-entries/${id}`
+    ] as const;
+    }
+
+
+export const getGetJournalEntryQueryOptions = <TData = Awaited<ReturnType<typeof getJournalEntry>>, TError = ErrorType<void>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getJournalEntry>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetJournalEntryQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getJournalEntry>>> = ({ signal }) => getJournalEntry(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getJournalEntry>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetJournalEntryQueryResult = NonNullable<Awaited<ReturnType<typeof getJournalEntry>>>
+export type GetJournalEntryQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get journal entry detail with lines and approval history
+ */
+
+export function useGetJournalEntry<TData = Awaited<ReturnType<typeof getJournalEntry>>, TError = ErrorType<void>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getJournalEntry>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetJournalEntryQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateJournalEntryUrl = (id: string,) => {
+
+
+
+
+  return `/api/journal-entries/${id}`
+}
+
+/**
+ * @summary Update a journal entry (DRAFT or UNDER_REVIEW only)
+ */
+export const updateJournalEntry = async (id: string,
+    updateJournalEntryInput: UpdateJournalEntryInput, options?: RequestInit): Promise<JournalEntry> => {
+
+  return customFetch<JournalEntry>(getUpdateJournalEntryUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateJournalEntryInput)
+  }
+);}
+
+
+
+
+export const getUpdateJournalEntryMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateJournalEntry>>, TError,{id: string;data: BodyType<UpdateJournalEntryInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateJournalEntry>>, TError,{id: string;data: BodyType<UpdateJournalEntryInput>}, TContext> => {
+
+const mutationKey = ['updateJournalEntry'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateJournalEntry>>, {id: string;data: BodyType<UpdateJournalEntryInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateJournalEntry(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateJournalEntryMutationResult = NonNullable<Awaited<ReturnType<typeof updateJournalEntry>>>
+    export type UpdateJournalEntryMutationBody = BodyType<UpdateJournalEntryInput>
+    export type UpdateJournalEntryMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Update a journal entry (DRAFT or UNDER_REVIEW only)
+ */
+export const useUpdateJournalEntry = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateJournalEntry>>, TError,{id: string;data: BodyType<UpdateJournalEntryInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateJournalEntry>>,
+        TError,
+        {id: string;data: BodyType<UpdateJournalEntryInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateJournalEntryMutationOptions(options));
+    }
+
+export const getDeleteJournalEntryUrl = (id: string,) => {
+
+
+
+
+  return `/api/journal-entries/${id}`
+}
+
+/**
+ * @summary Soft-delete a DRAFT journal entry
+ */
+export const deleteJournalEntry = async (id: string, options?: RequestInit): Promise<DeleteJournalEntry200> => {
+
+  return customFetch<DeleteJournalEntry200>(getDeleteJournalEntryUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteJournalEntryMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteJournalEntry>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteJournalEntry>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['deleteJournalEntry'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteJournalEntry>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteJournalEntry(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteJournalEntryMutationResult = NonNullable<Awaited<ReturnType<typeof deleteJournalEntry>>>
+
+    export type DeleteJournalEntryMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Soft-delete a DRAFT journal entry
+ */
+export const useDeleteJournalEntry = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteJournalEntry>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteJournalEntry>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getDeleteJournalEntryMutationOptions(options));
+    }
+
+export const getSubmitJournalEntryUrl = (id: string,) => {
+
+
+
+
+  return `/api/journal-entries/${id}/submit`
+}
+
+/**
+ * @summary Submit for review (DRAFT → UNDER_REVIEW)
+ */
+export const submitJournalEntry = async (id: string,
+    submitJournalEntryBody?: SubmitJournalEntryBody, options?: RequestInit): Promise<JournalEntry> => {
+
+  return customFetch<JournalEntry>(getSubmitJournalEntryUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(submitJournalEntryBody)
+  }
+);}
+
+
+
+
+export const getSubmitJournalEntryMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitJournalEntry>>, TError,{id: string;data?: BodyType<SubmitJournalEntryBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof submitJournalEntry>>, TError,{id: string;data?: BodyType<SubmitJournalEntryBody>}, TContext> => {
+
+const mutationKey = ['submitJournalEntry'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof submitJournalEntry>>, {id: string;data?: BodyType<SubmitJournalEntryBody>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  submitJournalEntry(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SubmitJournalEntryMutationResult = NonNullable<Awaited<ReturnType<typeof submitJournalEntry>>>
+    export type SubmitJournalEntryMutationBody = BodyType<SubmitJournalEntryBody> | undefined
+    export type SubmitJournalEntryMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Submit for review (DRAFT → UNDER_REVIEW)
+ */
+export const useSubmitJournalEntry = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitJournalEntry>>, TError,{id: string;data?: BodyType<SubmitJournalEntryBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof submitJournalEntry>>,
+        TError,
+        {id: string;data?: BodyType<SubmitJournalEntryBody>},
+        TContext
+      > => {
+      return useMutation(getSubmitJournalEntryMutationOptions(options));
+    }
+
+export const getApproveJournalEntryUrl = (id: string,) => {
+
+
+
+
+  return `/api/journal-entries/${id}/approve`
+}
+
+/**
+ * @summary Approve (UNDER_REVIEW → APPROVED)
+ */
+export const approveJournalEntry = async (id: string,
+    approveJournalEntryBody?: ApproveJournalEntryBody, options?: RequestInit): Promise<JournalEntry> => {
+
+  return customFetch<JournalEntry>(getApproveJournalEntryUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(approveJournalEntryBody)
+  }
+);}
+
+
+
+
+export const getApproveJournalEntryMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveJournalEntry>>, TError,{id: string;data?: BodyType<ApproveJournalEntryBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof approveJournalEntry>>, TError,{id: string;data?: BodyType<ApproveJournalEntryBody>}, TContext> => {
+
+const mutationKey = ['approveJournalEntry'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof approveJournalEntry>>, {id: string;data?: BodyType<ApproveJournalEntryBody>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  approveJournalEntry(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ApproveJournalEntryMutationResult = NonNullable<Awaited<ReturnType<typeof approveJournalEntry>>>
+    export type ApproveJournalEntryMutationBody = BodyType<ApproveJournalEntryBody> | undefined
+    export type ApproveJournalEntryMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Approve (UNDER_REVIEW → APPROVED)
+ */
+export const useApproveJournalEntry = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveJournalEntry>>, TError,{id: string;data?: BodyType<ApproveJournalEntryBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof approveJournalEntry>>,
+        TError,
+        {id: string;data?: BodyType<ApproveJournalEntryBody>},
+        TContext
+      > => {
+      return useMutation(getApproveJournalEntryMutationOptions(options));
+    }
+
+export const getRejectJournalEntryUrl = (id: string,) => {
+
+
+
+
+  return `/api/journal-entries/${id}/reject`
+}
+
+/**
+ * @summary Reject back to DRAFT
+ */
+export const rejectJournalEntry = async (id: string,
+    rejectJournalEntryBody?: RejectJournalEntryBody, options?: RequestInit): Promise<JournalEntry> => {
+
+  return customFetch<JournalEntry>(getRejectJournalEntryUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(rejectJournalEntryBody)
+  }
+);}
+
+
+
+
+export const getRejectJournalEntryMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rejectJournalEntry>>, TError,{id: string;data?: BodyType<RejectJournalEntryBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof rejectJournalEntry>>, TError,{id: string;data?: BodyType<RejectJournalEntryBody>}, TContext> => {
+
+const mutationKey = ['rejectJournalEntry'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof rejectJournalEntry>>, {id: string;data?: BodyType<RejectJournalEntryBody>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  rejectJournalEntry(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RejectJournalEntryMutationResult = NonNullable<Awaited<ReturnType<typeof rejectJournalEntry>>>
+    export type RejectJournalEntryMutationBody = BodyType<RejectJournalEntryBody> | undefined
+    export type RejectJournalEntryMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Reject back to DRAFT
+ */
+export const useRejectJournalEntry = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rejectJournalEntry>>, TError,{id: string;data?: BodyType<RejectJournalEntryBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof rejectJournalEntry>>,
+        TError,
+        {id: string;data?: BodyType<RejectJournalEntryBody>},
+        TContext
+      > => {
+      return useMutation(getRejectJournalEntryMutationOptions(options));
+    }
+
+export const getPostJournalEntryUrl = (id: string,) => {
+
+
+
+
+  return `/api/journal-entries/${id}/post`
+}
+
+/**
+ * @summary Post (APPROVED → POSTED)
+ */
+export const postJournalEntry = async (id: string, options?: RequestInit): Promise<JournalEntry> => {
+
+  return customFetch<JournalEntry>(getPostJournalEntryUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getPostJournalEntryMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postJournalEntry>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof postJournalEntry>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['postJournalEntry'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postJournalEntry>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  postJournalEntry(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PostJournalEntryMutationResult = NonNullable<Awaited<ReturnType<typeof postJournalEntry>>>
+
+    export type PostJournalEntryMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Post (APPROVED → POSTED)
+ */
+export const usePostJournalEntry = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postJournalEntry>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof postJournalEntry>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getPostJournalEntryMutationOptions(options));
+    }
+
+export const getLockJournalEntryUrl = (id: string,) => {
+
+
+
+
+  return `/api/journal-entries/${id}/lock`
+}
+
+/**
+ * @summary Lock (POSTED → LOCKED)
+ */
+export const lockJournalEntry = async (id: string, options?: RequestInit): Promise<JournalEntry> => {
+
+  return customFetch<JournalEntry>(getLockJournalEntryUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getLockJournalEntryMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof lockJournalEntry>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof lockJournalEntry>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['lockJournalEntry'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof lockJournalEntry>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  lockJournalEntry(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LockJournalEntryMutationResult = NonNullable<Awaited<ReturnType<typeof lockJournalEntry>>>
+
+    export type LockJournalEntryMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Lock (POSTED → LOCKED)
+ */
+export const useLockJournalEntry = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof lockJournalEntry>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof lockJournalEntry>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getLockJournalEntryMutationOptions(options));
+    }
+
+export const getReverseJournalEntryUrl = (id: string,) => {
+
+
+
+
+  return `/api/journal-entries/${id}/reverse`
+}
+
+/**
+ * @summary Reverse (creates reversal draft, marks original REVERSED)
+ */
+export const reverseJournalEntry = async (id: string,
+    reverseJournalEntryBody?: ReverseJournalEntryBody, options?: RequestInit): Promise<JournalEntry> => {
+
+  return customFetch<JournalEntry>(getReverseJournalEntryUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(reverseJournalEntryBody)
+  }
+);}
+
+
+
+
+export const getReverseJournalEntryMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reverseJournalEntry>>, TError,{id: string;data?: BodyType<ReverseJournalEntryBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reverseJournalEntry>>, TError,{id: string;data?: BodyType<ReverseJournalEntryBody>}, TContext> => {
+
+const mutationKey = ['reverseJournalEntry'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reverseJournalEntry>>, {id: string;data?: BodyType<ReverseJournalEntryBody>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  reverseJournalEntry(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReverseJournalEntryMutationResult = NonNullable<Awaited<ReturnType<typeof reverseJournalEntry>>>
+    export type ReverseJournalEntryMutationBody = BodyType<ReverseJournalEntryBody> | undefined
+    export type ReverseJournalEntryMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Reverse (creates reversal draft, marks original REVERSED)
+ */
+export const useReverseJournalEntry = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reverseJournalEntry>>, TError,{id: string;data?: BodyType<ReverseJournalEntryBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reverseJournalEntry>>,
+        TError,
+        {id: string;data?: BodyType<ReverseJournalEntryBody>},
+        TContext
+      > => {
+      return useMutation(getReverseJournalEntryMutationOptions(options));
+    }
+
+export const getCopyJournalEntryUrl = (id: string,) => {
+
+
+
+
+  return `/api/journal-entries/${id}/copy`
+}
+
+/**
+ * @summary Copy as new DRAFT
+ */
+export const copyJournalEntry = async (id: string,
+    copyJournalEntryBody?: CopyJournalEntryBody, options?: RequestInit): Promise<JournalEntry> => {
+
+  return customFetch<JournalEntry>(getCopyJournalEntryUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(copyJournalEntryBody)
+  }
+);}
+
+
+
+
+export const getCopyJournalEntryMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof copyJournalEntry>>, TError,{id: string;data?: BodyType<CopyJournalEntryBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof copyJournalEntry>>, TError,{id: string;data?: BodyType<CopyJournalEntryBody>}, TContext> => {
+
+const mutationKey = ['copyJournalEntry'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof copyJournalEntry>>, {id: string;data?: BodyType<CopyJournalEntryBody>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  copyJournalEntry(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CopyJournalEntryMutationResult = NonNullable<Awaited<ReturnType<typeof copyJournalEntry>>>
+    export type CopyJournalEntryMutationBody = BodyType<CopyJournalEntryBody> | undefined
+    export type CopyJournalEntryMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Copy as new DRAFT
+ */
+export const useCopyJournalEntry = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof copyJournalEntry>>, TError,{id: string;data?: BodyType<CopyJournalEntryBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof copyJournalEntry>>,
+        TError,
+        {id: string;data?: BodyType<CopyJournalEntryBody>},
+        TContext
+      > => {
+      return useMutation(getCopyJournalEntryMutationOptions(options));
+    }
+
+export const getVoidJournalEntryUrl = (id: string,) => {
+
+
+
+
+  return `/api/journal-entries/${id}/void`
+}
+
+/**
+ * @summary Void a POSTED entry
+ */
+export const voidJournalEntry = async (id: string,
+    voidJournalEntryBody: VoidJournalEntryBody, options?: RequestInit): Promise<JournalEntry> => {
+
+  return customFetch<JournalEntry>(getVoidJournalEntryUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(voidJournalEntryBody)
+  }
+);}
+
+
+
+
+export const getVoidJournalEntryMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof voidJournalEntry>>, TError,{id: string;data: BodyType<VoidJournalEntryBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof voidJournalEntry>>, TError,{id: string;data: BodyType<VoidJournalEntryBody>}, TContext> => {
+
+const mutationKey = ['voidJournalEntry'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof voidJournalEntry>>, {id: string;data: BodyType<VoidJournalEntryBody>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  voidJournalEntry(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type VoidJournalEntryMutationResult = NonNullable<Awaited<ReturnType<typeof voidJournalEntry>>>
+    export type VoidJournalEntryMutationBody = BodyType<VoidJournalEntryBody>
+    export type VoidJournalEntryMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Void a POSTED entry
+ */
+export const useVoidJournalEntry = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof voidJournalEntry>>, TError,{id: string;data: BodyType<VoidJournalEntryBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof voidJournalEntry>>,
+        TError,
+        {id: string;data: BodyType<VoidJournalEntryBody>},
+        TContext
+      > => {
+      return useMutation(getVoidJournalEntryMutationOptions(options));
+    }
+
+export const getListJournalEntryTemplatesUrl = (params?: ListJournalEntryTemplatesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/journal-entry-templates?${stringifiedParams}` : `/api/journal-entry-templates`
+}
+
+/**
+ * @summary List journal entry templates
+ */
+export const listJournalEntryTemplates = async (params?: ListJournalEntryTemplatesParams, options?: RequestInit): Promise<JournalEntryTemplate[]> => {
+
+  return customFetch<JournalEntryTemplate[]>(getListJournalEntryTemplatesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListJournalEntryTemplatesQueryKey = (params?: ListJournalEntryTemplatesParams,) => {
+    return [
+    `/api/journal-entry-templates`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListJournalEntryTemplatesQueryOptions = <TData = Awaited<ReturnType<typeof listJournalEntryTemplates>>, TError = ErrorType<unknown>>(params?: ListJournalEntryTemplatesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listJournalEntryTemplates>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListJournalEntryTemplatesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listJournalEntryTemplates>>> = ({ signal }) => listJournalEntryTemplates(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listJournalEntryTemplates>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListJournalEntryTemplatesQueryResult = NonNullable<Awaited<ReturnType<typeof listJournalEntryTemplates>>>
+export type ListJournalEntryTemplatesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List journal entry templates
+ */
+
+export function useListJournalEntryTemplates<TData = Awaited<ReturnType<typeof listJournalEntryTemplates>>, TError = ErrorType<unknown>>(
+ params?: ListJournalEntryTemplatesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listJournalEntryTemplates>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListJournalEntryTemplatesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateJournalEntryTemplateUrl = () => {
+
+
+
+
+  return `/api/journal-entry-templates`
+}
+
+/**
+ * @summary Create a journal entry template
+ */
+export const createJournalEntryTemplate = async (createJournalEntryTemplateInput: CreateJournalEntryTemplateInput, options?: RequestInit): Promise<JournalEntryTemplate> => {
+
+  return customFetch<JournalEntryTemplate>(getCreateJournalEntryTemplateUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createJournalEntryTemplateInput)
+  }
+);}
+
+
+
+
+export const getCreateJournalEntryTemplateMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createJournalEntryTemplate>>, TError,{data: BodyType<CreateJournalEntryTemplateInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createJournalEntryTemplate>>, TError,{data: BodyType<CreateJournalEntryTemplateInput>}, TContext> => {
+
+const mutationKey = ['createJournalEntryTemplate'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createJournalEntryTemplate>>, {data: BodyType<CreateJournalEntryTemplateInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createJournalEntryTemplate(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateJournalEntryTemplateMutationResult = NonNullable<Awaited<ReturnType<typeof createJournalEntryTemplate>>>
+    export type CreateJournalEntryTemplateMutationBody = BodyType<CreateJournalEntryTemplateInput>
+    export type CreateJournalEntryTemplateMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Create a journal entry template
+ */
+export const useCreateJournalEntryTemplate = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createJournalEntryTemplate>>, TError,{data: BodyType<CreateJournalEntryTemplateInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createJournalEntryTemplate>>,
+        TError,
+        {data: BodyType<CreateJournalEntryTemplateInput>},
+        TContext
+      > => {
+      return useMutation(getCreateJournalEntryTemplateMutationOptions(options));
+    }
+
+export const getGetJournalEntryTemplateUrl = (id: string,) => {
+
+
+
+
+  return `/api/journal-entry-templates/${id}`
+}
+
+/**
+ * @summary Get template detail
+ */
+export const getJournalEntryTemplate = async (id: string, options?: RequestInit): Promise<JournalEntryTemplate> => {
+
+  return customFetch<JournalEntryTemplate>(getGetJournalEntryTemplateUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetJournalEntryTemplateQueryKey = (id: string,) => {
+    return [
+    `/api/journal-entry-templates/${id}`
+    ] as const;
+    }
+
+
+export const getGetJournalEntryTemplateQueryOptions = <TData = Awaited<ReturnType<typeof getJournalEntryTemplate>>, TError = ErrorType<unknown>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getJournalEntryTemplate>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetJournalEntryTemplateQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getJournalEntryTemplate>>> = ({ signal }) => getJournalEntryTemplate(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getJournalEntryTemplate>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetJournalEntryTemplateQueryResult = NonNullable<Awaited<ReturnType<typeof getJournalEntryTemplate>>>
+export type GetJournalEntryTemplateQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get template detail
+ */
+
+export function useGetJournalEntryTemplate<TData = Awaited<ReturnType<typeof getJournalEntryTemplate>>, TError = ErrorType<unknown>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getJournalEntryTemplate>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetJournalEntryTemplateQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateJournalEntryTemplateUrl = (id: string,) => {
+
+
+
+
+  return `/api/journal-entry-templates/${id}`
+}
+
+/**
+ * @summary Update template
+ */
+export const updateJournalEntryTemplate = async (id: string,
+    createJournalEntryTemplateInput?: CreateJournalEntryTemplateInput, options?: RequestInit): Promise<JournalEntryTemplate> => {
+
+  return customFetch<JournalEntryTemplate>(getUpdateJournalEntryTemplateUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createJournalEntryTemplateInput)
+  }
+);}
+
+
+
+
+export const getUpdateJournalEntryTemplateMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateJournalEntryTemplate>>, TError,{id: string;data?: BodyType<CreateJournalEntryTemplateInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateJournalEntryTemplate>>, TError,{id: string;data?: BodyType<CreateJournalEntryTemplateInput>}, TContext> => {
+
+const mutationKey = ['updateJournalEntryTemplate'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateJournalEntryTemplate>>, {id: string;data?: BodyType<CreateJournalEntryTemplateInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateJournalEntryTemplate(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateJournalEntryTemplateMutationResult = NonNullable<Awaited<ReturnType<typeof updateJournalEntryTemplate>>>
+    export type UpdateJournalEntryTemplateMutationBody = BodyType<CreateJournalEntryTemplateInput> | undefined
+    export type UpdateJournalEntryTemplateMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Update template
+ */
+export const useUpdateJournalEntryTemplate = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateJournalEntryTemplate>>, TError,{id: string;data?: BodyType<CreateJournalEntryTemplateInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateJournalEntryTemplate>>,
+        TError,
+        {id: string;data?: BodyType<CreateJournalEntryTemplateInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateJournalEntryTemplateMutationOptions(options));
+    }
+
+export const getDeleteJournalEntryTemplateUrl = (id: string,) => {
+
+
+
+
+  return `/api/journal-entry-templates/${id}`
+}
+
+/**
+ * @summary Delete template
+ */
+export const deleteJournalEntryTemplate = async (id: string, options?: RequestInit): Promise<DeleteJournalEntryTemplate200> => {
+
+  return customFetch<DeleteJournalEntryTemplate200>(getDeleteJournalEntryTemplateUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteJournalEntryTemplateMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteJournalEntryTemplate>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteJournalEntryTemplate>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['deleteJournalEntryTemplate'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteJournalEntryTemplate>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteJournalEntryTemplate(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteJournalEntryTemplateMutationResult = NonNullable<Awaited<ReturnType<typeof deleteJournalEntryTemplate>>>
+
+    export type DeleteJournalEntryTemplateMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Delete template
+ */
+export const useDeleteJournalEntryTemplate = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteJournalEntryTemplate>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteJournalEntryTemplate>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getDeleteJournalEntryTemplateMutationOptions(options));
+    }
+
+export const getUseJournalEntryTemplateUrl = (id: string,) => {
+
+
+
+
+  return `/api/journal-entry-templates/${id}/use`
+}
+
+/**
+ * @summary Create a journal entry from a template
+ */
+export const useJournalEntryTemplate = async (id: string,
+    useJournalEntryTemplateBody: UseJournalEntryTemplateBody, options?: RequestInit): Promise<JournalEntry> => {
+
+  return customFetch<JournalEntry>(getUseJournalEntryTemplateUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(useJournalEntryTemplateBody)
+  }
+);}
+
+
+
+
+export const getUseJournalEntryTemplateMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof useJournalEntryTemplate>>, TError,{id: string;data: BodyType<UseJournalEntryTemplateBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof useJournalEntryTemplate>>, TError,{id: string;data: BodyType<UseJournalEntryTemplateBody>}, TContext> => {
+
+const mutationKey = ['useJournalEntryTemplate'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof useJournalEntryTemplate>>, {id: string;data: BodyType<UseJournalEntryTemplateBody>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  useJournalEntryTemplate(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UseJournalEntryTemplateMutationResult = NonNullable<Awaited<ReturnType<typeof useJournalEntryTemplate>>>
+    export type UseJournalEntryTemplateMutationBody = BodyType<UseJournalEntryTemplateBody>
+    export type UseJournalEntryTemplateMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Create a journal entry from a template
+ */
+export const useUseJournalEntryTemplate = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof useJournalEntryTemplate>>, TError,{id: string;data: BodyType<UseJournalEntryTemplateBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof useJournalEntryTemplate>>,
+        TError,
+        {id: string;data: BodyType<UseJournalEntryTemplateBody>},
+        TContext
+      > => {
+      return useMutation(getUseJournalEntryTemplateMutationOptions(options));
     }
 

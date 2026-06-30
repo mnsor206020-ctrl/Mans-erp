@@ -1,7 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { useLanguage } from "@/lib/language-provider";
 import { useTheme } from "@/components/theme-provider";
-import { LayoutDashboard, Building2, Settings, Bell, Sun, Moon, LogOut, Menu, BookOpen } from "lucide-react";
+import { LayoutDashboard, Building2, Settings, Bell, Sun, Moon, LogOut, Menu, BookOpen, FileText } from "lucide-react";
 import { useUser, useClerk } from "@clerk/react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -23,6 +23,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     { name: t('nav.dashboard'), href: '/dashboard', icon: LayoutDashboard },
     { name: t('nav.organizations'), href: '/organizations', icon: Building2 },
     { name: t('nav.chartOfAccounts'), href: '/chart-of-accounts', icon: BookOpen },
+    { name: t('nav.journalEntries'), href: '/journal-entries', icon: FileText },
     { name: t('nav.settings'), href: '/settings', icon: Settings },
   ];
 

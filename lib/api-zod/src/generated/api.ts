@@ -465,3 +465,1099 @@ export const ToggleChartOfAccountActiveResponse = zod.object({
 })
 
 
+/**
+ * @summary List fiscal years
+ */
+export const ListFiscalYearsQueryParams = zod.object({
+  "organizationId": zod.coerce.string().uuid().optional(),
+  "status": zod.enum(['OPEN', 'CLOSED', 'LOCKED']).optional()
+})
+
+export const ListFiscalYearsResponseItem = zod.object({
+  "id": zod.string().uuid(),
+  "organizationId": zod.string().uuid(),
+  "nameEn": zod.string(),
+  "nameAr": zod.string(),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date(),
+  "status": zod.enum(['OPEN', 'CLOSED', 'LOCKED']),
+  "isDefault": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
+export const ListFiscalYearsResponse = zod.array(ListFiscalYearsResponseItem)
+
+
+/**
+ * @summary Create fiscal year
+ */
+export const CreateFiscalYearBody = zod.object({
+  "organizationId": zod.string().uuid().optional(),
+  "nameEn": zod.string(),
+  "nameAr": zod.string(),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date(),
+  "isDefault": zod.boolean().optional()
+})
+
+export const CreateFiscalYearResponse = zod.object({
+  "id": zod.string().uuid(),
+  "organizationId": zod.string().uuid(),
+  "nameEn": zod.string(),
+  "nameAr": zod.string(),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date(),
+  "status": zod.enum(['OPEN', 'CLOSED', 'LOCKED']),
+  "isDefault": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary List cost centers
+ */
+export const ListCostCentersQueryParams = zod.object({
+  "organizationId": zod.coerce.string().uuid().optional(),
+  "isActive": zod.coerce.string().optional()
+})
+
+export const ListCostCentersResponseItem = zod.object({
+  "id": zod.string().uuid(),
+  "organizationId": zod.string().uuid(),
+  "code": zod.string(),
+  "nameEn": zod.string(),
+  "nameAr": zod.string(),
+  "isActive": zod.boolean(),
+  "parentId": zod.string().uuid().nullish(),
+  "createdAt": zod.coerce.date()
+})
+export const ListCostCentersResponse = zod.array(ListCostCentersResponseItem)
+
+
+/**
+ * @summary List journal entries (paginated)
+ */
+export const listJournalEntriesQueryPageDefault = 1;
+export const listJournalEntriesQueryPageSizeDefault = 20;
+
+export const ListJournalEntriesQueryParams = zod.object({
+  "organizationId": zod.coerce.string().uuid().optional(),
+  "fiscalYearId": zod.coerce.string().uuid().optional(),
+  "status": zod.coerce.string().optional(),
+  "type": zod.coerce.string().optional(),
+  "search": zod.coerce.string().optional(),
+  "startDate": zod.date().optional(),
+  "endDate": zod.date().optional(),
+  "page": zod.coerce.number().default(listJournalEntriesQueryPageDefault),
+  "pageSize": zod.coerce.number().default(listJournalEntriesQueryPageSizeDefault)
+})
+
+export const ListJournalEntriesResponse = zod.object({
+  "data": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "organizationId": zod.string().uuid(),
+  "fiscalYearId": zod.string().uuid(),
+  "number": zod.string(),
+  "entryDate": zod.coerce.date(),
+  "type": zod.enum(['MANUAL', 'AUTOMATIC', 'OPENING', 'CLOSING', 'ADJUSTMENT']),
+  "status": zod.enum(['DRAFT', 'UNDER_REVIEW', 'APPROVED', 'POSTED', 'LOCKED', 'REVERSED', 'VOIDED']),
+  "currencyCode": zod.string(),
+  "exchangeRate": zod.number(),
+  "totalDebit": zod.number(),
+  "totalCredit": zod.number(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "reference": zod.string().nullish(),
+  "isReversal": zod.boolean(),
+  "reversalOfEntryId": zod.string().uuid().nullish(),
+  "reversedByEntryId": zod.string().uuid().nullish(),
+  "postedAt": zod.coerce.date().nullish(),
+  "submittedAt": zod.coerce.date().nullish(),
+  "approvedAt": zod.coerce.date().nullish(),
+  "voidedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "createdBy": zod.object({
+  "id": zod.string().optional(),
+  "firstNameEn": zod.string().nullish(),
+  "lastNameEn": zod.string().nullish(),
+  "email": zod.string().optional()
+}).nullish(),
+  "fiscalYear": zod.object({
+  "id": zod.string().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional()
+}).nullish(),
+  "_count": zod.object({
+  "lines": zod.number().optional()
+}).nullish()
+})),
+  "meta": zod.object({
+  "page": zod.number(),
+  "pageSize": zod.number(),
+  "total": zod.number(),
+  "totalPages": zod.number()
+})
+})
+
+
+/**
+ * @summary Create a journal entry (draft)
+ */
+export const createJournalEntryBodyTypeDefault = `MANUAL`;
+export const createJournalEntryBodyCurrencyCodeDefault = `SAR`;
+export const createJournalEntryBodyExchangeRateDefault = 1;
+export const createJournalEntryBodyLinesItemDebitDefault = 0;
+export const createJournalEntryBodyLinesItemDebitMin = 0;
+
+export const createJournalEntryBodyLinesItemCreditDefault = 0;
+export const createJournalEntryBodyLinesItemCreditMin = 0;
+
+export const createJournalEntryBodyLinesMin = 2;
+
+
+
+export const CreateJournalEntryBody = zod.object({
+  "organizationId": zod.string().uuid().optional(),
+  "fiscalYearId": zod.string().uuid(),
+  "entryDate": zod.coerce.date(),
+  "type": zod.enum(['MANUAL', 'AUTOMATIC', 'OPENING', 'CLOSING', 'ADJUSTMENT']).default(createJournalEntryBodyTypeDefault),
+  "currencyCode": zod.string().default(createJournalEntryBodyCurrencyCodeDefault),
+  "exchangeRate": zod.number().default(createJournalEntryBodyExchangeRateDefault),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "reference": zod.string().nullish(),
+  "lines": zod.array(zod.object({
+  "accountId": zod.string().uuid(),
+  "costCenterId": zod.string().uuid().nullish(),
+  "lineNumber": zod.number(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "debit": zod.number().min(createJournalEntryBodyLinesItemDebitMin).default(createJournalEntryBodyLinesItemDebitDefault),
+  "credit": zod.number().min(createJournalEntryBodyLinesItemCreditMin).default(createJournalEntryBodyLinesItemCreditDefault),
+  "reference": zod.string().nullish()
+})).min(createJournalEntryBodyLinesMin)
+})
+
+export const CreateJournalEntryResponse = zod.object({
+  "id": zod.string().uuid(),
+  "organizationId": zod.string().uuid(),
+  "fiscalYearId": zod.string().uuid(),
+  "number": zod.string(),
+  "entryDate": zod.coerce.date(),
+  "type": zod.enum(['MANUAL', 'AUTOMATIC', 'OPENING', 'CLOSING', 'ADJUSTMENT']),
+  "status": zod.enum(['DRAFT', 'UNDER_REVIEW', 'APPROVED', 'POSTED', 'LOCKED', 'REVERSED', 'VOIDED']),
+  "currencyCode": zod.string(),
+  "exchangeRate": zod.number(),
+  "totalDebit": zod.number(),
+  "totalCredit": zod.number(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "reference": zod.string().nullish(),
+  "isReversal": zod.boolean(),
+  "reversalOfEntryId": zod.string().uuid().nullish(),
+  "reversedByEntryId": zod.string().uuid().nullish(),
+  "postedAt": zod.coerce.date().nullish(),
+  "submittedAt": zod.coerce.date().nullish(),
+  "approvedAt": zod.coerce.date().nullish(),
+  "voidedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "createdBy": zod.object({
+  "id": zod.string().optional(),
+  "firstNameEn": zod.string().nullish(),
+  "lastNameEn": zod.string().nullish(),
+  "email": zod.string().optional()
+}).nullish(),
+  "fiscalYear": zod.object({
+  "id": zod.string().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional()
+}).nullish(),
+  "_count": zod.object({
+  "lines": zod.number().optional()
+}).nullish()
+})
+
+
+/**
+ * @summary Get journal entry detail with lines and approval history
+ */
+export const GetJournalEntryParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const GetJournalEntryResponse = zod.object({
+  "id": zod.string().uuid(),
+  "organizationId": zod.string().uuid(),
+  "fiscalYearId": zod.string().uuid(),
+  "number": zod.string(),
+  "entryDate": zod.coerce.date(),
+  "type": zod.enum(['MANUAL', 'AUTOMATIC', 'OPENING', 'CLOSING', 'ADJUSTMENT']),
+  "status": zod.enum(['DRAFT', 'UNDER_REVIEW', 'APPROVED', 'POSTED', 'LOCKED', 'REVERSED', 'VOIDED']),
+  "currencyCode": zod.string(),
+  "exchangeRate": zod.number(),
+  "totalDebit": zod.number(),
+  "totalCredit": zod.number(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "reference": zod.string().nullish(),
+  "isReversal": zod.boolean(),
+  "reversalOfEntryId": zod.string().uuid().nullish(),
+  "reversedByEntryId": zod.string().uuid().nullish(),
+  "postedAt": zod.coerce.date().nullish(),
+  "submittedAt": zod.coerce.date().nullish(),
+  "approvedAt": zod.coerce.date().nullish(),
+  "voidedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "createdBy": zod.object({
+  "id": zod.string().optional(),
+  "firstNameEn": zod.string().nullish(),
+  "lastNameEn": zod.string().nullish(),
+  "email": zod.string().optional()
+}).nullish(),
+  "fiscalYear": zod.object({
+  "id": zod.string().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional()
+}).nullish(),
+  "_count": zod.object({
+  "lines": zod.number().optional()
+}).nullish()
+}).and(zod.object({
+  "lines": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "journalEntryId": zod.string().uuid(),
+  "accountId": zod.string().uuid(),
+  "costCenterId": zod.string().uuid().nullish(),
+  "lineNumber": zod.number(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "debit": zod.number(),
+  "credit": zod.number(),
+  "debitBase": zod.number(),
+  "creditBase": zod.number(),
+  "reference": zod.string().nullish(),
+  "account": zod.object({
+  "id": zod.string().optional(),
+  "code": zod.string().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional(),
+  "type": zod.string().optional(),
+  "nature": zod.string().optional()
+}).nullish(),
+  "costCenter": zod.object({
+  "id": zod.string().optional(),
+  "code": zod.string().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional()
+}).nullish()
+})).optional(),
+  "approvals": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "journalEntryId": zod.string().uuid(),
+  "userId": zod.string().uuid(),
+  "action": zod.string(),
+  "comment": zod.string().nullish(),
+  "fromStatus": zod.string().nullish(),
+  "toStatus": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "user": zod.object({
+  "id": zod.string().optional(),
+  "firstNameEn": zod.string().nullish(),
+  "lastNameEn": zod.string().nullish(),
+  "email": zod.string().optional()
+}).nullish()
+})).optional(),
+  "reversalOf": zod.object({
+  "id": zod.string().optional(),
+  "number": zod.string().optional(),
+  "entryDate": zod.string().optional()
+}).nullish(),
+  "reversals": zod.array(zod.object({
+  "id": zod.string().optional(),
+  "number": zod.string().optional(),
+  "entryDate": zod.string().optional()
+})).optional(),
+  "submittedBy": zod.object({
+  "id": zod.string().optional(),
+  "firstNameEn": zod.string().nullish(),
+  "lastNameEn": zod.string().nullish(),
+  "email": zod.string().optional()
+}).nullish(),
+  "approvedBy": zod.object({
+  "id": zod.string().optional(),
+  "firstNameEn": zod.string().nullish(),
+  "lastNameEn": zod.string().nullish(),
+  "email": zod.string().optional()
+}).nullish(),
+  "postedBy": zod.object({
+  "id": zod.string().optional(),
+  "firstNameEn": zod.string().nullish(),
+  "lastNameEn": zod.string().nullish(),
+  "email": zod.string().optional()
+}).nullish()
+}))
+
+
+/**
+ * @summary Update a journal entry (DRAFT or UNDER_REVIEW only)
+ */
+export const UpdateJournalEntryParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const updateJournalEntryBodyLinesItemDebitDefault = 0;
+export const updateJournalEntryBodyLinesItemDebitMin = 0;
+
+export const updateJournalEntryBodyLinesItemCreditDefault = 0;
+export const updateJournalEntryBodyLinesItemCreditMin = 0;
+
+
+
+export const UpdateJournalEntryBody = zod.object({
+  "fiscalYearId": zod.string().uuid().optional(),
+  "entryDate": zod.coerce.date().optional(),
+  "type": zod.enum(['MANUAL', 'AUTOMATIC', 'OPENING', 'CLOSING', 'ADJUSTMENT']).optional(),
+  "currencyCode": zod.string().optional(),
+  "exchangeRate": zod.number().optional(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "reference": zod.string().nullish(),
+  "lines": zod.array(zod.object({
+  "accountId": zod.string().uuid(),
+  "costCenterId": zod.string().uuid().nullish(),
+  "lineNumber": zod.number(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "debit": zod.number().min(updateJournalEntryBodyLinesItemDebitMin).default(updateJournalEntryBodyLinesItemDebitDefault),
+  "credit": zod.number().min(updateJournalEntryBodyLinesItemCreditMin).default(updateJournalEntryBodyLinesItemCreditDefault),
+  "reference": zod.string().nullish()
+})).optional()
+})
+
+export const UpdateJournalEntryResponse = zod.object({
+  "id": zod.string().uuid(),
+  "organizationId": zod.string().uuid(),
+  "fiscalYearId": zod.string().uuid(),
+  "number": zod.string(),
+  "entryDate": zod.coerce.date(),
+  "type": zod.enum(['MANUAL', 'AUTOMATIC', 'OPENING', 'CLOSING', 'ADJUSTMENT']),
+  "status": zod.enum(['DRAFT', 'UNDER_REVIEW', 'APPROVED', 'POSTED', 'LOCKED', 'REVERSED', 'VOIDED']),
+  "currencyCode": zod.string(),
+  "exchangeRate": zod.number(),
+  "totalDebit": zod.number(),
+  "totalCredit": zod.number(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "reference": zod.string().nullish(),
+  "isReversal": zod.boolean(),
+  "reversalOfEntryId": zod.string().uuid().nullish(),
+  "reversedByEntryId": zod.string().uuid().nullish(),
+  "postedAt": zod.coerce.date().nullish(),
+  "submittedAt": zod.coerce.date().nullish(),
+  "approvedAt": zod.coerce.date().nullish(),
+  "voidedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "createdBy": zod.object({
+  "id": zod.string().optional(),
+  "firstNameEn": zod.string().nullish(),
+  "lastNameEn": zod.string().nullish(),
+  "email": zod.string().optional()
+}).nullish(),
+  "fiscalYear": zod.object({
+  "id": zod.string().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional()
+}).nullish(),
+  "_count": zod.object({
+  "lines": zod.number().optional()
+}).nullish()
+})
+
+
+/**
+ * @summary Soft-delete a DRAFT journal entry
+ */
+export const DeleteJournalEntryParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const DeleteJournalEntryResponse = zod.object({
+  "success": zod.boolean()
+})
+
+
+/**
+ * @summary Submit for review (DRAFT → UNDER_REVIEW)
+ */
+export const SubmitJournalEntryParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const SubmitJournalEntryBody = zod.object({
+  "comment": zod.string().optional()
+})
+
+export const SubmitJournalEntryResponse = zod.object({
+  "id": zod.string().uuid(),
+  "organizationId": zod.string().uuid(),
+  "fiscalYearId": zod.string().uuid(),
+  "number": zod.string(),
+  "entryDate": zod.coerce.date(),
+  "type": zod.enum(['MANUAL', 'AUTOMATIC', 'OPENING', 'CLOSING', 'ADJUSTMENT']),
+  "status": zod.enum(['DRAFT', 'UNDER_REVIEW', 'APPROVED', 'POSTED', 'LOCKED', 'REVERSED', 'VOIDED']),
+  "currencyCode": zod.string(),
+  "exchangeRate": zod.number(),
+  "totalDebit": zod.number(),
+  "totalCredit": zod.number(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "reference": zod.string().nullish(),
+  "isReversal": zod.boolean(),
+  "reversalOfEntryId": zod.string().uuid().nullish(),
+  "reversedByEntryId": zod.string().uuid().nullish(),
+  "postedAt": zod.coerce.date().nullish(),
+  "submittedAt": zod.coerce.date().nullish(),
+  "approvedAt": zod.coerce.date().nullish(),
+  "voidedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "createdBy": zod.object({
+  "id": zod.string().optional(),
+  "firstNameEn": zod.string().nullish(),
+  "lastNameEn": zod.string().nullish(),
+  "email": zod.string().optional()
+}).nullish(),
+  "fiscalYear": zod.object({
+  "id": zod.string().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional()
+}).nullish(),
+  "_count": zod.object({
+  "lines": zod.number().optional()
+}).nullish()
+})
+
+
+/**
+ * @summary Approve (UNDER_REVIEW → APPROVED)
+ */
+export const ApproveJournalEntryParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const ApproveJournalEntryBody = zod.object({
+  "comment": zod.string().optional()
+})
+
+export const ApproveJournalEntryResponse = zod.object({
+  "id": zod.string().uuid(),
+  "organizationId": zod.string().uuid(),
+  "fiscalYearId": zod.string().uuid(),
+  "number": zod.string(),
+  "entryDate": zod.coerce.date(),
+  "type": zod.enum(['MANUAL', 'AUTOMATIC', 'OPENING', 'CLOSING', 'ADJUSTMENT']),
+  "status": zod.enum(['DRAFT', 'UNDER_REVIEW', 'APPROVED', 'POSTED', 'LOCKED', 'REVERSED', 'VOIDED']),
+  "currencyCode": zod.string(),
+  "exchangeRate": zod.number(),
+  "totalDebit": zod.number(),
+  "totalCredit": zod.number(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "reference": zod.string().nullish(),
+  "isReversal": zod.boolean(),
+  "reversalOfEntryId": zod.string().uuid().nullish(),
+  "reversedByEntryId": zod.string().uuid().nullish(),
+  "postedAt": zod.coerce.date().nullish(),
+  "submittedAt": zod.coerce.date().nullish(),
+  "approvedAt": zod.coerce.date().nullish(),
+  "voidedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "createdBy": zod.object({
+  "id": zod.string().optional(),
+  "firstNameEn": zod.string().nullish(),
+  "lastNameEn": zod.string().nullish(),
+  "email": zod.string().optional()
+}).nullish(),
+  "fiscalYear": zod.object({
+  "id": zod.string().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional()
+}).nullish(),
+  "_count": zod.object({
+  "lines": zod.number().optional()
+}).nullish()
+})
+
+
+/**
+ * @summary Reject back to DRAFT
+ */
+export const RejectJournalEntryParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const RejectJournalEntryBody = zod.object({
+  "comment": zod.string().optional()
+})
+
+export const RejectJournalEntryResponse = zod.object({
+  "id": zod.string().uuid(),
+  "organizationId": zod.string().uuid(),
+  "fiscalYearId": zod.string().uuid(),
+  "number": zod.string(),
+  "entryDate": zod.coerce.date(),
+  "type": zod.enum(['MANUAL', 'AUTOMATIC', 'OPENING', 'CLOSING', 'ADJUSTMENT']),
+  "status": zod.enum(['DRAFT', 'UNDER_REVIEW', 'APPROVED', 'POSTED', 'LOCKED', 'REVERSED', 'VOIDED']),
+  "currencyCode": zod.string(),
+  "exchangeRate": zod.number(),
+  "totalDebit": zod.number(),
+  "totalCredit": zod.number(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "reference": zod.string().nullish(),
+  "isReversal": zod.boolean(),
+  "reversalOfEntryId": zod.string().uuid().nullish(),
+  "reversedByEntryId": zod.string().uuid().nullish(),
+  "postedAt": zod.coerce.date().nullish(),
+  "submittedAt": zod.coerce.date().nullish(),
+  "approvedAt": zod.coerce.date().nullish(),
+  "voidedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "createdBy": zod.object({
+  "id": zod.string().optional(),
+  "firstNameEn": zod.string().nullish(),
+  "lastNameEn": zod.string().nullish(),
+  "email": zod.string().optional()
+}).nullish(),
+  "fiscalYear": zod.object({
+  "id": zod.string().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional()
+}).nullish(),
+  "_count": zod.object({
+  "lines": zod.number().optional()
+}).nullish()
+})
+
+
+/**
+ * @summary Post (APPROVED → POSTED)
+ */
+export const PostJournalEntryParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const PostJournalEntryResponse = zod.object({
+  "id": zod.string().uuid(),
+  "organizationId": zod.string().uuid(),
+  "fiscalYearId": zod.string().uuid(),
+  "number": zod.string(),
+  "entryDate": zod.coerce.date(),
+  "type": zod.enum(['MANUAL', 'AUTOMATIC', 'OPENING', 'CLOSING', 'ADJUSTMENT']),
+  "status": zod.enum(['DRAFT', 'UNDER_REVIEW', 'APPROVED', 'POSTED', 'LOCKED', 'REVERSED', 'VOIDED']),
+  "currencyCode": zod.string(),
+  "exchangeRate": zod.number(),
+  "totalDebit": zod.number(),
+  "totalCredit": zod.number(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "reference": zod.string().nullish(),
+  "isReversal": zod.boolean(),
+  "reversalOfEntryId": zod.string().uuid().nullish(),
+  "reversedByEntryId": zod.string().uuid().nullish(),
+  "postedAt": zod.coerce.date().nullish(),
+  "submittedAt": zod.coerce.date().nullish(),
+  "approvedAt": zod.coerce.date().nullish(),
+  "voidedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "createdBy": zod.object({
+  "id": zod.string().optional(),
+  "firstNameEn": zod.string().nullish(),
+  "lastNameEn": zod.string().nullish(),
+  "email": zod.string().optional()
+}).nullish(),
+  "fiscalYear": zod.object({
+  "id": zod.string().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional()
+}).nullish(),
+  "_count": zod.object({
+  "lines": zod.number().optional()
+}).nullish()
+})
+
+
+/**
+ * @summary Lock (POSTED → LOCKED)
+ */
+export const LockJournalEntryParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const LockJournalEntryResponse = zod.object({
+  "id": zod.string().uuid(),
+  "organizationId": zod.string().uuid(),
+  "fiscalYearId": zod.string().uuid(),
+  "number": zod.string(),
+  "entryDate": zod.coerce.date(),
+  "type": zod.enum(['MANUAL', 'AUTOMATIC', 'OPENING', 'CLOSING', 'ADJUSTMENT']),
+  "status": zod.enum(['DRAFT', 'UNDER_REVIEW', 'APPROVED', 'POSTED', 'LOCKED', 'REVERSED', 'VOIDED']),
+  "currencyCode": zod.string(),
+  "exchangeRate": zod.number(),
+  "totalDebit": zod.number(),
+  "totalCredit": zod.number(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "reference": zod.string().nullish(),
+  "isReversal": zod.boolean(),
+  "reversalOfEntryId": zod.string().uuid().nullish(),
+  "reversedByEntryId": zod.string().uuid().nullish(),
+  "postedAt": zod.coerce.date().nullish(),
+  "submittedAt": zod.coerce.date().nullish(),
+  "approvedAt": zod.coerce.date().nullish(),
+  "voidedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "createdBy": zod.object({
+  "id": zod.string().optional(),
+  "firstNameEn": zod.string().nullish(),
+  "lastNameEn": zod.string().nullish(),
+  "email": zod.string().optional()
+}).nullish(),
+  "fiscalYear": zod.object({
+  "id": zod.string().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional()
+}).nullish(),
+  "_count": zod.object({
+  "lines": zod.number().optional()
+}).nullish()
+})
+
+
+/**
+ * @summary Reverse (creates reversal draft, marks original REVERSED)
+ */
+export const ReverseJournalEntryParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const ReverseJournalEntryBody = zod.object({
+  "reverseDate": zod.coerce.date().optional(),
+  "reason": zod.string().optional()
+})
+
+export const ReverseJournalEntryResponse = zod.object({
+  "id": zod.string().uuid(),
+  "organizationId": zod.string().uuid(),
+  "fiscalYearId": zod.string().uuid(),
+  "number": zod.string(),
+  "entryDate": zod.coerce.date(),
+  "type": zod.enum(['MANUAL', 'AUTOMATIC', 'OPENING', 'CLOSING', 'ADJUSTMENT']),
+  "status": zod.enum(['DRAFT', 'UNDER_REVIEW', 'APPROVED', 'POSTED', 'LOCKED', 'REVERSED', 'VOIDED']),
+  "currencyCode": zod.string(),
+  "exchangeRate": zod.number(),
+  "totalDebit": zod.number(),
+  "totalCredit": zod.number(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "reference": zod.string().nullish(),
+  "isReversal": zod.boolean(),
+  "reversalOfEntryId": zod.string().uuid().nullish(),
+  "reversedByEntryId": zod.string().uuid().nullish(),
+  "postedAt": zod.coerce.date().nullish(),
+  "submittedAt": zod.coerce.date().nullish(),
+  "approvedAt": zod.coerce.date().nullish(),
+  "voidedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "createdBy": zod.object({
+  "id": zod.string().optional(),
+  "firstNameEn": zod.string().nullish(),
+  "lastNameEn": zod.string().nullish(),
+  "email": zod.string().optional()
+}).nullish(),
+  "fiscalYear": zod.object({
+  "id": zod.string().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional()
+}).nullish(),
+  "_count": zod.object({
+  "lines": zod.number().optional()
+}).nullish()
+})
+
+
+/**
+ * @summary Copy as new DRAFT
+ */
+export const CopyJournalEntryParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const CopyJournalEntryBody = zod.object({
+  "entryDate": zod.coerce.date().optional()
+})
+
+export const CopyJournalEntryResponse = zod.object({
+  "id": zod.string().uuid(),
+  "organizationId": zod.string().uuid(),
+  "fiscalYearId": zod.string().uuid(),
+  "number": zod.string(),
+  "entryDate": zod.coerce.date(),
+  "type": zod.enum(['MANUAL', 'AUTOMATIC', 'OPENING', 'CLOSING', 'ADJUSTMENT']),
+  "status": zod.enum(['DRAFT', 'UNDER_REVIEW', 'APPROVED', 'POSTED', 'LOCKED', 'REVERSED', 'VOIDED']),
+  "currencyCode": zod.string(),
+  "exchangeRate": zod.number(),
+  "totalDebit": zod.number(),
+  "totalCredit": zod.number(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "reference": zod.string().nullish(),
+  "isReversal": zod.boolean(),
+  "reversalOfEntryId": zod.string().uuid().nullish(),
+  "reversedByEntryId": zod.string().uuid().nullish(),
+  "postedAt": zod.coerce.date().nullish(),
+  "submittedAt": zod.coerce.date().nullish(),
+  "approvedAt": zod.coerce.date().nullish(),
+  "voidedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "createdBy": zod.object({
+  "id": zod.string().optional(),
+  "firstNameEn": zod.string().nullish(),
+  "lastNameEn": zod.string().nullish(),
+  "email": zod.string().optional()
+}).nullish(),
+  "fiscalYear": zod.object({
+  "id": zod.string().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional()
+}).nullish(),
+  "_count": zod.object({
+  "lines": zod.number().optional()
+}).nullish()
+})
+
+
+/**
+ * @summary Void a POSTED entry
+ */
+export const VoidJournalEntryParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const VoidJournalEntryBody = zod.object({
+  "reason": zod.string()
+})
+
+export const VoidJournalEntryResponse = zod.object({
+  "id": zod.string().uuid(),
+  "organizationId": zod.string().uuid(),
+  "fiscalYearId": zod.string().uuid(),
+  "number": zod.string(),
+  "entryDate": zod.coerce.date(),
+  "type": zod.enum(['MANUAL', 'AUTOMATIC', 'OPENING', 'CLOSING', 'ADJUSTMENT']),
+  "status": zod.enum(['DRAFT', 'UNDER_REVIEW', 'APPROVED', 'POSTED', 'LOCKED', 'REVERSED', 'VOIDED']),
+  "currencyCode": zod.string(),
+  "exchangeRate": zod.number(),
+  "totalDebit": zod.number(),
+  "totalCredit": zod.number(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "reference": zod.string().nullish(),
+  "isReversal": zod.boolean(),
+  "reversalOfEntryId": zod.string().uuid().nullish(),
+  "reversedByEntryId": zod.string().uuid().nullish(),
+  "postedAt": zod.coerce.date().nullish(),
+  "submittedAt": zod.coerce.date().nullish(),
+  "approvedAt": zod.coerce.date().nullish(),
+  "voidedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "createdBy": zod.object({
+  "id": zod.string().optional(),
+  "firstNameEn": zod.string().nullish(),
+  "lastNameEn": zod.string().nullish(),
+  "email": zod.string().optional()
+}).nullish(),
+  "fiscalYear": zod.object({
+  "id": zod.string().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional()
+}).nullish(),
+  "_count": zod.object({
+  "lines": zod.number().optional()
+}).nullish()
+})
+
+
+/**
+ * @summary List journal entry templates
+ */
+export const ListJournalEntryTemplatesQueryParams = zod.object({
+  "organizationId": zod.coerce.string().uuid().optional()
+})
+
+export const ListJournalEntryTemplatesResponseItem = zod.object({
+  "id": zod.string().uuid(),
+  "organizationId": zod.string().uuid(),
+  "nameEn": zod.string(),
+  "nameAr": zod.string(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "type": zod.string(),
+  "currencyCode": zod.string(),
+  "isActive": zod.boolean(),
+  "lines": zod.array(zod.object({
+  "id": zod.string().optional(),
+  "lineNumber": zod.number().optional(),
+  "accountId": zod.string().optional(),
+  "debit": zod.number().optional(),
+  "credit": zod.number().optional(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "account": zod.object({
+  "id": zod.string().optional(),
+  "code": zod.string().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional()
+}).nullish()
+})).optional(),
+  "createdAt": zod.coerce.date()
+})
+export const ListJournalEntryTemplatesResponse = zod.array(ListJournalEntryTemplatesResponseItem)
+
+
+/**
+ * @summary Create a journal entry template
+ */
+export const createJournalEntryTemplateBodyLinesItemDebitDefault = 0;
+export const createJournalEntryTemplateBodyLinesItemDebitMin = 0;
+
+export const createJournalEntryTemplateBodyLinesItemCreditDefault = 0;
+export const createJournalEntryTemplateBodyLinesItemCreditMin = 0;
+
+
+
+export const CreateJournalEntryTemplateBody = zod.object({
+  "organizationId": zod.string().uuid().optional(),
+  "nameEn": zod.string(),
+  "nameAr": zod.string(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "type": zod.enum(['MANUAL', 'AUTOMATIC', 'OPENING', 'CLOSING', 'ADJUSTMENT']).optional(),
+  "currencyCode": zod.string().optional(),
+  "lines": zod.array(zod.object({
+  "accountId": zod.string().uuid(),
+  "costCenterId": zod.string().uuid().nullish(),
+  "lineNumber": zod.number(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "debit": zod.number().min(createJournalEntryTemplateBodyLinesItemDebitMin).default(createJournalEntryTemplateBodyLinesItemDebitDefault),
+  "credit": zod.number().min(createJournalEntryTemplateBodyLinesItemCreditMin).default(createJournalEntryTemplateBodyLinesItemCreditDefault),
+  "reference": zod.string().nullish()
+})).optional()
+})
+
+export const CreateJournalEntryTemplateResponse = zod.object({
+  "id": zod.string().uuid(),
+  "organizationId": zod.string().uuid(),
+  "nameEn": zod.string(),
+  "nameAr": zod.string(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "type": zod.string(),
+  "currencyCode": zod.string(),
+  "isActive": zod.boolean(),
+  "lines": zod.array(zod.object({
+  "id": zod.string().optional(),
+  "lineNumber": zod.number().optional(),
+  "accountId": zod.string().optional(),
+  "debit": zod.number().optional(),
+  "credit": zod.number().optional(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "account": zod.object({
+  "id": zod.string().optional(),
+  "code": zod.string().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional()
+}).nullish()
+})).optional(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Get template detail
+ */
+export const GetJournalEntryTemplateParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const GetJournalEntryTemplateResponse = zod.object({
+  "id": zod.string().uuid(),
+  "organizationId": zod.string().uuid(),
+  "nameEn": zod.string(),
+  "nameAr": zod.string(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "type": zod.string(),
+  "currencyCode": zod.string(),
+  "isActive": zod.boolean(),
+  "lines": zod.array(zod.object({
+  "id": zod.string().optional(),
+  "lineNumber": zod.number().optional(),
+  "accountId": zod.string().optional(),
+  "debit": zod.number().optional(),
+  "credit": zod.number().optional(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "account": zod.object({
+  "id": zod.string().optional(),
+  "code": zod.string().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional()
+}).nullish()
+})).optional(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update template
+ */
+export const UpdateJournalEntryTemplateParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const updateJournalEntryTemplateBodyLinesItemDebitDefault = 0;
+export const updateJournalEntryTemplateBodyLinesItemDebitMin = 0;
+
+export const updateJournalEntryTemplateBodyLinesItemCreditDefault = 0;
+export const updateJournalEntryTemplateBodyLinesItemCreditMin = 0;
+
+
+
+export const UpdateJournalEntryTemplateBody = zod.object({
+  "organizationId": zod.string().uuid().optional(),
+  "nameEn": zod.string(),
+  "nameAr": zod.string(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "type": zod.enum(['MANUAL', 'AUTOMATIC', 'OPENING', 'CLOSING', 'ADJUSTMENT']).optional(),
+  "currencyCode": zod.string().optional(),
+  "lines": zod.array(zod.object({
+  "accountId": zod.string().uuid(),
+  "costCenterId": zod.string().uuid().nullish(),
+  "lineNumber": zod.number(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "debit": zod.number().min(updateJournalEntryTemplateBodyLinesItemDebitMin).default(updateJournalEntryTemplateBodyLinesItemDebitDefault),
+  "credit": zod.number().min(updateJournalEntryTemplateBodyLinesItemCreditMin).default(updateJournalEntryTemplateBodyLinesItemCreditDefault),
+  "reference": zod.string().nullish()
+})).optional()
+})
+
+export const UpdateJournalEntryTemplateResponse = zod.object({
+  "id": zod.string().uuid(),
+  "organizationId": zod.string().uuid(),
+  "nameEn": zod.string(),
+  "nameAr": zod.string(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "type": zod.string(),
+  "currencyCode": zod.string(),
+  "isActive": zod.boolean(),
+  "lines": zod.array(zod.object({
+  "id": zod.string().optional(),
+  "lineNumber": zod.number().optional(),
+  "accountId": zod.string().optional(),
+  "debit": zod.number().optional(),
+  "credit": zod.number().optional(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "account": zod.object({
+  "id": zod.string().optional(),
+  "code": zod.string().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional()
+}).nullish()
+})).optional(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Delete template
+ */
+export const DeleteJournalEntryTemplateParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const DeleteJournalEntryTemplateResponse = zod.object({
+  "success": zod.boolean().optional()
+})
+
+
+/**
+ * @summary Create a journal entry from a template
+ */
+export const UseJournalEntryTemplateParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const UseJournalEntryTemplateBody = zod.object({
+  "fiscalYearId": zod.string().uuid(),
+  "entryDate": zod.coerce.date().optional(),
+  "exchangeRate": zod.number().optional()
+})
+
+export const UseJournalEntryTemplateResponse = zod.object({
+  "id": zod.string().uuid(),
+  "organizationId": zod.string().uuid(),
+  "fiscalYearId": zod.string().uuid(),
+  "number": zod.string(),
+  "entryDate": zod.coerce.date(),
+  "type": zod.enum(['MANUAL', 'AUTOMATIC', 'OPENING', 'CLOSING', 'ADJUSTMENT']),
+  "status": zod.enum(['DRAFT', 'UNDER_REVIEW', 'APPROVED', 'POSTED', 'LOCKED', 'REVERSED', 'VOIDED']),
+  "currencyCode": zod.string(),
+  "exchangeRate": zod.number(),
+  "totalDebit": zod.number(),
+  "totalCredit": zod.number(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "reference": zod.string().nullish(),
+  "isReversal": zod.boolean(),
+  "reversalOfEntryId": zod.string().uuid().nullish(),
+  "reversedByEntryId": zod.string().uuid().nullish(),
+  "postedAt": zod.coerce.date().nullish(),
+  "submittedAt": zod.coerce.date().nullish(),
+  "approvedAt": zod.coerce.date().nullish(),
+  "voidedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "createdBy": zod.object({
+  "id": zod.string().optional(),
+  "firstNameEn": zod.string().nullish(),
+  "lastNameEn": zod.string().nullish(),
+  "email": zod.string().optional()
+}).nullish(),
+  "fiscalYear": zod.object({
+  "id": zod.string().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional()
+}).nullish(),
+  "_count": zod.object({
+  "lines": zod.number().optional()
+}).nullish()
+})
+
+

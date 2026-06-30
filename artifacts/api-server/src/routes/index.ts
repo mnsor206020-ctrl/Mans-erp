@@ -4,6 +4,10 @@ import dashboardRouter from "./dashboard";
 import organizationsRouter from "./organizations";
 import usersRouter from "./users";
 import chartOfAccountsRouter from "./chart-of-accounts";
+import journalEntriesRouter from "./journal-entries";
+import journalEntryTemplatesRouter from "./journal-entry-templates";
+import fiscalYearsRouter from "./fiscal-years";
+import costCentersRouter from "./cost-centers";
 
 const router: IRouter = Router();
 
@@ -12,5 +16,9 @@ router.use("/dashboard", dashboardRouter);
 router.use("/organizations", organizationsRouter);
 router.use("/users", usersRouter);
 router.use("/chart-of-accounts", chartOfAccountsRouter);
+router.use("/journal-entries", journalEntriesRouter);
+router.use("/journal-entry-templates", journalEntryTemplatesRouter);
+router.use("/fiscal-years", fiscalYearsRouter);
+router.use("/cost-centers", costCentersRouter);
 
 export default router;

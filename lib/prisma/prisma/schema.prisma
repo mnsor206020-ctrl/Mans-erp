@@ -60,7 +60,11 @@ enum AccountNature {
 
 enum JournalEntryStatus {
   DRAFT
+  UNDER_REVIEW
+  APPROVED
   POSTED
+  LOCKED
+  REVERSED
   VOIDED
 }
 
@@ -151,11 +155,16 @@ model User {
   branch         Branch?  @relation(fields: [branchId], references: [id])
 
   userRoles       UserRole[]
-  journalEntries  JournalEntry[]
-  receipts        Receipt[]
-  payments        Payment[]
-  auditLogs       AuditLog[]
-  attachments     Attachment[]
+  journalEntries          JournalEntry[]         @relation("JECreatedBy")
+  postedJournalEntries    JournalEntry[]         @relation("JEPostedBy")
+  voidedJournalEntries    JournalEntry[]         @relation("JEVoidedBy")
+  submittedJournalEntries JournalEntry[]         @relation("JESubmittedBy")
+  approvedJournalEntries  JournalEntry[]         @relation("JEApprovedBy")
+  journalEntryApprovals   JournalEntryApproval[] @relation("JEApprovalUser")
+  receipts                Receipt[]
+  payments                Payment[]
+  auditLogs               AuditLog[]
+  attachments             Attachment[]
 
   @@index([clerkId])
   @@index([email])
@@ -262,7 +271,8 @@ model Organization {
   cashBoxes      CashBox[]
   receipts       Receipt[]
   payments       Payment[]
-  journalEntries JournalEntry[]
+  journalEntries        JournalEntry[]
+  journalEntryTemplates JournalEntryTemplate[]
 
   @@index([status])
   @@index([type])
@@ -359,6 +369,7 @@ model ChartOfAccount {
   children     ChartOfAccount[] @relation("AccountHierarchy")
 
   journalEntryLines JournalEntryLine[]
+  templateLines     JournalEntryTemplateLine[] @relation("COATemplateLines")
 
   @@unique([organizationId, code])
   @@index([organizationId])
@@ -393,6 +404,7 @@ model CostCenter {
   children     CostCenter[]  @relation("CostCenterHierarchy")
 
   journalEntryLines JournalEntryLine[]
+  templateLines     JournalEntryTemplateLine[] @relation("CCTemplateLines")
 
   @@unique([organizationId, code])
   @@index([organizationId])
@@ -568,20 +580,34 @@ model JournalEntry {
   sourceId        String?            @map("source_id") @db.Uuid
   postedAt        DateTime?          @map("posted_at")
   postedByUserId  String?            @map("posted_by_user_id") @db.Uuid
-  voidedAt        DateTime?          @map("voided_at")
-  voidedByUserId  String?            @map("voided_by_user_id") @db.Uuid
-  voidReason      String?            @map("void_reason")
-  createdByUserId String?            @map("created_by_user_id") @db.Uuid
-  deletedAt       DateTime?          @map("deleted_at")
-  createdAt       DateTime           @default(now()) @map("created_at")
-  updatedAt       DateTime           @updatedAt @map("updated_at")
+  voidedAt           DateTime?          @map("voided_at")
+  voidedByUserId     String?            @map("voided_by_user_id") @db.Uuid
+  voidReason         String?            @map("void_reason")
+  submittedAt        DateTime?          @map("submitted_at")
+  submittedByUserId  String?            @map("submitted_by_user_id") @db.Uuid
+  approvedAt         DateTime?          @map("approved_at")
+  approvedByUserId   String?            @map("approved_by_user_id") @db.Uuid
+  isReversal         Boolean            @default(false) @map("is_reversal")
+  reversalOfEntryId  String?            @map("reversal_of_entry_id") @db.Uuid
+  reversedByEntryId  String?            @map("reversed_by_entry_id") @db.Uuid
+  createdByUserId    String?            @map("created_by_user_id") @db.Uuid
+  deletedAt          DateTime?          @map("deleted_at")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  branch       Branch?      @relation(fields: [branchId], references: [id])
-  fiscalYear   FiscalYear   @relation(fields: [fiscalYearId], references: [id], onDelete: Restrict)
-  createdBy    User?        @relation(fields: [createdByUserId], references: [id])
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  branch       Branch?        @relation(fields: [branchId], references: [id])
+  fiscalYear   FiscalYear     @relation(fields: [fiscalYearId], references: [id], onDelete: Restrict)
+  createdBy    User?          @relation("JECreatedBy",   fields: [createdByUserId],   references: [id])
+  postedBy     User?          @relation("JEPostedBy",    fields: [postedByUserId],    references: [id])
+  voidedBy     User?          @relation("JEVoidedBy",    fields: [voidedByUserId],    references: [id])
+  submittedBy  User?          @relation("JESubmittedBy", fields: [submittedByUserId], references: [id])
+  approvedBy   User?          @relation("JEApprovedBy",  fields: [approvedByUserId],  references: [id])
+  reversalOf   JournalEntry?  @relation("JournalReversal", fields: [reversalOfEntryId], references: [id])
+  reversals    JournalEntry[] @relation("JournalReversal")
 
-  lines JournalEntryLine[]
+  lines     JournalEntryLine[]
+  approvals JournalEntryApproval[]
 
   @@unique([organizationId, number])
   @@index([organizationId])
@@ -619,6 +645,69 @@ model JournalEntryLine {
   @@index([accountId])
   @@index([costCenterId])
   @@map("journal_entry_lines")
+}
+
+model JournalEntryApproval {
+  id             String   @id @default(uuid()) @db.Uuid
+  journalEntryId String   @map("journal_entry_id") @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  action         String
+  comment        String?
+  fromStatus     String?  @map("from_status")
+  toStatus       String?  @map("to_status")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  journalEntry JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+  user         User         @relation("JEApprovalUser", fields: [userId], references: [id])
+
+  @@index([journalEntryId])
+  @@index([userId])
+  @@map("journal_entry_approvals")
+}
+
+model JournalEntryTemplate {
+  id             String           @id @default(uuid()) @db.Uuid
+  organizationId String           @map("organization_id") @db.Uuid
+  nameEn         String           @map("name_en")
+  nameAr         String           @map("name_ar")
+  descriptionEn  String?          @map("description_en")
+  descriptionAr  String?          @map("description_ar")
+  type           JournalEntryType @default(MANUAL)
+  currencyCode   String           @map("currency_code") @default("SAR")
+  isActive       Boolean          @default(true) @map("is_active")
+  deletedAt      DateTime?        @map("deleted_at")
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  organization Organization               @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  lines        JournalEntryTemplateLine[]
+
+  @@index([organizationId])
+  @@index([isActive])
+  @@index([deletedAt])
+  @@map("journal_entry_templates")
+}
+
+model JournalEntryTemplateLine {
+  id            String   @id @default(uuid()) @db.Uuid
+  templateId    String   @map("template_id") @db.Uuid
+  accountId     String   @map("account_id") @db.Uuid
+  costCenterId  String?  @map("cost_center_id") @db.Uuid
+  lineNumber    Int      @map("line_number")
+  descriptionEn String?  @map("description_en")
+  descriptionAr String?  @map("description_ar")
+  debit         Decimal  @default(0) @db.Decimal(18, 4)
+  credit        Decimal  @default(0) @db.Decimal(18, 4)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  template   JournalEntryTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  account    ChartOfAccount       @relation("COATemplateLines", fields: [accountId], references: [id], onDelete: Restrict)
+  costCenter CostCenter?          @relation("CCTemplateLines", fields: [costCenterId], references: [id])
+
+  @@index([templateId])
+  @@index([accountId])
+  @@map("journal_entry_template_lines")
 }
 
 // ============================================================

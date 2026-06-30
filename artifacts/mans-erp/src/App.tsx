@@ -16,6 +16,9 @@ import NewOrganization from "@/pages/NewOrganization";
 import Settings from "@/pages/Settings";
 import ChartOfAccounts from "@/pages/ChartOfAccounts";
 import ChartOfAccountDetail from "@/pages/ChartOfAccountDetail";
+import JournalEntries from "@/pages/JournalEntries";
+import JournalEntryDetail from "@/pages/JournalEntryDetail";
+import JournalEntryForm from "@/pages/JournalEntryForm";
 import NotFound from "@/pages/not-found";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 
@@ -162,6 +165,26 @@ function ClerkProviderWithRoutes() {
             {(params) => (
               <DashboardLayout>
                 <ChartOfAccountDetail params={params as { id: string }} />
+              </DashboardLayout>
+            )}
+          </Route>
+          <Route path="/journal-entries">
+            <ProtectedRoute component={JournalEntries} />
+          </Route>
+          <Route path="/journal-entries/new">
+            <ProtectedRoute component={JournalEntryForm} />
+          </Route>
+          <Route path="/journal-entries/:id/edit">
+            {(params) => (
+              <DashboardLayout>
+                <JournalEntryForm params={params as { id: string }} />
+              </DashboardLayout>
+            )}
+          </Route>
+          <Route path="/journal-entries/:id">
+            {(params) => (
+              <DashboardLayout>
+                <JournalEntryDetail params={params as { id: string }} />
               </DashboardLayout>
             )}
           </Route>

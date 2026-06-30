@@ -292,6 +292,382 @@ export interface UpdateChartOfAccountInput {
   notes?: string | null;
 }
 
+export type FiscalYearStatus = typeof FiscalYearStatus[keyof typeof FiscalYearStatus];
+
+
+export const FiscalYearStatus = {
+  OPEN: 'OPEN',
+  CLOSED: 'CLOSED',
+  LOCKED: 'LOCKED',
+} as const;
+
+export interface FiscalYear {
+  id: string;
+  organizationId: string;
+  nameEn: string;
+  nameAr: string;
+  startDate: string;
+  endDate: string;
+  status: FiscalYearStatus;
+  isDefault: boolean;
+  createdAt: string;
+}
+
+export interface CreateFiscalYearInput {
+  organizationId?: string;
+  nameEn: string;
+  nameAr: string;
+  startDate: string;
+  endDate: string;
+  isDefault?: boolean;
+}
+
+export interface CostCenter {
+  id: string;
+  organizationId: string;
+  code: string;
+  nameEn: string;
+  nameAr: string;
+  isActive: boolean;
+  /** @nullable */
+  parentId?: string | null;
+  createdAt: string;
+}
+
+export type JournalEntryLineAccount = {
+  id?: string;
+  code?: string;
+  nameEn?: string;
+  nameAr?: string;
+  type?: string;
+  nature?: string;
+} | null;
+
+export type JournalEntryLineCostCenter = {
+  id?: string;
+  code?: string;
+  nameEn?: string;
+  nameAr?: string;
+} | null;
+
+export interface JournalEntryLine {
+  id: string;
+  journalEntryId: string;
+  accountId: string;
+  /** @nullable */
+  costCenterId?: string | null;
+  lineNumber: number;
+  /** @nullable */
+  descriptionEn?: string | null;
+  /** @nullable */
+  descriptionAr?: string | null;
+  debit: number;
+  credit: number;
+  debitBase: number;
+  creditBase: number;
+  /** @nullable */
+  reference?: string | null;
+  account?: JournalEntryLineAccount;
+  costCenter?: JournalEntryLineCostCenter;
+}
+
+export type JournalEntryApprovalRecordUser = {
+  id?: string;
+  /** @nullable */
+  firstNameEn?: string | null;
+  /** @nullable */
+  lastNameEn?: string | null;
+  email?: string;
+} | null;
+
+export interface JournalEntryApprovalRecord {
+  id: string;
+  journalEntryId: string;
+  userId: string;
+  action: string;
+  /** @nullable */
+  comment?: string | null;
+  /** @nullable */
+  fromStatus?: string | null;
+  /** @nullable */
+  toStatus?: string | null;
+  createdAt: string;
+  user?: JournalEntryApprovalRecordUser;
+}
+
+export type JournalEntryType = typeof JournalEntryType[keyof typeof JournalEntryType];
+
+
+export const JournalEntryType = {
+  MANUAL: 'MANUAL',
+  AUTOMATIC: 'AUTOMATIC',
+  OPENING: 'OPENING',
+  CLOSING: 'CLOSING',
+  ADJUSTMENT: 'ADJUSTMENT',
+} as const;
+
+export type JournalEntryStatus = typeof JournalEntryStatus[keyof typeof JournalEntryStatus];
+
+
+export const JournalEntryStatus = {
+  DRAFT: 'DRAFT',
+  UNDER_REVIEW: 'UNDER_REVIEW',
+  APPROVED: 'APPROVED',
+  POSTED: 'POSTED',
+  LOCKED: 'LOCKED',
+  REVERSED: 'REVERSED',
+  VOIDED: 'VOIDED',
+} as const;
+
+export type JournalEntryCreatedBy = {
+  id?: string;
+  /** @nullable */
+  firstNameEn?: string | null;
+  /** @nullable */
+  lastNameEn?: string | null;
+  email?: string;
+} | null;
+
+export type JournalEntryFiscalYear = {
+  id?: string;
+  nameEn?: string;
+  nameAr?: string;
+} | null;
+
+export type _JournalEntryCount = {
+  lines?: number;
+} | null;
+
+export interface JournalEntry {
+  id: string;
+  organizationId: string;
+  fiscalYearId: string;
+  number: string;
+  entryDate: string;
+  type: JournalEntryType;
+  status: JournalEntryStatus;
+  currencyCode: string;
+  exchangeRate: number;
+  totalDebit: number;
+  totalCredit: number;
+  /** @nullable */
+  descriptionEn?: string | null;
+  /** @nullable */
+  descriptionAr?: string | null;
+  /** @nullable */
+  reference?: string | null;
+  isReversal: boolean;
+  /** @nullable */
+  reversalOfEntryId?: string | null;
+  /** @nullable */
+  reversedByEntryId?: string | null;
+  /** @nullable */
+  postedAt?: string | null;
+  /** @nullable */
+  submittedAt?: string | null;
+  /** @nullable */
+  approvedAt?: string | null;
+  /** @nullable */
+  voidedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: JournalEntryCreatedBy;
+  fiscalYear?: JournalEntryFiscalYear;
+  _count?: _JournalEntryCount;
+}
+
+export type JournalEntryDetailReversalOf = {
+  id?: string;
+  number?: string;
+  entryDate?: string;
+} | null;
+
+export type JournalEntryDetailReversalsItem = {
+  id?: string;
+  number?: string;
+  entryDate?: string;
+};
+
+export type JournalEntryDetailSubmittedBy = {
+  id?: string;
+  /** @nullable */
+  firstNameEn?: string | null;
+  /** @nullable */
+  lastNameEn?: string | null;
+  email?: string;
+} | null;
+
+export type JournalEntryDetailApprovedBy = {
+  id?: string;
+  /** @nullable */
+  firstNameEn?: string | null;
+  /** @nullable */
+  lastNameEn?: string | null;
+  email?: string;
+} | null;
+
+export type JournalEntryDetailPostedBy = {
+  id?: string;
+  /** @nullable */
+  firstNameEn?: string | null;
+  /** @nullable */
+  lastNameEn?: string | null;
+  email?: string;
+} | null;
+
+export type JournalEntryDetail = JournalEntry & {
+  lines?: JournalEntryLine[];
+  approvals?: JournalEntryApprovalRecord[];
+  reversalOf?: JournalEntryDetailReversalOf;
+  reversals?: JournalEntryDetailReversalsItem[];
+  submittedBy?: JournalEntryDetailSubmittedBy;
+  approvedBy?: JournalEntryDetailApprovedBy;
+  postedBy?: JournalEntryDetailPostedBy;
+};
+
+export type PaginatedJournalEntriesMeta = {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+};
+
+export interface PaginatedJournalEntries {
+  data: JournalEntry[];
+  meta: PaginatedJournalEntriesMeta;
+}
+
+export interface JournalEntryLineInput {
+  accountId: string;
+  /** @nullable */
+  costCenterId?: string | null;
+  lineNumber: number;
+  /** @nullable */
+  descriptionEn?: string | null;
+  /** @nullable */
+  descriptionAr?: string | null;
+  /** @minimum 0 */
+  debit?: number;
+  /** @minimum 0 */
+  credit?: number;
+  /** @nullable */
+  reference?: string | null;
+}
+
+export type CreateJournalEntryInputType = typeof CreateJournalEntryInputType[keyof typeof CreateJournalEntryInputType];
+
+
+export const CreateJournalEntryInputType = {
+  MANUAL: 'MANUAL',
+  AUTOMATIC: 'AUTOMATIC',
+  OPENING: 'OPENING',
+  CLOSING: 'CLOSING',
+  ADJUSTMENT: 'ADJUSTMENT',
+} as const;
+
+export interface CreateJournalEntryInput {
+  organizationId?: string;
+  fiscalYearId: string;
+  entryDate: string;
+  type?: CreateJournalEntryInputType;
+  currencyCode?: string;
+  exchangeRate?: number;
+  /** @nullable */
+  descriptionEn?: string | null;
+  /** @nullable */
+  descriptionAr?: string | null;
+  /** @nullable */
+  reference?: string | null;
+  /** @minItems 2 */
+  lines: JournalEntryLineInput[];
+}
+
+export type UpdateJournalEntryInputType = typeof UpdateJournalEntryInputType[keyof typeof UpdateJournalEntryInputType];
+
+
+export const UpdateJournalEntryInputType = {
+  MANUAL: 'MANUAL',
+  AUTOMATIC: 'AUTOMATIC',
+  OPENING: 'OPENING',
+  CLOSING: 'CLOSING',
+  ADJUSTMENT: 'ADJUSTMENT',
+} as const;
+
+export interface UpdateJournalEntryInput {
+  fiscalYearId?: string;
+  entryDate?: string;
+  type?: UpdateJournalEntryInputType;
+  currencyCode?: string;
+  exchangeRate?: number;
+  /** @nullable */
+  descriptionEn?: string | null;
+  /** @nullable */
+  descriptionAr?: string | null;
+  /** @nullable */
+  reference?: string | null;
+  lines?: JournalEntryLineInput[];
+}
+
+export type JournalEntryTemplateLinesItemAccount = {
+  id?: string;
+  code?: string;
+  nameEn?: string;
+  nameAr?: string;
+} | null;
+
+export type JournalEntryTemplateLinesItem = {
+  id?: string;
+  lineNumber?: number;
+  accountId?: string;
+  debit?: number;
+  credit?: number;
+  /** @nullable */
+  descriptionEn?: string | null;
+  /** @nullable */
+  descriptionAr?: string | null;
+  account?: JournalEntryTemplateLinesItemAccount;
+};
+
+export interface JournalEntryTemplate {
+  id: string;
+  organizationId: string;
+  nameEn: string;
+  nameAr: string;
+  /** @nullable */
+  descriptionEn?: string | null;
+  /** @nullable */
+  descriptionAr?: string | null;
+  type: string;
+  currencyCode: string;
+  isActive: boolean;
+  lines?: JournalEntryTemplateLinesItem[];
+  createdAt: string;
+}
+
+export type CreateJournalEntryTemplateInputType = typeof CreateJournalEntryTemplateInputType[keyof typeof CreateJournalEntryTemplateInputType];
+
+
+export const CreateJournalEntryTemplateInputType = {
+  MANUAL: 'MANUAL',
+  AUTOMATIC: 'AUTOMATIC',
+  OPENING: 'OPENING',
+  CLOSING: 'CLOSING',
+  ADJUSTMENT: 'ADJUSTMENT',
+} as const;
+
+export interface CreateJournalEntryTemplateInput {
+  organizationId?: string;
+  nameEn: string;
+  nameAr: string;
+  /** @nullable */
+  descriptionEn?: string | null;
+  /** @nullable */
+  descriptionAr?: string | null;
+  type?: CreateJournalEntryTemplateInputType;
+  currencyCode?: string;
+  lines?: JournalEntryLineInput[];
+}
+
 export type GetChartOfAccountsTreeParams = {
 organizationId?: string;
 };
@@ -319,5 +695,79 @@ export const ListChartOfAccountsType = {
 
 export type DeleteChartOfAccount200 = {
   success: boolean;
+};
+
+export type ListFiscalYearsParams = {
+organizationId?: string;
+status?: ListFiscalYearsStatus;
+};
+
+export type ListFiscalYearsStatus = typeof ListFiscalYearsStatus[keyof typeof ListFiscalYearsStatus];
+
+
+export const ListFiscalYearsStatus = {
+  OPEN: 'OPEN',
+  CLOSED: 'CLOSED',
+  LOCKED: 'LOCKED',
+} as const;
+
+export type ListCostCentersParams = {
+organizationId?: string;
+isActive?: string;
+};
+
+export type ListJournalEntriesParams = {
+organizationId?: string;
+fiscalYearId?: string;
+status?: string;
+type?: string;
+search?: string;
+startDate?: string;
+endDate?: string;
+page?: number;
+pageSize?: number;
+};
+
+export type DeleteJournalEntry200 = {
+  success: boolean;
+};
+
+export type SubmitJournalEntryBody = {
+  comment?: string;
+};
+
+export type ApproveJournalEntryBody = {
+  comment?: string;
+};
+
+export type RejectJournalEntryBody = {
+  comment?: string;
+};
+
+export type ReverseJournalEntryBody = {
+  reverseDate?: string;
+  reason?: string;
+};
+
+export type CopyJournalEntryBody = {
+  entryDate?: string;
+};
+
+export type VoidJournalEntryBody = {
+  reason: string;
+};
+
+export type ListJournalEntryTemplatesParams = {
+organizationId?: string;
+};
+
+export type DeleteJournalEntryTemplate200 = {
+  success?: boolean;
+};
+
+export type UseJournalEntryTemplateBody = {
+  fiscalYearId: string;
+  entryDate?: string;
+  exchangeRate?: number;
 };
 
