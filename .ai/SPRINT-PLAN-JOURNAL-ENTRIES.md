@@ -3,9 +3,9 @@
 
 **Project:** Mans ERP
 **Module:** Journal Entries (General Ledger)
-**Document version:** 1.0
+**Document version:** 1.1
 **Date:** 2026-06-30
-**Status:** Awaiting architect approval before any implementation
+**Status:** Sprint 2.1 approved — all other sprints awaiting approval
 
 > Each sprint has one clear business goal, is independently testable, and must
 > pass all acceptance criteria before the next sprint may begin.
@@ -63,25 +63,13 @@ Drafts can be safely discarded before any lines or workflow are involved.
 
 ## 5. Database Migration
 
-**1 migration required.**
+**No migration required.**
 
-Creates the `journal_entries` table with all header columns:
+The `journal_entries` table already exists in the schema with all columns needed
+for Sprint 2.1 scope (header fields, status, numbering, soft-delete, timestamps,
+org/branch/fiscal-year FKs, enums, indexes, and unique constraint).
 
-```
-id, organization_id, branch_id, fiscal_year_id, number,
-entry_date, type, status (DRAFT only enforced for now),
-currency_code, exchange_rate, total_debit (default 0), total_credit (default 0),
-description_en, description_ar, reference,
-created_by_user_id, deleted_at, created_at, updated_at
-```
-
-Enums created: `JournalEntryStatus`, `JournalEntryType`
-
-Indexes: `organization_id`, `status`, `type`, `entry_date`, `deleted_at`
-
-Unique constraint: `(organization_id, number)`
-
-> No lines table, no approvals table, no other tables in this sprint.
+No new columns, tables, or enums are introduced in this sprint.
 
 ## 6. API Endpoints
 
@@ -135,28 +123,21 @@ Unique constraint: `(organization_id, number)`
 
 ## 9. Tests
 
-**Unit tests:**
-- `generateJournalNumber()` — first entry → `JE-2026-0001`
+**Unit tests (5):**
+- `generateJournalNumber()` — first entry of year → `JE-2026-0001`
 - `generateJournalNumber()` — 10th entry → `JE-2026-0010`
 - `generateJournalNumber()` — year boundary → `JE-2027-0001`
 - Zod schema rejects missing `fiscalYearId`
 - Zod schema rejects invalid date format
 
-**Integration tests:**
-- `POST /journal-entries` — valid payload → 201, number matches format
-- `POST /journal-entries` — missing fiscalYearId → 400
+**Integration tests (5):**
+- `POST /journal-entries` — valid payload → 201, number matches `JE-YYYY-NNNN` format
 - `POST /journal-entries` — closed fiscal year → 400
-- `PATCH /:id` — edit DRAFT → 200
-- `PATCH /:id` — entry not found → 404
-- `DELETE /:id` — DRAFT → 200, soft-deleted
-- `DELETE /:id` — non-DRAFT → 400
-- `GET /` — pagination meta correct
-- `GET /:id` — returns full header
+- `PATCH /:id` — edit DRAFT → 200, updated values returned
+- `DELETE /:id` — DRAFT → 200, soft-deleted (absent from subsequent GET)
+- `DELETE /:id` — non-DRAFT status → 400
 
-**E2E (Playwright):**
-- Navigate to list → loading skeleton → empty state → create first entry → entry appears
-- Edit entry → save → updated values shown
-- Delete draft → entry removed from list
+**E2E tests:** None in this sprint. E2E testing begins in Sprint 2.3.
 
 ## 10. Risks
 
@@ -168,18 +149,35 @@ Unique constraint: `(organization_id, number)`
 
 ## 11. Acceptance Criteria
 
-- [ ] Accountant can create a draft journal entry with header fields
-- [ ] A unique sequential number is assigned on creation
-- [ ] List shows all drafts with search, type filter, and pagination
-- [ ] Entry can be edited while in DRAFT status
-- [ ] Entry cannot be edited if not DRAFT (enforced at API level)
-- [ ] Entry can be soft-deleted while in DRAFT status
-- [ ] All 5 UI states present on list and form pages
-- [ ] Arabic translations complete and RTL layout correct
-- [ ] TypeScript zero errors
-- [ ] All tests pass
-- [ ] Build succeeds
-- [ ] TDD §1–§7 (header-level rows) reviewed and matches implementation
+### Functional
+
+- [ ] **Draft creation works** — `POST /api/journal-entries` with valid header fields returns 201 and a correctly formatted `JE-YYYY-NNNN` number
+- [ ] **Draft editing works** — `PATCH /api/journal-entries/:id` on a DRAFT entry updates all header fields and returns the updated record
+- [ ] **Posted entries cannot be edited** — `PATCH /api/journal-entries/:id` on any non-DRAFT entry returns 400 (enforced at API level, not frontend only)
+- [ ] **Search works** — `GET /api/journal-entries?search=` filters results by number, description (EN and AR), and reference; results update correctly
+- [ ] **Pagination works** — `GET /api/journal-entries?page=&pageSize=` returns correct `meta.total`, `meta.totalPages`, and the right slice of data
+- [ ] **Soft delete works** — `DELETE /api/journal-entries/:id` on a DRAFT entry returns 200 and the entry no longer appears in any subsequent list or detail query
+- [ ] **Soft delete blocked on non-DRAFT** — `DELETE /api/journal-entries/:id` on a non-DRAFT entry returns 400
+- [ ] **Validation passes** — missing required fields, invalid date format, missing `fiscalYearId`, and closed fiscal year each return 400 with a descriptive error message
+- [ ] **Fiscal year filter works** — only OPEN fiscal years appear in the form dropdown; closed/archived years are excluded
+- [ ] **List shows all 5 UI states** — Loading (skeleton rows), Empty (icon + "New Entry" CTA), Error (toast), Success (paginated table), Responsive (horizontal scroll on narrow viewport)
+- [ ] **Form shows all required states** — Loading (edit mode skeleton), Validation errors (inline), Success (toast + redirect to list)
+- [ ] **Arabic translations complete** — all labels, placeholders, status badges, error messages, and action buttons have AR equivalents and display correctly in RTL layout
+
+### Technical
+
+- [ ] **TypeScript zero errors** — `tsc --noEmit` exits with code 0 across all workspace packages
+- [ ] **Build succeeds** — `pnpm build` (or equivalent) completes without error for both `api-server` and `mans-erp`
+- [ ] **OpenAPI spec updated** — `lib/api-spec/openapi.yaml` includes the `JournalEntry` schema and all 5 Sprint 2.1 endpoint definitions
+- [ ] **All unit tests pass** — 5 unit tests green
+- [ ] **All integration tests pass** — 5 integration tests green
+- [ ] **No regressions** — existing routes and pages (chart of accounts, fiscal years, cost centres, dashboard) continue to pass their existing tests
+
+### Documentation
+
+- [ ] **TDD updated** — TDD §1, §2, §3, §6, §7, §13, §15 verified to match Sprint 2.1 implementation exactly; any discrepancies corrected
+- [ ] **Sprint plan updated** — this section marked complete; Sprint 2.2 approval requested
+- [ ] **`DECISIONS.md` updated** — any new architectural decisions introduced in this sprint recorded as ADR entries
 
 ## 12. Estimated Implementation Size
 
@@ -187,13 +185,13 @@ Unique constraint: `(organization_id, number)`
 |---|---|
 | New files | 3 |
 | Modified files | 5 |
-| DB migrations | 1 |
+| DB migrations | **0** (table already exists) |
 | API endpoints | 5 |
 | Frontend pages | 2 |
 | Translation keys | ~25 |
-| Unit test cases | ~5 |
-| Integration test cases | ~9 |
-| E2E test cases | 3 |
+| Unit tests | **5** |
+| Integration tests | **5** |
+| E2E tests | **0** (begin in Sprint 2.3) |
 
 ---
 
@@ -1034,15 +1032,15 @@ Indexes on schedules: `organization_id`, `status`, `next_run_at`, `deleted_at`
 
 ## Master Summary
 
-| Sprint | Goal | New Files | Modified Files | Migration | Endpoints | Est. Keys |
-|---|---|---|---|---|---|---|
-| 2.1 | Draft header CRUD | 3 | 5 | 1 | 5 | ~25 |
-| 2.2 | Lines + balance | 2 | 4 | 1 | 3 modified | ~15 |
-| 2.3 | Approval workflow | 2 | 4 | 1 | 4 new | ~20 |
-| 2.4 | Post + hash + reverse | 2 | 4 | 1 | 5 new | ~15 |
-| 2.5 | Attachments + notifications | 4 | 6 | 1 | 8 new | ~20 |
-| 2.6 | Recurring journals | 5 | 5 | 1 | 8 new | ~20 |
-| **Total** | | **18** | **28** | **6** | **33** | **~115** |
+| Sprint | Goal | New Files | Modified Files | Migration | Endpoints | Est. Keys | E2E |
+|---|---|---|---|---|---|---|---|
+| 2.1 ✅ | Draft header CRUD | 3 | 5 | **0** | 5 | ~25 | — |
+| 2.2 | Lines + balance | 2 | 4 | 1 | 3 modified | ~15 | — |
+| 2.3 | Approval workflow | 2 | 4 | 1 | 4 new | ~20 | 3 |
+| 2.4 | Post + hash + reverse | 2 | 4 | 1 | 5 new | ~15 | 3 |
+| 2.5 | Attachments + notifications | 4 | 6 | 1 | 8 new | ~20 | 3 |
+| 2.6 | Recurring journals | 5 | 5 | 1 | 8 new | ~20 | 2 |
+| **Total** | | **18** | **28** | **5** | **33** | **~115** | **11** |
 
 Each sprint is independently testable and delivers a complete, usable increment.
 No sprint begins without architect approval. All six exit criteria must be met
