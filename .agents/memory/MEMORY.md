@@ -1,0 +1,2 @@
+- [Prisma database setup](prisma-db-setup.md) — Prisma is the ORM for Mans ERP; lives in lib/prisma; Drizzle tables replaced
+- [API server stack](api-server-stack.md) — Express routes now import from @workspace/prisma, not @workspace/db

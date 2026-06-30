@@ -1,18 +1,20 @@
 import { Router } from "express";
-import { db, organizationsTable, usersTable, activityTable } from "@workspace/db";
-import { count, desc } from "drizzle-orm";
 import { requireAuth } from "@clerk/express";
+import { prisma } from "@workspace/prisma";
 
 const router = Router();
 
 router.get("/stats", requireAuth(), async (req, res) => {
   try {
-    const [orgCount] = await db.select({ count: count() }).from(organizationsTable);
-    const [userCount] = await db.select({ count: count() }).from(usersTable);
+    const [totalUsers, totalOrganizations, totalBankAccounts] = await Promise.all([
+      prisma.user.count({ where: { deletedAt: null } }),
+      prisma.organization.count({ where: { deletedAt: null } }),
+      prisma.bankAccount.count({ where: { deletedAt: null } }),
+    ]);
 
     res.json({
-      totalUsers: Number(userCount?.count ?? 0),
-      totalOrganizations: Number(orgCount?.count ?? 0),
+      totalUsers,
+      totalOrganizations,
       activeProjects: 0,
       totalBeneficiaries: 0,
       totalDonations: 0,
@@ -25,11 +27,20 @@ router.get("/stats", requireAuth(), async (req, res) => {
 
 router.get("/activity", requireAuth(), async (req, res) => {
   try {
-    const items = await db
-      .select()
-      .from(activityTable)
-      .orderBy(desc(activityTable.createdAt))
-      .limit(20);
+    const logs = await prisma.auditLog.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 20,
+      include: { user: { select: { email: true, firstNameEn: true, lastNameEn: true } } },
+    });
+
+    const items = logs.map((log, i) => ({
+      id:            i + 1,
+      type:          log.action.toLowerCase(),
+      description:   log.description ?? `${log.action} on ${log.entityType}`,
+      descriptionAr: log.description ?? `${log.action} على ${log.entityType}`,
+      userName:      log.userEmail ?? log.user?.email ?? "System",
+      createdAt:     log.createdAt.toISOString(),
+    }));
 
     res.json(items);
   } catch (err) {
