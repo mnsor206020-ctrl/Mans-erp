@@ -1,0 +1,830 @@
+// ============================================================
+// Mans ERP — Prisma Schema
+// Production-ready ERP database for Saudi nonprofits & charities
+// ============================================================
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = []
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum OrganizationType {
+  CHARITY
+  FOUNDATION
+  NGO
+  ASSOCIATION
+  GOVERNMENT
+  OTHER
+}
+
+enum OrganizationStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  PENDING
+}
+
+enum FiscalYearStatus {
+  OPEN
+  CLOSED
+  LOCKED
+}
+
+enum AccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  REVENUE
+  EXPENSE
+}
+
+enum AccountNature {
+  DEBIT
+  CREDIT
+}
+
+enum JournalEntryStatus {
+  DRAFT
+  POSTED
+  VOIDED
+}
+
+enum JournalEntryType {
+  MANUAL
+  AUTOMATIC
+  OPENING
+  CLOSING
+  ADJUSTMENT
+}
+
+enum CurrencyStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum BankAccountType {
+  CURRENT
+  SAVINGS
+  FIXED_DEPOSIT
+  PETTY_CASH
+}
+
+enum TransactionType {
+  RECEIPT
+  PAYMENT
+  TRANSFER
+}
+
+enum TransactionStatus {
+  DRAFT
+  CONFIRMED
+  RECONCILED
+  VOIDED
+}
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  CHEQUE
+  CREDIT_CARD
+  ONLINE
+  OTHER
+}
+
+enum PettyCashType {
+  IN
+  OUT
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  LOGIN
+  LOGOUT
+  EXPORT
+  IMPORT
+  APPROVE
+  REJECT
+  VOID
+  POST
+}
+
+// ============================================================
+// CORE: USERS, ROLES, PERMISSIONS
+// ============================================================
+
+model User {
+  id        String     @id @default(uuid()) @db.Uuid
+  clerkId   String     @unique @map("clerk_id")
+  email     String     @unique
+  firstNameEn String?  @map("first_name_en")
+  lastNameEn  String?  @map("last_name_en")
+  firstNameAr String?  @map("first_name_ar")
+  lastNameAr  String?  @map("last_name_ar")
+  avatarUrl   String?  @map("avatar_url")
+  phone       String?
+  status      UserStatus @default(ACTIVE)
+  deletedAt   DateTime?  @map("deleted_at")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  // Relations
+  organizationId String?  @map("organization_id") @db.Uuid
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  branchId       String?  @map("branch_id") @db.Uuid
+  branch         Branch?  @relation(fields: [branchId], references: [id])
+
+  userRoles       UserRole[]
+  journalEntries  JournalEntry[]
+  receipts        Receipt[]
+  payments        Payment[]
+  auditLogs       AuditLog[]
+  attachments     Attachment[]
+
+  @@index([clerkId])
+  @@index([email])
+  @@index([organizationId])
+  @@index([status])
+  @@index([deletedAt])
+  @@map("users")
+}
+
+model Role {
+  id          String   @id @default(uuid()) @db.Uuid
+  nameEn      String   @map("name_en")
+  nameAr      String   @map("name_ar")
+  description String?
+  isSystem    Boolean  @default(false) @map("is_system")
+  deletedAt   DateTime? @map("deleted_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  userRoles       UserRole[]
+  rolePermissions RolePermission[]
+
+  @@index([isSystem])
+  @@index([deletedAt])
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(uuid()) @db.Uuid
+  resource    String
+  action      String
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  rolePermissions RolePermission[]
+
+  @@unique([resource, action])
+  @@index([resource])
+  @@map("permissions")
+}
+
+model UserRole {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  roleId    String   @map("role_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
+  @@map("user_roles")
+}
+
+model RolePermission {
+  id           String   @id @default(uuid()) @db.Uuid
+  roleId       String   @map("role_id") @db.Uuid
+  permissionId String   @map("permission_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+
+// ============================================================
+// CORE: ORGANIZATIONS & BRANCHES
+// ============================================================
+
+model Organization {
+  id                 String             @id @default(uuid()) @db.Uuid
+  nameEn             String             @map("name_en")
+  nameAr             String             @map("name_ar")
+  type               OrganizationType   @default(CHARITY)
+  status             OrganizationStatus @default(ACTIVE)
+  registrationNumber String?            @map("registration_number")
+  taxNumber          String?            @map("tax_number")
+  email              String?
+  phone              String?
+  website            String?
+  address            String?
+  city               String?
+  country            String?            @default("SA")
+  logoUrl            String?            @map("logo_url")
+  fiscalYearStart    Int                @default(1) @map("fiscal_year_start")
+  baseCurrencyCode   String             @default("SAR") @map("base_currency_code")
+  deletedAt          DateTime?          @map("deleted_at")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+
+  users          User[]
+  branches       Branch[]
+  fiscalYears    FiscalYear[]
+  accounts       ChartOfAccount[]
+  costCenters    CostCenter[]
+  bankAccounts   BankAccount[]
+  cashBoxes      CashBox[]
+  receipts       Receipt[]
+  payments       Payment[]
+  journalEntries JournalEntry[]
+
+  @@index([status])
+  @@index([type])
+  @@index([deletedAt])
+  @@map("organizations")
+}
+
+model Branch {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  nameEn         String    @map("name_en")
+  nameAr         String    @map("name_ar")
+  code           String
+  address        String?
+  city           String?
+  phone          String?
+  email          String?
+  isHeadquarters Boolean   @default(false) @map("is_headquarters")
+  deletedAt      DateTime? @map("deleted_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  users          User[]
+  bankAccounts   BankAccount[]
+  cashBoxes      CashBox[]
+  receipts       Receipt[]
+  payments       Payment[]
+  journalEntries JournalEntry[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+  @@index([isHeadquarters])
+  @@index([deletedAt])
+  @@map("branches")
+}
+
+// ============================================================
+// FISCAL YEARS
+// ============================================================
+
+model FiscalYear {
+  id             String           @id @default(uuid()) @db.Uuid
+  organizationId String           @map("organization_id") @db.Uuid
+  nameEn         String           @map("name_en")
+  nameAr         String           @map("name_ar")
+  startDate      DateTime         @map("start_date") @db.Date
+  endDate        DateTime         @map("end_date") @db.Date
+  status         FiscalYearStatus @default(OPEN)
+  isDefault      Boolean          @default(false) @map("is_default")
+  closedAt       DateTime?        @map("closed_at")
+  closedByUserId String?          @map("closed_by_user_id") @db.Uuid
+  deletedAt      DateTime?        @map("deleted_at")
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  journalEntries JournalEntry[]
+
+  @@unique([organizationId, startDate, endDate])
+  @@index([organizationId])
+  @@index([status])
+  @@index([isDefault])
+  @@index([deletedAt])
+  @@map("fiscal_years")
+}
+
+// ============================================================
+// CHART OF ACCOUNTS
+// ============================================================
+
+model ChartOfAccount {
+  id             String        @id @default(uuid()) @db.Uuid
+  organizationId String        @map("organization_id") @db.Uuid
+  parentId       String?       @map("parent_id") @db.Uuid
+  code           String
+  nameEn         String        @map("name_en")
+  nameAr         String        @map("name_ar")
+  type           AccountType
+  nature         AccountNature
+  level          Int           @default(1)
+  isGroup        Boolean       @default(false) @map("is_group")
+  isActive       Boolean       @default(true) @map("is_active")
+  allowDirectEntry Boolean     @default(true) @map("allow_direct_entry")
+  currencyCode   String?       @map("currency_code")
+  notes          String?
+  deletedAt      DateTime?     @map("deleted_at")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  parent       ChartOfAccount?  @relation("AccountHierarchy", fields: [parentId], references: [id])
+  children     ChartOfAccount[] @relation("AccountHierarchy")
+
+  journalEntryLines JournalEntryLine[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+  @@index([parentId])
+  @@index([type])
+  @@index([nature])
+  @@index([isGroup])
+  @@index([isActive])
+  @@index([deletedAt])
+  @@map("chart_of_accounts")
+}
+
+// ============================================================
+// COST CENTERS
+// ============================================================
+
+model CostCenter {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  parentId       String?   @map("parent_id") @db.Uuid
+  code           String
+  nameEn         String    @map("name_en")
+  nameAr         String    @map("name_ar")
+  description    String?
+  isActive       Boolean   @default(true) @map("is_active")
+  deletedAt      DateTime? @map("deleted_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  parent       CostCenter?   @relation("CostCenterHierarchy", fields: [parentId], references: [id])
+  children     CostCenter[]  @relation("CostCenterHierarchy")
+
+  journalEntryLines JournalEntryLine[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+  @@index([parentId])
+  @@index([isActive])
+  @@index([deletedAt])
+  @@map("cost_centers")
+}
+
+// ============================================================
+// CURRENCIES & EXCHANGE RATES
+// ============================================================
+
+model Currency {
+  id           String         @id @default(uuid()) @db.Uuid
+  code         String         @unique
+  nameEn       String         @map("name_en")
+  nameAr       String         @map("name_ar")
+  symbol       String
+  decimalPlaces Int           @default(2) @map("decimal_places")
+  isBase       Boolean        @default(false) @map("is_base")
+  status       CurrencyStatus @default(ACTIVE)
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+
+  exchangeRates ExchangeRate[]
+  bankAccounts  BankAccount[]
+  cashBoxes     CashBox[]
+  receipts      Receipt[]
+  payments      Payment[]
+
+  @@index([isBase])
+  @@index([status])
+  @@map("currencies")
+}
+
+model ExchangeRate {
+  id           String   @id @default(uuid()) @db.Uuid
+  currencyCode String   @map("currency_code")
+  rate         Decimal  @db.Decimal(18, 8)
+  rateDate     DateTime @map("rate_date") @db.Date
+  source       String?
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  currency Currency @relation(fields: [currencyCode], references: [code], onDelete: Restrict)
+
+  @@unique([currencyCode, rateDate])
+  @@index([currencyCode])
+  @@index([rateDate])
+  @@map("exchange_rates")
+}
+
+// ============================================================
+// BANKS & BANK ACCOUNTS
+// ============================================================
+
+model Bank {
+  id        String    @id @default(uuid()) @db.Uuid
+  nameEn    String    @map("name_en")
+  nameAr    String    @map("name_ar")
+  swiftCode String?   @unique @map("swift_code")
+  ibanPrefix String?  @map("iban_prefix")
+  country   String?   @default("SA")
+  logoUrl   String?   @map("logo_url")
+  isActive  Boolean   @default(true) @map("is_active")
+  deletedAt DateTime? @map("deleted_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  bankAccounts BankAccount[]
+
+  @@index([isActive])
+  @@index([deletedAt])
+  @@map("banks")
+}
+
+model BankAccount {
+  id              String          @id @default(uuid()) @db.Uuid
+  organizationId  String          @map("organization_id") @db.Uuid
+  branchId        String?         @map("branch_id") @db.Uuid
+  bankId          String          @map("bank_id") @db.Uuid
+  currencyCode    String          @map("currency_code")
+  accountNumber   String          @map("account_number")
+  iban            String?
+  accountNameEn   String          @map("account_name_en")
+  accountNameAr   String          @map("account_name_ar")
+  type            BankAccountType @default(CURRENT)
+  openingBalance  Decimal         @default(0) @db.Decimal(18, 4) @map("opening_balance")
+  currentBalance  Decimal         @default(0) @db.Decimal(18, 4) @map("current_balance")
+  glAccountId     String?         @map("gl_account_id") @db.Uuid
+  isActive        Boolean         @default(true) @map("is_active")
+  deletedAt       DateTime?       @map("deleted_at")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  branch       Branch?      @relation(fields: [branchId], references: [id])
+  bank         Bank         @relation(fields: [bankId], references: [id], onDelete: Restrict)
+  currency     Currency     @relation(fields: [currencyCode], references: [code], onDelete: Restrict)
+
+  receipts Receipt[]
+  payments Payment[]
+
+  @@unique([organizationId, accountNumber])
+  @@index([organizationId])
+  @@index([branchId])
+  @@index([bankId])
+  @@index([currencyCode])
+  @@index([isActive])
+  @@index([deletedAt])
+  @@map("bank_accounts")
+}
+
+// ============================================================
+// CASH BOXES
+// ============================================================
+
+model CashBox {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  branchId       String?   @map("branch_id") @db.Uuid
+  currencyCode   String    @map("currency_code")
+  nameEn         String    @map("name_en")
+  nameAr         String    @map("name_ar")
+  code           String
+  openingBalance Decimal   @default(0) @db.Decimal(18, 4) @map("opening_balance")
+  currentBalance Decimal   @default(0) @db.Decimal(18, 4) @map("current_balance")
+  glAccountId    String?   @map("gl_account_id") @db.Uuid
+  isActive       Boolean   @default(true) @map("is_active")
+  deletedAt      DateTime? @map("deleted_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  branch       Branch?      @relation(fields: [branchId], references: [id])
+  currency     Currency     @relation(fields: [currencyCode], references: [code], onDelete: Restrict)
+
+  receipts   Receipt[]
+  payments   Payment[]
+  pettyCash  PettyCash[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+  @@index([branchId])
+  @@index([currencyCode])
+  @@index([isActive])
+  @@index([deletedAt])
+  @@map("cash_boxes")
+}
+
+// ============================================================
+// JOURNAL ENTRIES
+// ============================================================
+
+model JournalEntry {
+  id              String             @id @default(uuid()) @db.Uuid
+  organizationId  String             @map("organization_id") @db.Uuid
+  branchId        String?            @map("branch_id") @db.Uuid
+  fiscalYearId    String             @map("fiscal_year_id") @db.Uuid
+  number          String
+  entryDate       DateTime           @map("entry_date") @db.Date
+  type            JournalEntryType   @default(MANUAL)
+  status          JournalEntryStatus @default(DRAFT)
+  currencyCode    String             @map("currency_code") @default("SAR")
+  exchangeRate    Decimal            @default(1) @db.Decimal(18, 8) @map("exchange_rate")
+  totalDebit      Decimal            @default(0) @db.Decimal(18, 4) @map("total_debit")
+  totalCredit     Decimal            @default(0) @db.Decimal(18, 4) @map("total_credit")
+  descriptionEn   String?            @map("description_en")
+  descriptionAr   String?            @map("description_ar")
+  reference       String?
+  sourceType      String?            @map("source_type")
+  sourceId        String?            @map("source_id") @db.Uuid
+  postedAt        DateTime?          @map("posted_at")
+  postedByUserId  String?            @map("posted_by_user_id") @db.Uuid
+  voidedAt        DateTime?          @map("voided_at")
+  voidedByUserId  String?            @map("voided_by_user_id") @db.Uuid
+  voidReason      String?            @map("void_reason")
+  createdByUserId String?            @map("created_by_user_id") @db.Uuid
+  deletedAt       DateTime?          @map("deleted_at")
+  createdAt       DateTime           @default(now()) @map("created_at")
+  updatedAt       DateTime           @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  branch       Branch?      @relation(fields: [branchId], references: [id])
+  fiscalYear   FiscalYear   @relation(fields: [fiscalYearId], references: [id], onDelete: Restrict)
+  createdBy    User?        @relation(fields: [createdByUserId], references: [id])
+
+  lines JournalEntryLine[]
+
+  @@unique([organizationId, number])
+  @@index([organizationId])
+  @@index([branchId])
+  @@index([fiscalYearId])
+  @@index([status])
+  @@index([type])
+  @@index([entryDate])
+  @@index([sourceType, sourceId])
+  @@index([deletedAt])
+  @@map("journal_entries")
+}
+
+model JournalEntryLine {
+  id               String   @id @default(uuid()) @db.Uuid
+  journalEntryId   String   @map("journal_entry_id") @db.Uuid
+  accountId        String   @map("account_id") @db.Uuid
+  costCenterId     String?  @map("cost_center_id") @db.Uuid
+  lineNumber       Int      @map("line_number")
+  descriptionEn    String?  @map("description_en")
+  descriptionAr    String?  @map("description_ar")
+  debit            Decimal  @default(0) @db.Decimal(18, 4)
+  credit           Decimal  @default(0) @db.Decimal(18, 4)
+  debitBase        Decimal  @default(0) @db.Decimal(18, 4) @map("debit_base")
+  creditBase       Decimal  @default(0) @db.Decimal(18, 4) @map("credit_base")
+  reference        String?
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  journalEntry JournalEntry   @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+  account      ChartOfAccount @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  costCenter   CostCenter?    @relation(fields: [costCenterId], references: [id])
+
+  @@index([journalEntryId])
+  @@index([accountId])
+  @@index([costCenterId])
+  @@map("journal_entry_lines")
+}
+
+// ============================================================
+// RECEIPTS
+// ============================================================
+
+model Receipt {
+  id              String            @id @default(uuid()) @db.Uuid
+  organizationId  String            @map("organization_id") @db.Uuid
+  branchId        String?           @map("branch_id") @db.Uuid
+  number          String
+  receiptDate     DateTime          @map("receipt_date") @db.Date
+  paymentMethod   PaymentMethod     @map("payment_method")
+  status          TransactionStatus @default(DRAFT)
+  currencyCode    String            @map("currency_code") @default("SAR")
+  exchangeRate    Decimal           @default(1) @db.Decimal(18, 8) @map("exchange_rate")
+  amount          Decimal           @db.Decimal(18, 4)
+  amountBase      Decimal           @db.Decimal(18, 4) @map("amount_base")
+  bankAccountId   String?           @map("bank_account_id") @db.Uuid
+  cashBoxId       String?           @map("cash_box_id") @db.Uuid
+  payerName       String?           @map("payer_name")
+  payerNameAr     String?           @map("payer_name_ar")
+  payerType       String?           @map("payer_type")
+  payerId         String?           @map("payer_id") @db.Uuid
+  chequeNumber    String?           @map("cheque_number")
+  chequeDate      DateTime?         @map("cheque_date") @db.Date
+  chequeBankName  String?           @map("cheque_bank_name")
+  descriptionEn   String?           @map("description_en")
+  descriptionAr   String?           @map("description_ar")
+  reference       String?
+  journalEntryId  String?           @map("journal_entry_id") @db.Uuid
+  confirmedAt     DateTime?         @map("confirmed_at")
+  voidedAt        DateTime?         @map("voided_at")
+  voidReason      String?           @map("void_reason")
+  createdByUserId String?           @map("created_by_user_id") @db.Uuid
+  deletedAt       DateTime?         @map("deleted_at")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  branch       Branch?      @relation(fields: [branchId], references: [id])
+  currency     Currency     @relation(fields: [currencyCode], references: [code], onDelete: Restrict)
+  bankAccount  BankAccount? @relation(fields: [bankAccountId], references: [id])
+  cashBox      CashBox?     @relation(fields: [cashBoxId], references: [id])
+  createdBy    User?        @relation(fields: [createdByUserId], references: [id])
+
+  attachments Attachment[]
+
+  @@unique([organizationId, number])
+  @@index([organizationId])
+  @@index([branchId])
+  @@index([status])
+  @@index([paymentMethod])
+  @@index([receiptDate])
+  @@index([bankAccountId])
+  @@index([cashBoxId])
+  @@index([deletedAt])
+  @@map("receipts")
+}
+
+// ============================================================
+// PAYMENTS
+// ============================================================
+
+model Payment {
+  id              String            @id @default(uuid()) @db.Uuid
+  organizationId  String            @map("organization_id") @db.Uuid
+  branchId        String?           @map("branch_id") @db.Uuid
+  number          String
+  paymentDate     DateTime          @map("payment_date") @db.Date
+  paymentMethod   PaymentMethod     @map("payment_method")
+  status          TransactionStatus @default(DRAFT)
+  currencyCode    String            @map("currency_code") @default("SAR")
+  exchangeRate    Decimal           @default(1) @db.Decimal(18, 8) @map("exchange_rate")
+  amount          Decimal           @db.Decimal(18, 4)
+  amountBase      Decimal           @db.Decimal(18, 4) @map("amount_base")
+  bankAccountId   String?           @map("bank_account_id") @db.Uuid
+  cashBoxId       String?           @map("cash_box_id") @db.Uuid
+  payeeName       String?           @map("payee_name")
+  payeeNameAr     String?           @map("payee_name_ar")
+  payeeType       String?           @map("payee_type")
+  payeeId         String?           @map("payee_id") @db.Uuid
+  chequeNumber    String?           @map("cheque_number")
+  chequeDate      DateTime?         @map("cheque_date") @db.Date
+  chequeBankName  String?           @map("cheque_bank_name")
+  descriptionEn   String?           @map("description_en")
+  descriptionAr   String?           @map("description_ar")
+  reference       String?
+  journalEntryId  String?           @map("journal_entry_id") @db.Uuid
+  confirmedAt     DateTime?         @map("confirmed_at")
+  voidedAt        DateTime?         @map("voided_at")
+  voidReason      String?           @map("void_reason")
+  createdByUserId String?           @map("created_by_user_id") @db.Uuid
+  deletedAt       DateTime?         @map("deleted_at")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  branch       Branch?      @relation(fields: [branchId], references: [id])
+  currency     Currency     @relation(fields: [currencyCode], references: [code], onDelete: Restrict)
+  bankAccount  BankAccount? @relation(fields: [bankAccountId], references: [id])
+  cashBox      CashBox?     @relation(fields: [cashBoxId], references: [id])
+  createdBy    User?        @relation(fields: [createdByUserId], references: [id])
+
+  attachments Attachment[]
+
+  @@unique([organizationId, number])
+  @@index([organizationId])
+  @@index([branchId])
+  @@index([status])
+  @@index([paymentMethod])
+  @@index([paymentDate])
+  @@index([bankAccountId])
+  @@index([cashBoxId])
+  @@index([deletedAt])
+  @@map("payments")
+}
+
+// ============================================================
+// PETTY CASH
+// ============================================================
+
+model PettyCash {
+  id              String        @id @default(uuid()) @db.Uuid
+  cashBoxId       String        @map("cash_box_id") @db.Uuid
+  type            PettyCashType
+  transactionDate DateTime      @map("transaction_date") @db.Date
+  amount          Decimal       @db.Decimal(18, 4)
+  descriptionEn   String        @map("description_en")
+  descriptionAr   String        @map("description_ar")
+  reference       String?
+  receiptNumber   String?       @map("receipt_number")
+  categoryId      String?       @map("category_id") @db.Uuid
+  glAccountId     String?       @map("gl_account_id") @db.Uuid
+  costCenterId    String?       @map("cost_center_id") @db.Uuid
+  journalEntryId  String?       @map("journal_entry_id") @db.Uuid
+  approvedByUserId String?      @map("approved_by_user_id") @db.Uuid
+  approvedAt      DateTime?     @map("approved_at")
+  deletedAt       DateTime?     @map("deleted_at")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  cashBox CashBox @relation(fields: [cashBoxId], references: [id], onDelete: Restrict)
+
+  attachments Attachment[]
+
+  @@index([cashBoxId])
+  @@index([type])
+  @@index([transactionDate])
+  @@index([deletedAt])
+  @@map("petty_cash")
+}
+
+// ============================================================
+// ATTACHMENTS
+// ============================================================
+
+model Attachment {
+  id           String    @id @default(uuid()) @db.Uuid
+  entityType   String    @map("entity_type")
+  entityId     String    @map("entity_id") @db.Uuid
+  fileName     String    @map("file_name")
+  originalName String    @map("original_name")
+  fileUrl      String    @map("file_url")
+  mimeType     String    @map("mime_type")
+  fileSize     BigInt    @map("file_size")
+  description  String?
+  uploadedByUserId String? @map("uploaded_by_user_id") @db.Uuid
+  deletedAt    DateTime? @map("deleted_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  uploadedBy User?     @relation(fields: [uploadedByUserId], references: [id])
+  receipt    Receipt?  @relation(fields: [entityId], references: [id], map: "attachment_receipt_fk")
+  payment    Payment?  @relation(fields: [entityId], references: [id], map: "attachment_payment_fk")
+  pettyCash  PettyCash? @relation(fields: [entityId], references: [id], map: "attachment_petty_cash_fk")
+
+  @@index([entityType, entityId])
+  @@index([uploadedByUserId])
+  @@index([deletedAt])
+  @@map("attachments")
+}
+
+// ============================================================
+// AUDIT LOGS
+// ============================================================
+
+model AuditLog {
+  id          String      @id @default(uuid()) @db.Uuid
+  userId      String?     @map("user_id") @db.Uuid
+  userEmail   String?     @map("user_email")
+  action      AuditAction
+  entityType  String      @map("entity_type")
+  entityId    String?     @map("entity_id") @db.Uuid
+  oldValues   Json?       @map("old_values")
+  newValues   Json?       @map("new_values")
+  description String?
+  ipAddress   String?     @map("ip_address")
+  userAgent   String?     @map("user_agent")
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([action])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
