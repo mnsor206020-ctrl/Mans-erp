@@ -93,3 +93,231 @@ export interface UserProfileUpdate {
   avatarUrl?: string;
 }
 
+export type ChartOfAccountType = typeof ChartOfAccountType[keyof typeof ChartOfAccountType];
+
+
+export const ChartOfAccountType = {
+  ASSET: 'ASSET',
+  LIABILITY: 'LIABILITY',
+  EQUITY: 'EQUITY',
+  REVENUE: 'REVENUE',
+  EXPENSE: 'EXPENSE',
+} as const;
+
+export type ChartOfAccountNature = typeof ChartOfAccountNature[keyof typeof ChartOfAccountNature];
+
+
+export const ChartOfAccountNature = {
+  DEBIT: 'DEBIT',
+  CREDIT: 'CREDIT',
+} as const;
+
+export interface ChartOfAccount {
+  id: string;
+  organizationId: string;
+  /** @nullable */
+  parentId?: string | null;
+  code: string;
+  nameEn: string;
+  nameAr: string;
+  type: ChartOfAccountType;
+  nature: ChartOfAccountNature;
+  level: number;
+  isGroup: boolean;
+  isActive: boolean;
+  allowDirectEntry: boolean;
+  /** @nullable */
+  currencyCode?: string | null;
+  /** @nullable */
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ChartOfAccountDetailParent = {
+  id?: string;
+  code?: string;
+  nameEn?: string;
+  nameAr?: string;
+} | null;
+
+export interface ChartOfAccountDetail {
+  id: string;
+  organizationId?: string;
+  /** @nullable */
+  parentId?: string | null;
+  code: string;
+  nameEn: string;
+  nameAr: string;
+  type: string;
+  nature: string;
+  level: number;
+  isGroup: boolean;
+  isActive: boolean;
+  allowDirectEntry: boolean;
+  /** @nullable */
+  currencyCode?: string | null;
+  /** @nullable */
+  notes?: string | null;
+  transactionCount: number;
+  createdAt: string;
+  updatedAt: string;
+  parent?: ChartOfAccountDetailParent;
+  children?: ChartOfAccount[];
+}
+
+export interface ChartOfAccountNode {
+  id: string;
+  organizationId?: string;
+  /** @nullable */
+  parentId?: string | null;
+  code: string;
+  nameEn: string;
+  nameAr: string;
+  type: string;
+  nature: string;
+  level: number;
+  isGroup: boolean;
+  isActive: boolean;
+  allowDirectEntry: boolean;
+  /** @nullable */
+  currencyCode?: string | null;
+  /** @nullable */
+  notes?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+  children?: ChartOfAccountNode[];
+}
+
+export type PaginatedChartOfAccountsMeta = {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+};
+
+export interface PaginatedChartOfAccounts {
+  data: ChartOfAccount[];
+  meta: PaginatedChartOfAccountsMeta;
+}
+
+export type CreateChartOfAccountInputType = typeof CreateChartOfAccountInputType[keyof typeof CreateChartOfAccountInputType];
+
+
+export const CreateChartOfAccountInputType = {
+  ASSET: 'ASSET',
+  LIABILITY: 'LIABILITY',
+  EQUITY: 'EQUITY',
+  REVENUE: 'REVENUE',
+  EXPENSE: 'EXPENSE',
+} as const;
+
+export type CreateChartOfAccountInputNature = typeof CreateChartOfAccountInputNature[keyof typeof CreateChartOfAccountInputNature];
+
+
+export const CreateChartOfAccountInputNature = {
+  DEBIT: 'DEBIT',
+  CREDIT: 'CREDIT',
+} as const;
+
+export interface CreateChartOfAccountInput {
+  organizationId?: string;
+  /** @nullable */
+  parentId?: string | null;
+  /**
+     * @minLength 1
+     * @maxLength 20
+     */
+  code: string;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  nameEn: string;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  nameAr: string;
+  type: CreateChartOfAccountInputType;
+  nature?: CreateChartOfAccountInputNature;
+  isGroup?: boolean;
+  currencyCode?: string;
+  notes?: string;
+}
+
+export type UpdateChartOfAccountInputType = typeof UpdateChartOfAccountInputType[keyof typeof UpdateChartOfAccountInputType];
+
+
+export const UpdateChartOfAccountInputType = {
+  ASSET: 'ASSET',
+  LIABILITY: 'LIABILITY',
+  EQUITY: 'EQUITY',
+  REVENUE: 'REVENUE',
+  EXPENSE: 'EXPENSE',
+} as const;
+
+export type UpdateChartOfAccountInputNature = typeof UpdateChartOfAccountInputNature[keyof typeof UpdateChartOfAccountInputNature];
+
+
+export const UpdateChartOfAccountInputNature = {
+  DEBIT: 'DEBIT',
+  CREDIT: 'CREDIT',
+} as const;
+
+export interface UpdateChartOfAccountInput {
+  /** @nullable */
+  parentId?: string | null;
+  /**
+     * @minLength 1
+     * @maxLength 20
+     */
+  code?: string;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  nameEn?: string;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  nameAr?: string;
+  type?: UpdateChartOfAccountInputType;
+  nature?: UpdateChartOfAccountInputNature;
+  isGroup?: boolean;
+  /** @nullable */
+  currencyCode?: string | null;
+  /** @nullable */
+  notes?: string | null;
+}
+
+export type GetChartOfAccountsTreeParams = {
+organizationId?: string;
+};
+
+export type ListChartOfAccountsParams = {
+search?: string;
+type?: ListChartOfAccountsType;
+isActive?: boolean;
+isGroup?: boolean;
+organizationId?: string;
+page?: number;
+pageSize?: number;
+};
+
+export type ListChartOfAccountsType = typeof ListChartOfAccountsType[keyof typeof ListChartOfAccountsType];
+
+
+export const ListChartOfAccountsType = {
+  ASSET: 'ASSET',
+  LIABILITY: 'LIABILITY',
+  EQUITY: 'EQUITY',
+  REVENUE: 'REVENUE',
+  EXPENSE: 'EXPENSE',
+} as const;
+
+export type DeleteChartOfAccount200 = {
+  success: boolean;
+};
+

@@ -1,7 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { useLanguage } from "@/lib/language-provider";
 import { useTheme } from "@/components/theme-provider";
-import { LayoutDashboard, Building2, Settings, Bell, Sun, Moon, LogOut, Menu } from "lucide-react";
+import { LayoutDashboard, Building2, Settings, Bell, Sun, Moon, LogOut, Menu, BookOpen } from "lucide-react";
 import { useUser, useClerk } from "@clerk/react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -22,6 +22,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const navigation = [
     { name: t('nav.dashboard'), href: '/dashboard', icon: LayoutDashboard },
     { name: t('nav.organizations'), href: '/organizations', icon: Building2 },
+    { name: t('nav.chartOfAccounts'), href: '/chart-of-accounts', icon: BookOpen },
     { name: t('nav.settings'), href: '/settings', icon: Settings },
   ];
 
@@ -131,7 +132,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="w-56" dir={dir}>
+                <DropdownMenuContent align={dir === 'rtl' ? 'start' : 'end'} className="w-56">
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col space-y-1">
                       <p className="text-sm font-medium leading-none">{user?.fullName}</p>

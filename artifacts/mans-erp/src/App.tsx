@@ -14,6 +14,8 @@ import Dashboard from "@/pages/Dashboard";
 import Organizations from "@/pages/Organizations";
 import NewOrganization from "@/pages/NewOrganization";
 import Settings from "@/pages/Settings";
+import ChartOfAccounts from "@/pages/ChartOfAccounts";
+import ChartOfAccountDetail from "@/pages/ChartOfAccountDetail";
 import NotFound from "@/pages/not-found";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 
@@ -152,6 +154,16 @@ function ClerkProviderWithRoutes() {
           </Route>
           <Route path="/settings">
             <ProtectedRoute component={Settings} />
+          </Route>
+          <Route path="/chart-of-accounts">
+            <ProtectedRoute component={ChartOfAccounts} />
+          </Route>
+          <Route path="/chart-of-accounts/:id">
+            {(params) => (
+              <DashboardLayout>
+                <ChartOfAccountDetail params={params as { id: string }} />
+              </DashboardLayout>
+            )}
           </Route>
           
           <Route component={NotFound} />

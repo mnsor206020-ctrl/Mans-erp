@@ -12,7 +12,9 @@
   "dependencies": {
     "@clerk/express": "^2.1.32",
     "@clerk/shared": "^4.22.0",
+    "@prisma/client": "^6.9.0",
     "@workspace/api-zod": "workspace:*",
+    "zod": "catalog:",
     "@workspace/db": "workspace:*",
     "@workspace/prisma": "workspace:*",
     "cookie-parser": "^1.4.7",

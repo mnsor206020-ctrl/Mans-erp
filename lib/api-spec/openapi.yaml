@@ -215,6 +215,221 @@ paths:
         "401":
           description: Unauthorized
 
+  /chart-of-accounts/tree:
+    get:
+      operationId: getChartOfAccountsTree
+      tags: [chart-of-accounts]
+      summary: Get chart of accounts as a hierarchical tree
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: organizationId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Nested tree of accounts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChartOfAccountNode"
+        "401":
+          description: Unauthorized
+
+  /chart-of-accounts:
+    get:
+      operationId: listChartOfAccounts
+      tags: [chart-of-accounts]
+      summary: List chart of accounts (flat, paginated)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [ASSET, LIABILITY, EQUITY, REVENUE, EXPENSE]
+        - name: isActive
+          in: query
+          required: false
+          schema:
+            type: boolean
+        - name: isGroup
+          in: query
+          required: false
+          schema:
+            type: boolean
+        - name: organizationId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: Paginated list of accounts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedChartOfAccounts"
+        "401":
+          description: Unauthorized
+    post:
+      operationId: createChartOfAccount
+      tags: [chart-of-accounts]
+      summary: Create a new account
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateChartOfAccountInput"
+      responses:
+        "201":
+          description: Account created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChartOfAccount"
+        "400":
+          description: Validation error
+        "409":
+          description: Account code already exists
+
+  /chart-of-accounts/{id}:
+    get:
+      operationId: getChartOfAccount
+      tags: [chart-of-accounts]
+      summary: Get account by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Account with children and transaction count
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChartOfAccountDetail"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateChartOfAccount
+      tags: [chart-of-accounts]
+      summary: Update account
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateChartOfAccountInput"
+      responses:
+        "200":
+          description: Updated account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChartOfAccount"
+        "400":
+          description: Validation error
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteChartOfAccount
+      tags: [chart-of-accounts]
+      summary: Soft-delete an account
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                required:
+                  - success
+        "400":
+          description: Cannot delete (has transactions or sub-accounts)
+        "404":
+          description: Not found
+
+  /chart-of-accounts/{id}/toggle-active:
+    post:
+      operationId: toggleChartOfAccountActive
+      tags: [chart-of-accounts]
+      summary: Toggle account active/inactive status
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Account with updated status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChartOfAccount"
+        "400":
+          description: Cannot deactivate (has active sub-accounts)
+        "404":
+          description: Not found
+
 components:
   securitySchemes:
     bearerAuth:
@@ -399,3 +614,276 @@ components:
           type: string
         avatarUrl:
           type: string
+
+    ChartOfAccount:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        organizationId:
+          type: string
+          format: uuid
+        parentId:
+          type: ["string", "null"]
+          format: uuid
+        code:
+          type: string
+        nameEn:
+          type: string
+        nameAr:
+          type: string
+        type:
+          type: string
+          enum: [ASSET, LIABILITY, EQUITY, REVENUE, EXPENSE]
+        nature:
+          type: string
+          enum: [DEBIT, CREDIT]
+        level:
+          type: integer
+        isGroup:
+          type: boolean
+        isActive:
+          type: boolean
+        allowDirectEntry:
+          type: boolean
+        currencyCode:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - organizationId
+        - code
+        - nameEn
+        - nameAr
+        - type
+        - nature
+        - level
+        - isGroup
+        - isActive
+        - allowDirectEntry
+        - createdAt
+        - updatedAt
+
+    ChartOfAccountDetail:
+      type: object
+      properties:
+        id:
+          type: string
+        organizationId:
+          type: string
+        parentId:
+          type: ["string", "null"]
+        code:
+          type: string
+        nameEn:
+          type: string
+        nameAr:
+          type: string
+        type:
+          type: string
+        nature:
+          type: string
+        level:
+          type: integer
+        isGroup:
+          type: boolean
+        isActive:
+          type: boolean
+        allowDirectEntry:
+          type: boolean
+        currencyCode:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+        transactionCount:
+          type: integer
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+        parent:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: string
+            code:
+              type: string
+            nameEn:
+              type: string
+            nameAr:
+              type: string
+        children:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChartOfAccount"
+      required:
+        - id
+        - code
+        - nameEn
+        - nameAr
+        - type
+        - nature
+        - level
+        - isGroup
+        - isActive
+        - allowDirectEntry
+        - transactionCount
+        - createdAt
+        - updatedAt
+
+    ChartOfAccountNode:
+      type: object
+      properties:
+        id:
+          type: string
+        organizationId:
+          type: string
+        parentId:
+          type: ["string", "null"]
+        code:
+          type: string
+        nameEn:
+          type: string
+        nameAr:
+          type: string
+        type:
+          type: string
+        nature:
+          type: string
+        level:
+          type: integer
+        isGroup:
+          type: boolean
+        isActive:
+          type: boolean
+        allowDirectEntry:
+          type: boolean
+        currencyCode:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+        children:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChartOfAccountNode"
+      required:
+        - id
+        - code
+        - nameEn
+        - nameAr
+        - type
+        - nature
+        - level
+        - isGroup
+        - isActive
+        - allowDirectEntry
+
+    PaginatedChartOfAccounts:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChartOfAccount"
+        meta:
+          type: object
+          properties:
+            page:
+              type: integer
+            pageSize:
+              type: integer
+            total:
+              type: integer
+            totalPages:
+              type: integer
+          required:
+            - page
+            - pageSize
+            - total
+            - totalPages
+      required:
+        - data
+        - meta
+
+    CreateChartOfAccountInput:
+      type: object
+      properties:
+        organizationId:
+          type: string
+          format: uuid
+        parentId:
+          type: ["string", "null"]
+          format: uuid
+        code:
+          type: string
+          minLength: 1
+          maxLength: 20
+        nameEn:
+          type: string
+          minLength: 1
+          maxLength: 200
+        nameAr:
+          type: string
+          minLength: 1
+          maxLength: 200
+        type:
+          type: string
+          enum: [ASSET, LIABILITY, EQUITY, REVENUE, EXPENSE]
+        nature:
+          type: string
+          enum: [DEBIT, CREDIT]
+        isGroup:
+          type: boolean
+        currencyCode:
+          type: string
+        notes:
+          type: string
+      required:
+        - code
+        - nameEn
+        - nameAr
+        - type
+
+    UpdateChartOfAccountInput:
+      type: object
+      properties:
+        parentId:
+          type: ["string", "null"]
+          format: uuid
+        code:
+          type: string
+          minLength: 1
+          maxLength: 20
+        nameEn:
+          type: string
+          minLength: 1
+          maxLength: 200
+        nameAr:
+          type: string
+          minLength: 1
+          maxLength: 200
+        type:
+          type: string
+          enum: [ASSET, LIABILITY, EQUITY, REVENUE, EXPENSE]
+        nature:
+          type: string
+          enum: [DEBIT, CREDIT]
+        isGroup:
+          type: boolean
+        currencyCode:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]

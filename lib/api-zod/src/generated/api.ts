@@ -210,3 +210,258 @@ export const ListUsersResponseItem = zod.object({
 export const ListUsersResponse = zod.array(ListUsersResponseItem)
 
 
+/**
+ * @summary Get chart of accounts as a hierarchical tree
+ */
+export const GetChartOfAccountsTreeQueryParams = zod.object({
+  "organizationId": zod.coerce.string().uuid().optional()
+})
+
+export const GetChartOfAccountsTreeResponseItem = zod.object({
+  "id": zod.string(),
+  "organizationId": zod.string().optional(),
+  "parentId": zod.string().nullish(),
+  "code": zod.string(),
+  "nameEn": zod.string(),
+  "nameAr": zod.string(),
+  "type": zod.string(),
+  "nature": zod.string(),
+  "level": zod.number(),
+  "isGroup": zod.boolean(),
+  "isActive": zod.boolean(),
+  "allowDirectEntry": zod.boolean(),
+  "currencyCode": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional(),
+  "children": zod.array(zod.unknown()).optional()
+})
+export const GetChartOfAccountsTreeResponse = zod.array(GetChartOfAccountsTreeResponseItem)
+
+
+/**
+ * @summary List chart of accounts (flat, paginated)
+ */
+export const listChartOfAccountsQueryPageDefault = 1;
+export const listChartOfAccountsQueryPageSizeDefault = 50;
+
+export const ListChartOfAccountsQueryParams = zod.object({
+  "search": zod.coerce.string().optional(),
+  "type": zod.enum(['ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE']).optional(),
+  "isActive": zod.coerce.boolean().optional(),
+  "isGroup": zod.coerce.boolean().optional(),
+  "organizationId": zod.coerce.string().uuid().optional(),
+  "page": zod.coerce.number().default(listChartOfAccountsQueryPageDefault),
+  "pageSize": zod.coerce.number().default(listChartOfAccountsQueryPageSizeDefault)
+})
+
+export const ListChartOfAccountsResponse = zod.object({
+  "data": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "organizationId": zod.string().uuid(),
+  "parentId": zod.string().uuid().nullish(),
+  "code": zod.string(),
+  "nameEn": zod.string(),
+  "nameAr": zod.string(),
+  "type": zod.enum(['ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE']),
+  "nature": zod.enum(['DEBIT', 'CREDIT']),
+  "level": zod.number(),
+  "isGroup": zod.boolean(),
+  "isActive": zod.boolean(),
+  "allowDirectEntry": zod.boolean(),
+  "currencyCode": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})),
+  "meta": zod.object({
+  "page": zod.number(),
+  "pageSize": zod.number(),
+  "total": zod.number(),
+  "totalPages": zod.number()
+})
+})
+
+
+/**
+ * @summary Create a new account
+ */
+export const createChartOfAccountBodyCodeMax = 20;
+
+export const createChartOfAccountBodyNameEnMax = 200;
+
+export const createChartOfAccountBodyNameArMax = 200;
+
+
+
+export const CreateChartOfAccountBody = zod.object({
+  "organizationId": zod.string().uuid().optional(),
+  "parentId": zod.string().uuid().nullish(),
+  "code": zod.string().min(1).max(createChartOfAccountBodyCodeMax),
+  "nameEn": zod.string().min(1).max(createChartOfAccountBodyNameEnMax),
+  "nameAr": zod.string().min(1).max(createChartOfAccountBodyNameArMax),
+  "type": zod.enum(['ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE']),
+  "nature": zod.enum(['DEBIT', 'CREDIT']).optional(),
+  "isGroup": zod.boolean().optional(),
+  "currencyCode": zod.string().optional(),
+  "notes": zod.string().optional()
+})
+
+export const CreateChartOfAccountResponse = zod.object({
+  "id": zod.string().uuid(),
+  "organizationId": zod.string().uuid(),
+  "parentId": zod.string().uuid().nullish(),
+  "code": zod.string(),
+  "nameEn": zod.string(),
+  "nameAr": zod.string(),
+  "type": zod.enum(['ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE']),
+  "nature": zod.enum(['DEBIT', 'CREDIT']),
+  "level": zod.number(),
+  "isGroup": zod.boolean(),
+  "isActive": zod.boolean(),
+  "allowDirectEntry": zod.boolean(),
+  "currencyCode": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Get account by ID
+ */
+export const GetChartOfAccountParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const GetChartOfAccountResponse = zod.object({
+  "id": zod.string(),
+  "organizationId": zod.string().optional(),
+  "parentId": zod.string().nullish(),
+  "code": zod.string(),
+  "nameEn": zod.string(),
+  "nameAr": zod.string(),
+  "type": zod.string(),
+  "nature": zod.string(),
+  "level": zod.number(),
+  "isGroup": zod.boolean(),
+  "isActive": zod.boolean(),
+  "allowDirectEntry": zod.boolean(),
+  "currencyCode": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "transactionCount": zod.number(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string(),
+  "parent": zod.object({
+  "id": zod.string().optional(),
+  "code": zod.string().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional()
+}).nullish(),
+  "children": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "organizationId": zod.string().uuid(),
+  "parentId": zod.string().uuid().nullish(),
+  "code": zod.string(),
+  "nameEn": zod.string(),
+  "nameAr": zod.string(),
+  "type": zod.enum(['ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE']),
+  "nature": zod.enum(['DEBIT', 'CREDIT']),
+  "level": zod.number(),
+  "isGroup": zod.boolean(),
+  "isActive": zod.boolean(),
+  "allowDirectEntry": zod.boolean(),
+  "currencyCode": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})).optional()
+})
+
+
+/**
+ * @summary Update account
+ */
+export const UpdateChartOfAccountParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const updateChartOfAccountBodyCodeMax = 20;
+
+export const updateChartOfAccountBodyNameEnMax = 200;
+
+export const updateChartOfAccountBodyNameArMax = 200;
+
+
+
+export const UpdateChartOfAccountBody = zod.object({
+  "parentId": zod.string().uuid().nullish(),
+  "code": zod.string().min(1).max(updateChartOfAccountBodyCodeMax).optional(),
+  "nameEn": zod.string().min(1).max(updateChartOfAccountBodyNameEnMax).optional(),
+  "nameAr": zod.string().min(1).max(updateChartOfAccountBodyNameArMax).optional(),
+  "type": zod.enum(['ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE']).optional(),
+  "nature": zod.enum(['DEBIT', 'CREDIT']).optional(),
+  "isGroup": zod.boolean().optional(),
+  "currencyCode": zod.string().nullish(),
+  "notes": zod.string().nullish()
+})
+
+export const UpdateChartOfAccountResponse = zod.object({
+  "id": zod.string().uuid(),
+  "organizationId": zod.string().uuid(),
+  "parentId": zod.string().uuid().nullish(),
+  "code": zod.string(),
+  "nameEn": zod.string(),
+  "nameAr": zod.string(),
+  "type": zod.enum(['ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE']),
+  "nature": zod.enum(['DEBIT', 'CREDIT']),
+  "level": zod.number(),
+  "isGroup": zod.boolean(),
+  "isActive": zod.boolean(),
+  "allowDirectEntry": zod.boolean(),
+  "currencyCode": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Soft-delete an account
+ */
+export const DeleteChartOfAccountParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const DeleteChartOfAccountResponse = zod.object({
+  "success": zod.boolean()
+})
+
+
+/**
+ * @summary Toggle account active/inactive status
+ */
+export const ToggleChartOfAccountActiveParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const ToggleChartOfAccountActiveResponse = zod.object({
+  "id": zod.string().uuid(),
+  "organizationId": zod.string().uuid(),
+  "parentId": zod.string().uuid().nullish(),
+  "code": zod.string(),
+  "nameEn": zod.string(),
+  "nameAr": zod.string(),
+  "type": zod.enum(['ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE']),
+  "nature": zod.enum(['DEBIT', 'CREDIT']),
+  "level": zod.number(),
+  "isGroup": zod.boolean(),
+  "isActive": zod.boolean(),
+  "allowDirectEntry": zod.boolean(),
+  "currencyCode": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+

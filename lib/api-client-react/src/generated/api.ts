@@ -21,11 +21,20 @@ import type {
 
 import type {
   ActivityItem,
+  ChartOfAccount,
+  ChartOfAccountDetail,
+  ChartOfAccountNode,
+  CreateChartOfAccountInput,
   DashboardStats,
+  DeleteChartOfAccount200,
+  GetChartOfAccountsTreeParams,
   HealthStatus,
+  ListChartOfAccountsParams,
   Organization,
   OrganizationInput,
   OrganizationUpdate,
+  PaginatedChartOfAccounts,
+  UpdateChartOfAccountInput,
   UserProfile,
   UserProfileUpdate
 } from './api.schemas';
@@ -811,4 +820,530 @@ export function useListUsers<TData = Awaited<ReturnType<typeof listUsers>>, TErr
 
 
 
+
+export const getGetChartOfAccountsTreeUrl = (params?: GetChartOfAccountsTreeParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/chart-of-accounts/tree?${stringifiedParams}` : `/api/chart-of-accounts/tree`
+}
+
+/**
+ * @summary Get chart of accounts as a hierarchical tree
+ */
+export const getChartOfAccountsTree = async (params?: GetChartOfAccountsTreeParams, options?: RequestInit): Promise<ChartOfAccountNode[]> => {
+
+  return customFetch<ChartOfAccountNode[]>(getGetChartOfAccountsTreeUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetChartOfAccountsTreeQueryKey = (params?: GetChartOfAccountsTreeParams,) => {
+    return [
+    `/api/chart-of-accounts/tree`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetChartOfAccountsTreeQueryOptions = <TData = Awaited<ReturnType<typeof getChartOfAccountsTree>>, TError = ErrorType<void>>(params?: GetChartOfAccountsTreeParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getChartOfAccountsTree>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetChartOfAccountsTreeQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getChartOfAccountsTree>>> = ({ signal }) => getChartOfAccountsTree(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getChartOfAccountsTree>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetChartOfAccountsTreeQueryResult = NonNullable<Awaited<ReturnType<typeof getChartOfAccountsTree>>>
+export type GetChartOfAccountsTreeQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get chart of accounts as a hierarchical tree
+ */
+
+export function useGetChartOfAccountsTree<TData = Awaited<ReturnType<typeof getChartOfAccountsTree>>, TError = ErrorType<void>>(
+ params?: GetChartOfAccountsTreeParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getChartOfAccountsTree>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetChartOfAccountsTreeQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListChartOfAccountsUrl = (params?: ListChartOfAccountsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/chart-of-accounts?${stringifiedParams}` : `/api/chart-of-accounts`
+}
+
+/**
+ * @summary List chart of accounts (flat, paginated)
+ */
+export const listChartOfAccounts = async (params?: ListChartOfAccountsParams, options?: RequestInit): Promise<PaginatedChartOfAccounts> => {
+
+  return customFetch<PaginatedChartOfAccounts>(getListChartOfAccountsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListChartOfAccountsQueryKey = (params?: ListChartOfAccountsParams,) => {
+    return [
+    `/api/chart-of-accounts`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListChartOfAccountsQueryOptions = <TData = Awaited<ReturnType<typeof listChartOfAccounts>>, TError = ErrorType<void>>(params?: ListChartOfAccountsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listChartOfAccounts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListChartOfAccountsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listChartOfAccounts>>> = ({ signal }) => listChartOfAccounts(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listChartOfAccounts>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListChartOfAccountsQueryResult = NonNullable<Awaited<ReturnType<typeof listChartOfAccounts>>>
+export type ListChartOfAccountsQueryError = ErrorType<void>
+
+
+/**
+ * @summary List chart of accounts (flat, paginated)
+ */
+
+export function useListChartOfAccounts<TData = Awaited<ReturnType<typeof listChartOfAccounts>>, TError = ErrorType<void>>(
+ params?: ListChartOfAccountsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listChartOfAccounts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListChartOfAccountsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateChartOfAccountUrl = () => {
+
+
+
+
+  return `/api/chart-of-accounts`
+}
+
+/**
+ * @summary Create a new account
+ */
+export const createChartOfAccount = async (createChartOfAccountInput: CreateChartOfAccountInput, options?: RequestInit): Promise<ChartOfAccount> => {
+
+  return customFetch<ChartOfAccount>(getCreateChartOfAccountUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createChartOfAccountInput)
+  }
+);}
+
+
+
+
+export const getCreateChartOfAccountMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createChartOfAccount>>, TError,{data: BodyType<CreateChartOfAccountInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createChartOfAccount>>, TError,{data: BodyType<CreateChartOfAccountInput>}, TContext> => {
+
+const mutationKey = ['createChartOfAccount'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createChartOfAccount>>, {data: BodyType<CreateChartOfAccountInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createChartOfAccount(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateChartOfAccountMutationResult = NonNullable<Awaited<ReturnType<typeof createChartOfAccount>>>
+    export type CreateChartOfAccountMutationBody = BodyType<CreateChartOfAccountInput>
+    export type CreateChartOfAccountMutationError = ErrorType<void>
+
+    /**
+ * @summary Create a new account
+ */
+export const useCreateChartOfAccount = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createChartOfAccount>>, TError,{data: BodyType<CreateChartOfAccountInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createChartOfAccount>>,
+        TError,
+        {data: BodyType<CreateChartOfAccountInput>},
+        TContext
+      > => {
+      return useMutation(getCreateChartOfAccountMutationOptions(options));
+    }
+
+export const getGetChartOfAccountUrl = (id: string,) => {
+
+
+
+
+  return `/api/chart-of-accounts/${id}`
+}
+
+/**
+ * @summary Get account by ID
+ */
+export const getChartOfAccount = async (id: string, options?: RequestInit): Promise<ChartOfAccountDetail> => {
+
+  return customFetch<ChartOfAccountDetail>(getGetChartOfAccountUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetChartOfAccountQueryKey = (id: string,) => {
+    return [
+    `/api/chart-of-accounts/${id}`
+    ] as const;
+    }
+
+
+export const getGetChartOfAccountQueryOptions = <TData = Awaited<ReturnType<typeof getChartOfAccount>>, TError = ErrorType<void>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getChartOfAccount>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetChartOfAccountQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getChartOfAccount>>> = ({ signal }) => getChartOfAccount(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getChartOfAccount>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetChartOfAccountQueryResult = NonNullable<Awaited<ReturnType<typeof getChartOfAccount>>>
+export type GetChartOfAccountQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get account by ID
+ */
+
+export function useGetChartOfAccount<TData = Awaited<ReturnType<typeof getChartOfAccount>>, TError = ErrorType<void>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getChartOfAccount>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetChartOfAccountQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateChartOfAccountUrl = (id: string,) => {
+
+
+
+
+  return `/api/chart-of-accounts/${id}`
+}
+
+/**
+ * @summary Update account
+ */
+export const updateChartOfAccount = async (id: string,
+    updateChartOfAccountInput: UpdateChartOfAccountInput, options?: RequestInit): Promise<ChartOfAccount> => {
+
+  return customFetch<ChartOfAccount>(getUpdateChartOfAccountUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateChartOfAccountInput)
+  }
+);}
+
+
+
+
+export const getUpdateChartOfAccountMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateChartOfAccount>>, TError,{id: string;data: BodyType<UpdateChartOfAccountInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateChartOfAccount>>, TError,{id: string;data: BodyType<UpdateChartOfAccountInput>}, TContext> => {
+
+const mutationKey = ['updateChartOfAccount'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateChartOfAccount>>, {id: string;data: BodyType<UpdateChartOfAccountInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateChartOfAccount(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateChartOfAccountMutationResult = NonNullable<Awaited<ReturnType<typeof updateChartOfAccount>>>
+    export type UpdateChartOfAccountMutationBody = BodyType<UpdateChartOfAccountInput>
+    export type UpdateChartOfAccountMutationError = ErrorType<void>
+
+    /**
+ * @summary Update account
+ */
+export const useUpdateChartOfAccount = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateChartOfAccount>>, TError,{id: string;data: BodyType<UpdateChartOfAccountInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateChartOfAccount>>,
+        TError,
+        {id: string;data: BodyType<UpdateChartOfAccountInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateChartOfAccountMutationOptions(options));
+    }
+
+export const getDeleteChartOfAccountUrl = (id: string,) => {
+
+
+
+
+  return `/api/chart-of-accounts/${id}`
+}
+
+/**
+ * @summary Soft-delete an account
+ */
+export const deleteChartOfAccount = async (id: string, options?: RequestInit): Promise<DeleteChartOfAccount200> => {
+
+  return customFetch<DeleteChartOfAccount200>(getDeleteChartOfAccountUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteChartOfAccountMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteChartOfAccount>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteChartOfAccount>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['deleteChartOfAccount'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteChartOfAccount>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteChartOfAccount(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteChartOfAccountMutationResult = NonNullable<Awaited<ReturnType<typeof deleteChartOfAccount>>>
+
+    export type DeleteChartOfAccountMutationError = ErrorType<void>
+
+    /**
+ * @summary Soft-delete an account
+ */
+export const useDeleteChartOfAccount = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteChartOfAccount>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteChartOfAccount>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getDeleteChartOfAccountMutationOptions(options));
+    }
+
+export const getToggleChartOfAccountActiveUrl = (id: string,) => {
+
+
+
+
+  return `/api/chart-of-accounts/${id}/toggle-active`
+}
+
+/**
+ * @summary Toggle account active/inactive status
+ */
+export const toggleChartOfAccountActive = async (id: string, options?: RequestInit): Promise<ChartOfAccount> => {
+
+  return customFetch<ChartOfAccount>(getToggleChartOfAccountActiveUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getToggleChartOfAccountActiveMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof toggleChartOfAccountActive>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof toggleChartOfAccountActive>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['toggleChartOfAccountActive'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof toggleChartOfAccountActive>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  toggleChartOfAccountActive(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ToggleChartOfAccountActiveMutationResult = NonNullable<Awaited<ReturnType<typeof toggleChartOfAccountActive>>>
+
+    export type ToggleChartOfAccountActiveMutationError = ErrorType<void>
+
+    /**
+ * @summary Toggle account active/inactive status
+ */
+export const useToggleChartOfAccountActive = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof toggleChartOfAccountActive>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof toggleChartOfAccountActive>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getToggleChartOfAccountActiveMutationOptions(options));
+    }
 

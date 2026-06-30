@@ -1,2 +1,3 @@
 - [Prisma database setup](prisma-db-setup.md) — Prisma is the ORM for Mans ERP; lives in lib/prisma; Drizzle tables replaced
 - [API server stack](api-server-stack.md) — Express routes now import from @workspace/prisma, not @workspace/db
+- [API server externalized deps](api-server-externalized-deps.md) — esbuild externalizes @prisma/client and zod; both must be direct deps of @workspace/api-server package.json or Node fails at runtime
