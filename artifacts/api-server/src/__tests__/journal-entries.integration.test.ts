@@ -124,4 +124,40 @@ describe("Journal Entries API — Integration (Sprint 2.1)", () => {
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/Only DRAFT/i);
   });
+
+  it("GET / — Prisma WHERE clause always contains deletedAt: null (soft-deleted records excluded)", async () => {
+    (prisma.journalEntry.findMany as any).mockResolvedValue([]);
+    (prisma.journalEntry.count   as any).mockResolvedValue(0);
+
+    await request(app).get("/api/journal-entries");
+
+    const findManyCall = (prisma.journalEntry.findMany as any).mock.calls[0][0];
+    expect(findManyCall.where).toHaveProperty("deletedAt", null);
+
+    const countCall = (prisma.journalEntry.count as any).mock.calls[0][0];
+    expect(countCall.where).toHaveProperty("deletedAt", null);
+  });
+
+  it("GET /?search=JE-2026 — Prisma OR filter is applied and matching entries are returned", async () => {
+    const matchingEntry = {
+      ...mockEntry,
+      number: "JE-2026-0001",
+      deletedAt: null,
+      createdBy: null,
+      fiscalYear: null,
+      _count: { lines: 0 },
+    };
+    (prisma.journalEntry.findMany as any).mockResolvedValue([matchingEntry]);
+    (prisma.journalEntry.count   as any).mockResolvedValue(1);
+
+    const res = await request(app).get("/api/journal-entries?search=JE-2026");
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toHaveLength(1);
+    expect(res.body.data[0].number).toBe("JE-2026-0001");
+
+    const findManyCall = (prisma.journalEntry.findMany as any).mock.calls[0][0];
+    expect(findManyCall.where.OR).toBeDefined();
+    expect(findManyCall.where.OR[0].number).toMatchObject({ contains: "JE-2026", mode: "insensitive" });
+  });
 });
