@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Mans ERP"
+version = "1.0.0"
+id = "artifacts/mans-erp"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22565
+
+[services.development]
+run = "pnpm --filter @workspace/mans-erp run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/mans-erp", "run", "build" ]
+publicDir = "artifacts/mans-erp/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22565"
+BASE_PATH = "/"
