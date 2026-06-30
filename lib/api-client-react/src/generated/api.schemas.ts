@@ -473,6 +473,8 @@ export interface JournalEntry {
   updatedAt: string;
   createdBy?: JournalEntryCreatedBy;
   fiscalYear?: JournalEntryFiscalYear;
+  /** Included when the entry is returned from POST (create) or PATCH (update). Full line objects with account and costCenter sub-objects are included in GET /journal-entries/{id} (see JournalEntryDetail). */
+  lines?: JournalEntryLine[];
   _count?: _JournalEntryCount;
 }
 
@@ -578,7 +580,10 @@ export interface CreateJournalEntryInput {
   descriptionAr?: string | null;
   /** @nullable */
   reference?: string | null;
-  /** @minItems 2 */
+  /**
+     * Required. Minimum 2 lines enforced. Every journal entry must be double-entry from creation — total debits must equal total credits (within 0.01 tolerance). Each line must reference an active, non-group account that allows direct entries. Base amounts (debitBase, creditBase) are computed server-side from the exchange rate.
+     * @minItems 2
+     */
   lines: JournalEntryLineInput[];
 }
 
@@ -605,6 +610,10 @@ export interface UpdateJournalEntryInput {
   descriptionAr?: string | null;
   /** @nullable */
   reference?: string | null;
+  /**
+     * When provided, atomically replaces all existing lines on the entry (deleteMany + createMany in a single database transaction). Minimum 2 lines required. Balance and account eligibility are re-validated. Omit this field to update header fields only without touching lines.
+     * @minItems 2
+     */
   lines?: JournalEntryLineInput[];
 }
 

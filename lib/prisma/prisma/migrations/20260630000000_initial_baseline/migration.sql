@@ -1,0 +1,5 @@
+-- Baseline migration — applied manually.
+-- The database schema already existed before Prisma Migrate was adopted.
+-- This file is intentionally empty: no DDL is executed.
+-- All models in schema.prisma are already present in the live database.
+-- See: https://pris.ly/d/migrate-baseline

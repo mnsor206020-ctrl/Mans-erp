@@ -8,6 +8,7 @@
 import type { _JournalEntryCount } from './_journalEntryCount';
 import type { JournalEntryCreatedBy } from './journalEntryCreatedBy';
 import type { JournalEntryFiscalYear } from './journalEntryFiscalYear';
+import type { JournalEntryLine } from './journalEntryLine';
 import type { JournalEntryStatus } from './journalEntryStatus';
 import type { JournalEntryType } from './journalEntryType';
 
@@ -46,5 +47,7 @@ export interface JournalEntry {
   updatedAt: Date;
   createdBy?: JournalEntryCreatedBy;
   fiscalYear?: JournalEntryFiscalYear;
+  /** Included when the entry is returned from POST (create) or PATCH (update). Full line objects with account and costCenter sub-objects are included in GET /journal-entries/{id} (see JournalEntryDetail). */
+  lines?: JournalEntryLine[];
   _count?: _JournalEntryCount;
 }

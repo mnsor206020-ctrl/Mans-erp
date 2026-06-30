@@ -1694,6 +1694,14 @@ components:
             id: { type: string }
             nameEn: { type: string }
             nameAr: { type: string }
+        lines:
+          type: array
+          description: >
+            Included when the entry is returned from POST (create) or PATCH (update).
+            Full line objects with account and costCenter sub-objects are included
+            in GET /journal-entries/{id} (see JournalEntryDetail).
+          items:
+            $ref: "#/components/schemas/JournalEntryLine"
         _count:
           type: object
           nullable: true
@@ -1847,13 +1855,17 @@ components:
         lines:
           type: array
           description: >
-            Optional in Sprint 2.1 — a draft may be saved with zero lines.
-            TODO: Sprint 2.2 — restore minItems: 2, add to required, enforce balance.
+            Required. Minimum 2 lines enforced. Every journal entry must be double-entry
+            from creation — total debits must equal total credits (within 0.01 tolerance).
+            Each line must reference an active, non-group account that allows direct entries.
+            Base amounts (debitBase, creditBase) are computed server-side from the exchange rate.
+          minItems: 2
           items:
             $ref: "#/components/schemas/JournalEntryLineInput"
       required:
         - fiscalYearId
         - entryDate
+        - lines
 
     UpdateJournalEntryInput:
       type: object
@@ -1879,6 +1891,12 @@ components:
           type: ["string", "null"]
         lines:
           type: array
+          description: >
+            When provided, atomically replaces all existing lines on the entry
+            (deleteMany + createMany in a single database transaction).
+            Minimum 2 lines required. Balance and account eligibility are re-validated.
+            Omit this field to update header fields only without touching lines.
+          minItems: 2
           items:
             $ref: "#/components/schemas/JournalEntryLineInput"
 

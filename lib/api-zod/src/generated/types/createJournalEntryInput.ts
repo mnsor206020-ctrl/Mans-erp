@@ -21,6 +21,9 @@ export interface CreateJournalEntryInput {
   descriptionAr?: string | null;
   /** @nullable */
   reference?: string | null;
-  /** @minItems 2 */
+  /**
+     * Required. Minimum 2 lines enforced. Every journal entry must be double-entry from creation — total debits must equal total credits (within 0.01 tolerance). Each line must reference an active, non-group account that allows direct entries. Base amounts (debitBase, creditBase) are computed server-side from the exchange rate.
+     * @minItems 2
+     */
   lines: JournalEntryLineInput[];
 }

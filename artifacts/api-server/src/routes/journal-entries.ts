@@ -5,6 +5,8 @@ import {
   formatJENumber,
   createHeaderSchema as createSchema,
   updateHeaderSchema as updateSchema,
+  validateBalance,
+  validateAccounts,
 } from "../lib/journal-entry-utils";
 
 const router = Router();
@@ -56,81 +58,56 @@ async function generateJournalNumber(orgId: string, year: number): Promise<strin
   return formatJENumber(year, maxNum + 1);
 }
 
-function validateBalance(lines: { debit: number | string; credit: number | string }[]) {
-  const totalDebit = lines.reduce((s, l) => s + parseFloat(String(l.debit || 0)), 0);
-  const totalCredit = lines.reduce((s, l) => s + parseFloat(String(l.credit || 0)), 0);
-  const balanced = Math.abs(totalDebit - totalCredit) < 0.01;
-  return { totalDebit, totalCredit, balanced };
-}
-
-async function validateAccounts(lines: { accountId: string }[], orgId: string) {
-  const errors: string[] = [];
-  for (const line of lines) {
-    const account = await prisma.chartOfAccount.findFirst({
-      where: { id: line.accountId, organizationId: orgId, deletedAt: null },
-    });
-    if (!account) { errors.push(`Account ${line.accountId} not found`); continue; }
-    if (!account.isActive) errors.push(`Account ${account.code} (${account.nameEn}) is not active`);
-    if (account.isGroup) errors.push(`Account ${account.code} (${account.nameEn}) is a group account — posting not allowed`);
-    if (!account.allowDirectEntry) errors.push(`Account ${account.code} (${account.nameEn}) does not allow direct entries`);
-  }
-  return errors;
-}
-
-
-// ── LIST ────────────────────────────────────────────────────────────────────
+// ── LIST ──────────────────────────────────────────────────────────────────────
 router.get("/", requireAuth(), async (req, res) => {
   try {
     const { userId } = getAuth(req);
     const user = await getUser(userId!);
     if (!user) return res.status(401).json({ error: "User not found" });
 
-    const { search, status, type, organizationId, fiscalYearId, startDate, endDate, page = "1", pageSize = "20" } = req.query;
-    const pageNum = Math.max(1, parseInt(page as string, 10));
-    const pageSizeNum = Math.min(100, Math.max(1, parseInt(pageSize as string, 10)));
-    const orgId = (organizationId as string) || user.organizationId || undefined;
+    const { search, status, type, fiscalYearId, page = "1", pageSize = "20" } = req.query as Record<string, string>;
+    const pageNum  = Math.max(1, parseInt(page, 10) || 1);
+    const pageSz   = Math.min(100, Math.max(1, parseInt(pageSize, 10) || 20));
+    const skip     = (pageNum - 1) * pageSz;
 
-    const where: any = {
+    const where: Record<string, unknown> = {
+      organizationId: user.organizationId,
       deletedAt: null,
-      ...(orgId ? { organizationId: orgId } : {}),
-      ...(status && status !== "ALL" ? { status } : {}),
-      ...(type ? { type } : {}),
-      ...(fiscalYearId ? { fiscalYearId } : {}),
     };
 
-    if (startDate || endDate) {
-      where.entryDate = {
-        ...(startDate ? { gte: new Date(startDate as string) } : {}),
-        ...(endDate ? { lte: new Date(endDate as string) } : {}),
-      };
-    }
+    if (status)      where.status      = status;
+    if (type)        where.type        = type;
+    if (fiscalYearId) where.fiscalYearId = fiscalYearId;
     if (search) {
       where.OR = [
-        { number: { contains: search as string, mode: "insensitive" } },
-        { descriptionEn: { contains: search as string, mode: "insensitive" } },
-        { descriptionAr: { contains: search as string, mode: "insensitive" } },
-        { reference: { contains: search as string, mode: "insensitive" } },
+        { number:      { contains: search, mode: "insensitive" } },
+        { descriptionEn: { contains: search, mode: "insensitive" } },
+        { descriptionAr: { contains: search, mode: "insensitive" } },
+        { reference:   { contains: search, mode: "insensitive" } },
       ];
     }
 
-    const [total, entries] = await Promise.all([
-      prisma.journalEntry.count({ where }),
+    const [data, total] = await Promise.all([
       prisma.journalEntry.findMany({
         where,
+        skip,
+        take: pageSz,
+        orderBy: [{ entryDate: "desc" }, { number: "desc" }],
         include: {
-          createdBy: { select: { id: true, firstNameEn: true, lastNameEn: true, email: true } },
+          createdBy:  { select: { id: true, firstNameEn: true, lastNameEn: true, email: true } },
           fiscalYear: { select: { id: true, nameEn: true, nameAr: true } },
           _count: { select: { lines: true } },
         },
-        orderBy: { entryDate: "desc" },
-        skip: (pageNum - 1) * pageSizeNum,
-        take: pageSizeNum,
       }),
+      prisma.journalEntry.count({ where }),
     ]);
 
     res.json({
-      data: entries,
-      meta: { page: pageNum, pageSize: pageSizeNum, total, totalPages: Math.ceil(total / pageSizeNum) },
+      data,
+      total,
+      page:     pageNum,
+      pageSize: pageSz,
+      pageCount: Math.ceil(total / pageSz),
     });
   } catch (err) {
     console.error(err);
@@ -198,19 +175,15 @@ router.post("/", requireAuth(), async (req, res) => {
     if (!fiscalYear) return res.status(400).json({ error: "Fiscal year not found" });
     if (fiscalYear.status !== "OPEN") return res.status(400).json({ error: "Fiscal year is not open" });
 
-    // TODO: Sprint 2.2 — remove this guard and enforce min 2 lines, balance,
-    // and account eligibility unconditionally on every create.
-    const lines = data.lines ?? [];
-    let totalDebit = 0;
-    let totalCredit = 0;
-    if (lines.length > 0) {
-      const { totalDebit: dr, totalCredit: cr, balanced } = validateBalance(lines);
-      totalDebit = dr;
-      totalCredit = cr;
-      if (!balanced) return res.status(400).json({ error: `Entry is not balanced — Debit: ${totalDebit.toFixed(4)}, Credit: ${totalCredit.toFixed(4)}` });
-      const accountErrors = await validateAccounts(lines, orgId);
-      if (accountErrors.length > 0) return res.status(400).json({ error: accountErrors.join("; ") });
+    const lines = data.lines;
+    const { totalDebit, totalCredit, balanced } = validateBalance(lines);
+    if (!balanced) {
+      return res.status(400).json({
+        error: `Entry is not balanced — Debit: ${totalDebit.toFixed(4)}, Credit: ${totalCredit.toFixed(4)}`,
+      });
     }
+    const accountErrors = await validateAccounts(lines, orgId, prisma);
+    if (accountErrors.length > 0) return res.status(400).json({ error: accountErrors.join("; ") });
 
     const entryYear = new Date(data.entryDate).getFullYear();
     const number = await generateJournalNumber(orgId, entryYear);
@@ -232,27 +205,33 @@ router.post("/", requireAuth(), async (req, res) => {
         descriptionAr:   data.descriptionAr || null,
         reference:       data.reference || null,
         createdByUserId: user.id,
-        ...(lines.length > 0 ? {
-          lines: {
-            create: lines.map(l => ({
-              accountId:     l.accountId,
-              costCenterId:  l.costCenterId || null,
-              lineNumber:    l.lineNumber,
-              descriptionEn: l.descriptionEn || null,
-              descriptionAr: l.descriptionAr || null,
-              debit:         l.debit,
-              credit:        l.credit,
-              debitBase:     l.debit * exchangeRate,
-              creditBase:    l.credit * exchangeRate,
-              reference:     l.reference || null,
-            })),
-          },
-        } : {}),
+        lines: {
+          create: lines.map((l) => ({
+            accountId:     l.accountId,
+            costCenterId:  l.costCenterId || null,
+            lineNumber:    l.lineNumber,
+            descriptionEn: l.descriptionEn || null,
+            descriptionAr: l.descriptionAr || null,
+            debit:         l.debit,
+            credit:        l.credit,
+            debitBase:     l.debit * exchangeRate,
+            creditBase:    l.credit * exchangeRate,
+            reference:     l.reference || null,
+          })),
+        },
       },
       include: { lines: true },
     });
 
-    await writeAuditLog({ userId: user.id, userEmail: user.email, action: "CREATE", entityType: "journal_entry", entityId: entry.id, newValues: { number, status: "DRAFT" }, description: `Created journal entry ${number}` });
+    await writeAuditLog({
+      userId:     user.id,
+      userEmail:  user.email,
+      action:     "CREATE",
+      entityType: "journal_entry",
+      entityId:   entry.id,
+      newValues:  { number, status: "DRAFT", lineCount: lines.length },
+      description: `Created journal entry ${number} with ${lines.length} lines`,
+    });
 
     res.status(201).json(entry);
   } catch (err) {
@@ -281,48 +260,68 @@ router.patch("/:id", requireAuth(), async (req, res) => {
     let newTotals: { totalDebit: number; totalCredit: number } | undefined;
 
     if (data.lines) {
+      if (data.lines.length < 2) {
+        return res.status(400).json({ error: "At least 2 lines required" });
+      }
+
       const { totalDebit, totalCredit, balanced } = validateBalance(data.lines);
-      if (!balanced) return res.status(400).json({ error: `Entry is not balanced — Dr: ${totalDebit.toFixed(4)}, Cr: ${totalCredit.toFixed(4)}` });
-      const accountErrors = await validateAccounts(data.lines, existing.organizationId);
+      if (!balanced) {
+        return res.status(400).json({
+          error: `Entry is not balanced — Dr: ${totalDebit.toFixed(4)}, Cr: ${totalCredit.toFixed(4)}`,
+        });
+      }
+      const accountErrors = await validateAccounts(data.lines, existing.organizationId, prisma);
       if (accountErrors.length > 0) return res.status(400).json({ error: accountErrors.join("; ") });
+
       const exchangeRate = data.exchangeRate || parseFloat(existing.exchangeRate.toString()) || 1;
 
-      await prisma.journalEntryLine.deleteMany({ where: { journalEntryId: req.params.id } });
-      await prisma.journalEntryLine.createMany({
-        data: data.lines.map(l => ({
-          journalEntryId: req.params.id,
-          accountId:      l.accountId,
-          costCenterId:   l.costCenterId || null,
-          lineNumber:     l.lineNumber,
-          descriptionEn:  l.descriptionEn || null,
-          descriptionAr:  l.descriptionAr || null,
-          debit:          l.debit,
-          credit:         l.credit,
-          debitBase:      l.debit * exchangeRate,
-          creditBase:     l.credit * exchangeRate,
-          reference:      l.reference || null,
-        })),
+      // Atomic replace: delete all existing lines then create the new set in one transaction.
+      await prisma.$transaction(async (tx) => {
+        await tx.journalEntryLine.deleteMany({ where: { journalEntryId: req.params.id } });
+        await tx.journalEntryLine.createMany({
+          data: data.lines!.map((l) => ({
+            journalEntryId: req.params.id,
+            accountId:      l.accountId,
+            costCenterId:   l.costCenterId || null,
+            lineNumber:     l.lineNumber,
+            descriptionEn:  l.descriptionEn || null,
+            descriptionAr:  l.descriptionAr || null,
+            debit:          l.debit,
+            credit:         l.credit,
+            debitBase:      l.debit * exchangeRate,
+            creditBase:     l.credit * exchangeRate,
+            reference:      l.reference || null,
+          })),
+        });
       });
+
       newTotals = { totalDebit, totalCredit };
     }
 
     const updated = await prisma.journalEntry.update({
       where: { id: req.params.id },
       data: {
-        ...(data.fiscalYearId ? { fiscalYearId: data.fiscalYearId } : {}),
-        ...(data.entryDate ? { entryDate: new Date(data.entryDate) } : {}),
-        ...(data.type ? { type: data.type } : {}),
-        ...(data.currencyCode ? { currencyCode: data.currencyCode } : {}),
-        ...(data.exchangeRate ? { exchangeRate: data.exchangeRate } : {}),
+        ...(data.fiscalYearId  ? { fiscalYearId: data.fiscalYearId }     : {}),
+        ...(data.entryDate     ? { entryDate:    new Date(data.entryDate) } : {}),
+        ...(data.type          ? { type:         data.type }               : {}),
+        ...(data.currencyCode  ? { currencyCode: data.currencyCode }       : {}),
+        ...(data.exchangeRate  ? { exchangeRate: data.exchangeRate }       : {}),
         ...(data.descriptionEn !== undefined ? { descriptionEn: data.descriptionEn } : {}),
         ...(data.descriptionAr !== undefined ? { descriptionAr: data.descriptionAr } : {}),
-        ...(data.reference !== undefined ? { reference: data.reference } : {}),
+        ...(data.reference     !== undefined ? { reference:     data.reference }     : {}),
         ...(newTotals ? { totalDebit: newTotals.totalDebit, totalCredit: newTotals.totalCredit } : {}),
       },
       include: { lines: { orderBy: { lineNumber: "asc" } } },
     });
 
-    await writeAuditLog({ userId: user.id, userEmail: user.email, action: "UPDATE", entityType: "journal_entry", entityId: req.params.id, description: `Updated journal entry ${existing.number}` });
+    await writeAuditLog({
+      userId:     user.id,
+      userEmail:  user.email,
+      action:     "UPDATE",
+      entityType: "journal_entry",
+      entityId:   req.params.id,
+      description: `Updated journal entry ${existing.number}`,
+    });
 
     res.json(updated);
   } catch (err) {
@@ -343,7 +342,14 @@ router.delete("/:id", requireAuth(), async (req, res) => {
     if (entry.status !== "DRAFT") return res.status(400).json({ error: "Only DRAFT journal entries can be deleted" });
 
     await prisma.journalEntry.update({ where: { id: req.params.id }, data: { deletedAt: new Date() } });
-    await writeAuditLog({ userId: user.id, userEmail: user.email, action: "DELETE", entityType: "journal_entry", entityId: req.params.id, description: `Deleted draft ${entry.number}` });
+    await writeAuditLog({
+      userId:     user.id,
+      userEmail:  user.email,
+      action:     "DELETE",
+      entityType: "journal_entry",
+      entityId:   req.params.id,
+      description: `Deleted draft ${entry.number}`,
+    });
 
     res.json({ success: true });
   } catch (err) {
@@ -367,14 +373,21 @@ router.post("/:id/submit", requireAuth(), async (req, res) => {
     if (entry.status !== "DRAFT") return res.status(400).json({ error: `Cannot submit a ${entry.status} entry` });
     if (entry.lines.length < 2) return res.status(400).json({ error: "At least 2 lines required" });
 
-    const { balanced } = validateBalance(entry.lines.map(l => ({ debit: l.debit, credit: l.credit })));
+    const { balanced } = validateBalance(entry.lines.map((l) => ({ debit: l.debit, credit: l.credit })));
     if (!balanced) return res.status(400).json({ error: "Entry is not balanced" });
 
     const updated = await prisma.journalEntry.update({
       where: { id: req.params.id },
       data: { status: "UNDER_REVIEW", submittedAt: new Date(), submittedByUserId: user.id },
     });
-    await writeApprovalRecord({ journalEntryId: req.params.id, userId: user.id, action: "SUBMIT", comment: req.body.comment, fromStatus: "DRAFT", toStatus: "UNDER_REVIEW" });
+    await writeApprovalRecord({
+      journalEntryId: req.params.id,
+      userId: user.id,
+      action: "SUBMIT",
+      comment: req.body.comment,
+      fromStatus: "DRAFT",
+      toStatus: "UNDER_REVIEW",
+    });
 
     res.json(updated);
   } catch (err) {
@@ -398,8 +411,22 @@ router.post("/:id/approve", requireAuth(), async (req, res) => {
       where: { id: req.params.id },
       data: { status: "APPROVED", approvedAt: new Date(), approvedByUserId: user.id },
     });
-    await writeApprovalRecord({ journalEntryId: req.params.id, userId: user.id, action: "APPROVE", comment: req.body.comment, fromStatus: "UNDER_REVIEW", toStatus: "APPROVED" });
-    await writeAuditLog({ userId: user.id, userEmail: user.email, action: "APPROVE", entityType: "journal_entry", entityId: req.params.id, description: `Approved ${entry.number}` });
+    await writeApprovalRecord({
+      journalEntryId: req.params.id,
+      userId: user.id,
+      action: "APPROVE",
+      comment: req.body.comment,
+      fromStatus: "UNDER_REVIEW",
+      toStatus: "APPROVED",
+    });
+    await writeAuditLog({
+      userId:     user.id,
+      userEmail:  user.email,
+      action:     "APPROVE",
+      entityType: "journal_entry",
+      entityId:   req.params.id,
+      description: `Approved ${entry.number}`,
+    });
 
     res.json(updated);
   } catch (err) {
@@ -417,15 +444,37 @@ router.post("/:id/reject", requireAuth(), async (req, res) => {
 
     const entry = await prisma.journalEntry.findFirst({ where: { id: req.params.id, deletedAt: null } });
     if (!entry) return res.status(404).json({ error: "Journal entry not found" });
-    if (!["UNDER_REVIEW", "APPROVED"].includes(entry.status)) return res.status(400).json({ error: `Cannot reject a ${entry.status} entry` });
+    if (!["UNDER_REVIEW", "APPROVED"].includes(entry.status)) {
+      return res.status(400).json({ error: `Cannot reject a ${entry.status} entry` });
+    }
 
     const fromStatus = entry.status;
     const updated = await prisma.journalEntry.update({
       where: { id: req.params.id },
-      data: { status: "DRAFT", submittedAt: null, submittedByUserId: null, approvedAt: null, approvedByUserId: null },
+      data: {
+        status: "DRAFT",
+        submittedAt: null,
+        submittedByUserId: null,
+        approvedAt: null,
+        approvedByUserId: null,
+      },
     });
-    await writeApprovalRecord({ journalEntryId: req.params.id, userId: user.id, action: "REJECT", comment: req.body.comment, fromStatus, toStatus: "DRAFT" });
-    await writeAuditLog({ userId: user.id, userEmail: user.email, action: "REJECT", entityType: "journal_entry", entityId: req.params.id, description: `Rejected ${entry.number}: ${req.body.comment || ""}` });
+    await writeApprovalRecord({
+      journalEntryId: req.params.id,
+      userId: user.id,
+      action: "REJECT",
+      comment: req.body.comment,
+      fromStatus,
+      toStatus: "DRAFT",
+    });
+    await writeAuditLog({
+      userId:     user.id,
+      userEmail:  user.email,
+      action:     "REJECT",
+      entityType: "journal_entry",
+      entityId:   req.params.id,
+      description: `Rejected ${entry.number}: ${req.body.comment || ""}`,
+    });
 
     res.json(updated);
   } catch (err) {
@@ -449,24 +498,45 @@ router.post("/:id/post", requireAuth(), async (req, res) => {
       },
     });
     if (!entry) return res.status(404).json({ error: "Journal entry not found" });
-    if (entry.status !== "APPROVED") return res.status(400).json({ error: `Cannot post a ${entry.status} entry — must be APPROVED first` });
+    if (entry.status !== "APPROVED") {
+      return res.status(400).json({ error: `Cannot post a ${entry.status} entry — must be APPROVED first` });
+    }
     if (entry.lines.length < 2) return res.status(400).json({ error: "At least 2 lines required" });
 
-    const { balanced } = validateBalance(entry.lines.map(l => ({ debit: l.debit, credit: l.credit })));
+    const { balanced } = validateBalance(entry.lines.map((l) => ({ debit: l.debit, credit: l.credit })));
     if (!balanced) return res.status(400).json({ error: "Entry is not balanced" });
-    if ((entry.fiscalYear as any).status !== "OPEN") return res.status(400).json({ error: "Fiscal year is no longer open" });
+    if ((entry.fiscalYear as any).status !== "OPEN") {
+      return res.status(400).json({ error: "Fiscal year is no longer open" });
+    }
 
     for (const line of entry.lines) {
-      if (!line.account.isActive) return res.status(400).json({ error: `Account ${line.account.code} is no longer active` });
-      if (line.account.isGroup) return res.status(400).json({ error: `Account ${line.account.code} is a group account` });
+      if (!line.account.isActive) {
+        return res.status(400).json({ error: `Account ${line.account.code} is no longer active` });
+      }
+      if (line.account.isGroup) {
+        return res.status(400).json({ error: `Account ${line.account.code} is a group account` });
+      }
     }
 
     const updated = await prisma.journalEntry.update({
       where: { id: req.params.id },
       data: { status: "POSTED", postedAt: new Date(), postedByUserId: user.id },
     });
-    await writeApprovalRecord({ journalEntryId: req.params.id, userId: user.id, action: "POST", fromStatus: "APPROVED", toStatus: "POSTED" });
-    await writeAuditLog({ userId: user.id, userEmail: user.email, action: "POST", entityType: "journal_entry", entityId: req.params.id, description: `Posted ${entry.number}` });
+    await writeApprovalRecord({
+      journalEntryId: req.params.id,
+      userId: user.id,
+      action: "POST",
+      fromStatus: "APPROVED",
+      toStatus: "POSTED",
+    });
+    await writeAuditLog({
+      userId:     user.id,
+      userEmail:  user.email,
+      action:     "POST",
+      entityType: "journal_entry",
+      entityId:   req.params.id,
+      description: `Posted ${entry.number}`,
+    });
 
     res.json(updated);
   } catch (err) {
@@ -490,7 +560,13 @@ router.post("/:id/lock", requireAuth(), async (req, res) => {
       where: { id: req.params.id },
       data: { status: "LOCKED" },
     });
-    await writeApprovalRecord({ journalEntryId: req.params.id, userId: user.id, action: "LOCK", fromStatus: "POSTED", toStatus: "LOCKED" });
+    await writeApprovalRecord({
+      journalEntryId: req.params.id,
+      userId: user.id,
+      action: "LOCK",
+      fromStatus: "POSTED",
+      toStatus: "LOCKED",
+    });
 
     res.json(updated);
   } catch (err) {
@@ -511,8 +587,12 @@ router.post("/:id/reverse", requireAuth(), async (req, res) => {
       include: { lines: true },
     });
     if (!entry) return res.status(404).json({ error: "Journal entry not found" });
-    if (!["POSTED", "LOCKED"].includes(entry.status)) return res.status(400).json({ error: "Only POSTED or LOCKED entries can be reversed" });
-    if (entry.reversedByEntryId) return res.status(400).json({ error: "This entry has already been reversed" });
+    if (!["POSTED", "LOCKED"].includes(entry.status)) {
+      return res.status(400).json({ error: "Only POSTED or LOCKED entries can be reversed" });
+    }
+    if (entry.reversedByEntryId) {
+      return res.status(400).json({ error: "This entry has already been reversed" });
+    }
 
     const { reverseDate, reason } = req.body;
     const reversalDate = reverseDate ? new Date(reverseDate) : new Date();
@@ -522,34 +602,34 @@ router.post("/:id/reverse", requireAuth(), async (req, res) => {
 
     const reversal = await prisma.journalEntry.create({
       data: {
-        organizationId:   entry.organizationId,
-        fiscalYearId:     entry.fiscalYearId,
-        number:           reversalNumber,
-        entryDate:        reversalDate,
-        type:             "ADJUSTMENT",
-        status:           "DRAFT",
-        currencyCode:     entry.currencyCode,
-        exchangeRate:     entry.exchangeRate,
-        totalDebit:       entry.totalCredit,
-        totalCredit:      entry.totalDebit,
-        descriptionEn:    `Reversal of ${entry.number}${reason ? `: ${reason}` : ""}`,
-        descriptionAr:    `عكس قيد ${entry.number}${reason ? `: ${reason}` : ""}`,
-        reference:        entry.number,
-        createdByUserId:  user.id,
-        isReversal:       true,
+        organizationId:    entry.organizationId,
+        fiscalYearId:      entry.fiscalYearId,
+        number:            reversalNumber,
+        entryDate:         reversalDate,
+        type:              "ADJUSTMENT",
+        status:            "DRAFT",
+        currencyCode:      entry.currencyCode,
+        exchangeRate:      entry.exchangeRate,
+        totalDebit:        entry.totalCredit,
+        totalCredit:       entry.totalDebit,
+        descriptionEn:     `Reversal of ${entry.number}${reason ? `: ${reason}` : ""}`,
+        descriptionAr:     `عكس قيد ${entry.number}${reason ? `: ${reason}` : ""}`,
+        reference:         entry.number,
+        createdByUserId:   user.id,
+        isReversal:        true,
         reversalOfEntryId: entry.id,
         lines: {
-          create: entry.lines.map(l => ({
-            accountId:    l.accountId,
-            costCenterId: l.costCenterId,
-            lineNumber:   l.lineNumber,
+          create: entry.lines.map((l) => ({
+            accountId:     l.accountId,
+            costCenterId:  l.costCenterId,
+            lineNumber:    l.lineNumber,
             descriptionEn: l.descriptionEn,
             descriptionAr: l.descriptionAr,
-            debit:        l.credit,
-            credit:       l.debit,
-            debitBase:    parseFloat(l.credit.toString()) * exchangeRate,
-            creditBase:   parseFloat(l.debit.toString()) * exchangeRate,
-            reference:    l.reference,
+            debit:         l.credit,
+            credit:        l.debit,
+            debitBase:     parseFloat(l.credit.toString()) * exchangeRate,
+            creditBase:    parseFloat(l.debit.toString())  * exchangeRate,
+            reference:     l.reference,
           })),
         },
       },
@@ -560,8 +640,22 @@ router.post("/:id/reverse", requireAuth(), async (req, res) => {
       data: { status: "REVERSED", reversedByEntryId: reversal.id },
     });
 
-    await writeApprovalRecord({ journalEntryId: req.params.id, userId: user.id, action: "REVERSE", comment: reason, fromStatus: entry.status, toStatus: "REVERSED" });
-    await writeAuditLog({ userId: user.id, userEmail: user.email, action: "VOID", entityType: "journal_entry", entityId: req.params.id, description: `Reversed ${entry.number} → ${reversalNumber}` });
+    await writeApprovalRecord({
+      journalEntryId: req.params.id,
+      userId: user.id,
+      action: "REVERSE",
+      comment: reason,
+      fromStatus: entry.status,
+      toStatus: "REVERSED",
+    });
+    await writeAuditLog({
+      userId:     user.id,
+      userEmail:  user.email,
+      action:     "VOID",
+      entityType: "journal_entry",
+      entityId:   req.params.id,
+      description: `Reversed ${entry.number} → ${reversalNumber}`,
+    });
 
     res.json(reversal);
   } catch (err) {
@@ -604,17 +698,17 @@ router.post("/:id/copy", requireAuth(), async (req, res) => {
         reference:       entry.reference,
         createdByUserId: user.id,
         lines: {
-          create: entry.lines.map(l => ({
-            accountId:    l.accountId,
-            costCenterId: l.costCenterId,
-            lineNumber:   l.lineNumber,
+          create: entry.lines.map((l) => ({
+            accountId:     l.accountId,
+            costCenterId:  l.costCenterId,
+            lineNumber:    l.lineNumber,
             descriptionEn: l.descriptionEn,
             descriptionAr: l.descriptionAr,
-            debit:        l.debit,
-            credit:       l.credit,
-            debitBase:    parseFloat(l.debit.toString()) * exchangeRate,
-            creditBase:   parseFloat(l.credit.toString()) * exchangeRate,
-            reference:    l.reference,
+            debit:         l.debit,
+            credit:        l.credit,
+            debitBase:     parseFloat(l.debit.toString())  * exchangeRate,
+            creditBase:    parseFloat(l.credit.toString()) * exchangeRate,
+            reference:     l.reference,
           })),
         },
       },
@@ -645,8 +739,22 @@ router.post("/:id/void", requireAuth(), async (req, res) => {
       where: { id: req.params.id },
       data: { status: "VOIDED", voidedAt: new Date(), voidedByUserId: user.id, voidReason: reason },
     });
-    await writeApprovalRecord({ journalEntryId: req.params.id, userId: user.id, action: "VOID", comment: reason, fromStatus: "POSTED", toStatus: "VOIDED" });
-    await writeAuditLog({ userId: user.id, userEmail: user.email, action: "VOID", entityType: "journal_entry", entityId: req.params.id, description: `Voided ${entry.number}: ${reason}` });
+    await writeApprovalRecord({
+      journalEntryId: req.params.id,
+      userId: user.id,
+      action: "VOID",
+      comment: reason,
+      fromStatus: "POSTED",
+      toStatus: "VOIDED",
+    });
+    await writeAuditLog({
+      userId:     user.id,
+      userEmail:  user.email,
+      action:     "VOID",
+      entityType: "journal_entry",
+      entityId:   req.params.id,
+      description: `Voided ${entry.number}: ${reason}`,
+    });
 
     res.json(updated);
   } catch (err) {

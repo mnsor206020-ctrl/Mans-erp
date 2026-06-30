@@ -20,5 +20,9 @@ export interface UpdateJournalEntryInput {
   descriptionAr?: string | null;
   /** @nullable */
   reference?: string | null;
+  /**
+     * When provided, atomically replaces all existing lines on the entry (deleteMany + createMany in a single database transaction). Minimum 2 lines required. Balance and account eligibility are re-validated. Omit this field to update header fields only without touching lines.
+     * @minItems 2
+     */
   lines?: JournalEntryLineInput[];
 }

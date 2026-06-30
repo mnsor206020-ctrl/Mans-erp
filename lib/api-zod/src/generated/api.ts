@@ -587,6 +587,34 @@ export const ListJournalEntriesResponse = zod.object({
   "nameEn": zod.string().optional(),
   "nameAr": zod.string().optional()
 }).nullish(),
+  "lines": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "journalEntryId": zod.string().uuid(),
+  "accountId": zod.string().uuid(),
+  "costCenterId": zod.string().uuid().nullish(),
+  "lineNumber": zod.number(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "debit": zod.number(),
+  "credit": zod.number(),
+  "debitBase": zod.number(),
+  "creditBase": zod.number(),
+  "reference": zod.string().nullish(),
+  "account": zod.object({
+  "id": zod.string().optional(),
+  "code": zod.string().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional(),
+  "type": zod.string().optional(),
+  "nature": zod.string().optional()
+}).nullish(),
+  "costCenter": zod.object({
+  "id": zod.string().optional(),
+  "code": zod.string().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional()
+}).nullish()
+})).optional().describe('Included when the entry is returned from POST (create) or PATCH (update). Full line objects with account and costCenter sub-objects are included in GET \/journal-entries\/{id} (see JournalEntryDetail).\n'),
   "_count": zod.object({
   "lines": zod.number().optional()
 }).nullish()
@@ -635,7 +663,7 @@ export const CreateJournalEntryBody = zod.object({
   "debit": zod.number().min(createJournalEntryBodyLinesItemDebitMin).default(createJournalEntryBodyLinesItemDebitDefault),
   "credit": zod.number().min(createJournalEntryBodyLinesItemCreditMin).default(createJournalEntryBodyLinesItemCreditDefault),
   "reference": zod.string().nullish()
-})).min(createJournalEntryBodyLinesMin)
+})).min(createJournalEntryBodyLinesMin).describe('Required. Minimum 2 lines enforced. Every journal entry must be double-entry from creation — total debits must equal total credits (within 0.01 tolerance). Each line must reference an active, non-group account that allows direct entries. Base amounts (debitBase, creditBase) are computed server-side from the exchange rate.\n')
 })
 
 export const CreateJournalEntryResponse = zod.object({
@@ -673,6 +701,34 @@ export const CreateJournalEntryResponse = zod.object({
   "nameEn": zod.string().optional(),
   "nameAr": zod.string().optional()
 }).nullish(),
+  "lines": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "journalEntryId": zod.string().uuid(),
+  "accountId": zod.string().uuid(),
+  "costCenterId": zod.string().uuid().nullish(),
+  "lineNumber": zod.number(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "debit": zod.number(),
+  "credit": zod.number(),
+  "debitBase": zod.number(),
+  "creditBase": zod.number(),
+  "reference": zod.string().nullish(),
+  "account": zod.object({
+  "id": zod.string().optional(),
+  "code": zod.string().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional(),
+  "type": zod.string().optional(),
+  "nature": zod.string().optional()
+}).nullish(),
+  "costCenter": zod.object({
+  "id": zod.string().optional(),
+  "code": zod.string().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional()
+}).nullish()
+})).optional().describe('Included when the entry is returned from POST (create) or PATCH (update). Full line objects with account and costCenter sub-objects are included in GET \/journal-entries\/{id} (see JournalEntryDetail).\n'),
   "_count": zod.object({
   "lines": zod.number().optional()
 }).nullish()
@@ -721,6 +777,34 @@ export const GetJournalEntryResponse = zod.object({
   "nameEn": zod.string().optional(),
   "nameAr": zod.string().optional()
 }).nullish(),
+  "lines": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "journalEntryId": zod.string().uuid(),
+  "accountId": zod.string().uuid(),
+  "costCenterId": zod.string().uuid().nullish(),
+  "lineNumber": zod.number(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "debit": zod.number(),
+  "credit": zod.number(),
+  "debitBase": zod.number(),
+  "creditBase": zod.number(),
+  "reference": zod.string().nullish(),
+  "account": zod.object({
+  "id": zod.string().optional(),
+  "code": zod.string().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional(),
+  "type": zod.string().optional(),
+  "nature": zod.string().optional()
+}).nullish(),
+  "costCenter": zod.object({
+  "id": zod.string().optional(),
+  "code": zod.string().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional()
+}).nullish()
+})).optional().describe('Included when the entry is returned from POST (create) or PATCH (update). Full line objects with account and costCenter sub-objects are included in GET \/journal-entries\/{id} (see JournalEntryDetail).\n'),
   "_count": zod.object({
   "lines": zod.number().optional()
 }).nullish()
@@ -813,6 +897,8 @@ export const updateJournalEntryBodyLinesItemDebitMin = 0;
 export const updateJournalEntryBodyLinesItemCreditDefault = 0;
 export const updateJournalEntryBodyLinesItemCreditMin = 0;
 
+export const updateJournalEntryBodyLinesMin = 2;
+
 
 
 export const UpdateJournalEntryBody = zod.object({
@@ -833,7 +919,7 @@ export const UpdateJournalEntryBody = zod.object({
   "debit": zod.number().min(updateJournalEntryBodyLinesItemDebitMin).default(updateJournalEntryBodyLinesItemDebitDefault),
   "credit": zod.number().min(updateJournalEntryBodyLinesItemCreditMin).default(updateJournalEntryBodyLinesItemCreditDefault),
   "reference": zod.string().nullish()
-})).optional()
+})).min(updateJournalEntryBodyLinesMin).optional().describe('When provided, atomically replaces all existing lines on the entry (deleteMany + createMany in a single database transaction). Minimum 2 lines required. Balance and account eligibility are re-validated. Omit this field to update header fields only without touching lines.\n')
 })
 
 export const UpdateJournalEntryResponse = zod.object({
@@ -871,6 +957,34 @@ export const UpdateJournalEntryResponse = zod.object({
   "nameEn": zod.string().optional(),
   "nameAr": zod.string().optional()
 }).nullish(),
+  "lines": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "journalEntryId": zod.string().uuid(),
+  "accountId": zod.string().uuid(),
+  "costCenterId": zod.string().uuid().nullish(),
+  "lineNumber": zod.number(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "debit": zod.number(),
+  "credit": zod.number(),
+  "debitBase": zod.number(),
+  "creditBase": zod.number(),
+  "reference": zod.string().nullish(),
+  "account": zod.object({
+  "id": zod.string().optional(),
+  "code": zod.string().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional(),
+  "type": zod.string().optional(),
+  "nature": zod.string().optional()
+}).nullish(),
+  "costCenter": zod.object({
+  "id": zod.string().optional(),
+  "code": zod.string().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional()
+}).nullish()
+})).optional().describe('Included when the entry is returned from POST (create) or PATCH (update). Full line objects with account and costCenter sub-objects are included in GET \/journal-entries\/{id} (see JournalEntryDetail).\n'),
   "_count": zod.object({
   "lines": zod.number().optional()
 }).nullish()
@@ -935,6 +1049,34 @@ export const SubmitJournalEntryResponse = zod.object({
   "nameEn": zod.string().optional(),
   "nameAr": zod.string().optional()
 }).nullish(),
+  "lines": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "journalEntryId": zod.string().uuid(),
+  "accountId": zod.string().uuid(),
+  "costCenterId": zod.string().uuid().nullish(),
+  "lineNumber": zod.number(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "debit": zod.number(),
+  "credit": zod.number(),
+  "debitBase": zod.number(),
+  "creditBase": zod.number(),
+  "reference": zod.string().nullish(),
+  "account": zod.object({
+  "id": zod.string().optional(),
+  "code": zod.string().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional(),
+  "type": zod.string().optional(),
+  "nature": zod.string().optional()
+}).nullish(),
+  "costCenter": zod.object({
+  "id": zod.string().optional(),
+  "code": zod.string().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional()
+}).nullish()
+})).optional().describe('Included when the entry is returned from POST (create) or PATCH (update). Full line objects with account and costCenter sub-objects are included in GET \/journal-entries\/{id} (see JournalEntryDetail).\n'),
   "_count": zod.object({
   "lines": zod.number().optional()
 }).nullish()
@@ -987,6 +1129,34 @@ export const ApproveJournalEntryResponse = zod.object({
   "nameEn": zod.string().optional(),
   "nameAr": zod.string().optional()
 }).nullish(),
+  "lines": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "journalEntryId": zod.string().uuid(),
+  "accountId": zod.string().uuid(),
+  "costCenterId": zod.string().uuid().nullish(),
+  "lineNumber": zod.number(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "debit": zod.number(),
+  "credit": zod.number(),
+  "debitBase": zod.number(),
+  "creditBase": zod.number(),
+  "reference": zod.string().nullish(),
+  "account": zod.object({
+  "id": zod.string().optional(),
+  "code": zod.string().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional(),
+  "type": zod.string().optional(),
+  "nature": zod.string().optional()
+}).nullish(),
+  "costCenter": zod.object({
+  "id": zod.string().optional(),
+  "code": zod.string().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional()
+}).nullish()
+})).optional().describe('Included when the entry is returned from POST (create) or PATCH (update). Full line objects with account and costCenter sub-objects are included in GET \/journal-entries\/{id} (see JournalEntryDetail).\n'),
   "_count": zod.object({
   "lines": zod.number().optional()
 }).nullish()
@@ -1039,6 +1209,34 @@ export const RejectJournalEntryResponse = zod.object({
   "nameEn": zod.string().optional(),
   "nameAr": zod.string().optional()
 }).nullish(),
+  "lines": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "journalEntryId": zod.string().uuid(),
+  "accountId": zod.string().uuid(),
+  "costCenterId": zod.string().uuid().nullish(),
+  "lineNumber": zod.number(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "debit": zod.number(),
+  "credit": zod.number(),
+  "debitBase": zod.number(),
+  "creditBase": zod.number(),
+  "reference": zod.string().nullish(),
+  "account": zod.object({
+  "id": zod.string().optional(),
+  "code": zod.string().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional(),
+  "type": zod.string().optional(),
+  "nature": zod.string().optional()
+}).nullish(),
+  "costCenter": zod.object({
+  "id": zod.string().optional(),
+  "code": zod.string().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional()
+}).nullish()
+})).optional().describe('Included when the entry is returned from POST (create) or PATCH (update). Full line objects with account and costCenter sub-objects are included in GET \/journal-entries\/{id} (see JournalEntryDetail).\n'),
   "_count": zod.object({
   "lines": zod.number().optional()
 }).nullish()
@@ -1087,6 +1285,34 @@ export const PostJournalEntryResponse = zod.object({
   "nameEn": zod.string().optional(),
   "nameAr": zod.string().optional()
 }).nullish(),
+  "lines": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "journalEntryId": zod.string().uuid(),
+  "accountId": zod.string().uuid(),
+  "costCenterId": zod.string().uuid().nullish(),
+  "lineNumber": zod.number(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "debit": zod.number(),
+  "credit": zod.number(),
+  "debitBase": zod.number(),
+  "creditBase": zod.number(),
+  "reference": zod.string().nullish(),
+  "account": zod.object({
+  "id": zod.string().optional(),
+  "code": zod.string().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional(),
+  "type": zod.string().optional(),
+  "nature": zod.string().optional()
+}).nullish(),
+  "costCenter": zod.object({
+  "id": zod.string().optional(),
+  "code": zod.string().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional()
+}).nullish()
+})).optional().describe('Included when the entry is returned from POST (create) or PATCH (update). Full line objects with account and costCenter sub-objects are included in GET \/journal-entries\/{id} (see JournalEntryDetail).\n'),
   "_count": zod.object({
   "lines": zod.number().optional()
 }).nullish()
@@ -1135,6 +1361,34 @@ export const LockJournalEntryResponse = zod.object({
   "nameEn": zod.string().optional(),
   "nameAr": zod.string().optional()
 }).nullish(),
+  "lines": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "journalEntryId": zod.string().uuid(),
+  "accountId": zod.string().uuid(),
+  "costCenterId": zod.string().uuid().nullish(),
+  "lineNumber": zod.number(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "debit": zod.number(),
+  "credit": zod.number(),
+  "debitBase": zod.number(),
+  "creditBase": zod.number(),
+  "reference": zod.string().nullish(),
+  "account": zod.object({
+  "id": zod.string().optional(),
+  "code": zod.string().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional(),
+  "type": zod.string().optional(),
+  "nature": zod.string().optional()
+}).nullish(),
+  "costCenter": zod.object({
+  "id": zod.string().optional(),
+  "code": zod.string().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional()
+}).nullish()
+})).optional().describe('Included when the entry is returned from POST (create) or PATCH (update). Full line objects with account and costCenter sub-objects are included in GET \/journal-entries\/{id} (see JournalEntryDetail).\n'),
   "_count": zod.object({
   "lines": zod.number().optional()
 }).nullish()
@@ -1188,6 +1442,34 @@ export const ReverseJournalEntryResponse = zod.object({
   "nameEn": zod.string().optional(),
   "nameAr": zod.string().optional()
 }).nullish(),
+  "lines": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "journalEntryId": zod.string().uuid(),
+  "accountId": zod.string().uuid(),
+  "costCenterId": zod.string().uuid().nullish(),
+  "lineNumber": zod.number(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "debit": zod.number(),
+  "credit": zod.number(),
+  "debitBase": zod.number(),
+  "creditBase": zod.number(),
+  "reference": zod.string().nullish(),
+  "account": zod.object({
+  "id": zod.string().optional(),
+  "code": zod.string().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional(),
+  "type": zod.string().optional(),
+  "nature": zod.string().optional()
+}).nullish(),
+  "costCenter": zod.object({
+  "id": zod.string().optional(),
+  "code": zod.string().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional()
+}).nullish()
+})).optional().describe('Included when the entry is returned from POST (create) or PATCH (update). Full line objects with account and costCenter sub-objects are included in GET \/journal-entries\/{id} (see JournalEntryDetail).\n'),
   "_count": zod.object({
   "lines": zod.number().optional()
 }).nullish()
@@ -1240,6 +1522,34 @@ export const CopyJournalEntryResponse = zod.object({
   "nameEn": zod.string().optional(),
   "nameAr": zod.string().optional()
 }).nullish(),
+  "lines": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "journalEntryId": zod.string().uuid(),
+  "accountId": zod.string().uuid(),
+  "costCenterId": zod.string().uuid().nullish(),
+  "lineNumber": zod.number(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "debit": zod.number(),
+  "credit": zod.number(),
+  "debitBase": zod.number(),
+  "creditBase": zod.number(),
+  "reference": zod.string().nullish(),
+  "account": zod.object({
+  "id": zod.string().optional(),
+  "code": zod.string().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional(),
+  "type": zod.string().optional(),
+  "nature": zod.string().optional()
+}).nullish(),
+  "costCenter": zod.object({
+  "id": zod.string().optional(),
+  "code": zod.string().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional()
+}).nullish()
+})).optional().describe('Included when the entry is returned from POST (create) or PATCH (update). Full line objects with account and costCenter sub-objects are included in GET \/journal-entries\/{id} (see JournalEntryDetail).\n'),
   "_count": zod.object({
   "lines": zod.number().optional()
 }).nullish()
@@ -1292,6 +1602,34 @@ export const VoidJournalEntryResponse = zod.object({
   "nameEn": zod.string().optional(),
   "nameAr": zod.string().optional()
 }).nullish(),
+  "lines": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "journalEntryId": zod.string().uuid(),
+  "accountId": zod.string().uuid(),
+  "costCenterId": zod.string().uuid().nullish(),
+  "lineNumber": zod.number(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "debit": zod.number(),
+  "credit": zod.number(),
+  "debitBase": zod.number(),
+  "creditBase": zod.number(),
+  "reference": zod.string().nullish(),
+  "account": zod.object({
+  "id": zod.string().optional(),
+  "code": zod.string().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional(),
+  "type": zod.string().optional(),
+  "nature": zod.string().optional()
+}).nullish(),
+  "costCenter": zod.object({
+  "id": zod.string().optional(),
+  "code": zod.string().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional()
+}).nullish()
+})).optional().describe('Included when the entry is returned from POST (create) or PATCH (update). Full line objects with account and costCenter sub-objects are included in GET \/journal-entries\/{id} (see JournalEntryDetail).\n'),
   "_count": zod.object({
   "lines": zod.number().optional()
 }).nullish()
@@ -1555,6 +1893,34 @@ export const UseJournalEntryTemplateResponse = zod.object({
   "nameEn": zod.string().optional(),
   "nameAr": zod.string().optional()
 }).nullish(),
+  "lines": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "journalEntryId": zod.string().uuid(),
+  "accountId": zod.string().uuid(),
+  "costCenterId": zod.string().uuid().nullish(),
+  "lineNumber": zod.number(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "debit": zod.number(),
+  "credit": zod.number(),
+  "debitBase": zod.number(),
+  "creditBase": zod.number(),
+  "reference": zod.string().nullish(),
+  "account": zod.object({
+  "id": zod.string().optional(),
+  "code": zod.string().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional(),
+  "type": zod.string().optional(),
+  "nature": zod.string().optional()
+}).nullish(),
+  "costCenter": zod.object({
+  "id": zod.string().optional(),
+  "code": zod.string().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional()
+}).nullish()
+})).optional().describe('Included when the entry is returned from POST (create) or PATCH (update). Full line objects with account and costCenter sub-objects are included in GET \/journal-entries\/{id} (see JournalEntryDetail).\n'),
   "_count": zod.object({
   "lines": zod.number().optional()
 }).nullish()
