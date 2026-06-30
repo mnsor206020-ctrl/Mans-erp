@@ -1,7 +1,11 @@
 import { Router } from "express";
 import { requireAuth, getAuth } from "@clerk/express";
 import { prisma } from "@workspace/prisma";
-import { z } from "zod";
+import {
+  formatJENumber,
+  createHeaderSchema as createSchema,
+  updateHeaderSchema as updateSchema,
+} from "../lib/journal-entry-utils";
 
 const router = Router();
 
@@ -49,7 +53,7 @@ async function generateJournalNumber(orgId: string, year: number): Promise<strin
     const num = parseInt(numStr, 10);
     if (!isNaN(num) && num > maxNum) maxNum = num;
   }
-  return `${prefix}${String(maxNum + 1).padStart(4, "0")}`;
+  return formatJENumber(year, maxNum + 1);
 }
 
 function validateBalance(lines: { debit: number | string; credit: number | string }[]) {
@@ -73,41 +77,6 @@ async function validateAccounts(lines: { accountId: string }[], orgId: string) {
   return errors;
 }
 
-const lineSchema = z.object({
-  accountId: z.string().uuid(),
-  costCenterId: z.string().uuid().nullish(),
-  lineNumber: z.number().int().positive(),
-  descriptionEn: z.string().nullish(),
-  descriptionAr: z.string().nullish(),
-  debit: z.number().min(0).default(0),
-  credit: z.number().min(0).default(0),
-  reference: z.string().nullish(),
-});
-
-const createSchema = z.object({
-  organizationId: z.string().uuid().optional(),
-  fiscalYearId: z.string().uuid(),
-  entryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  type: z.enum(["MANUAL", "AUTOMATIC", "OPENING", "CLOSING", "ADJUSTMENT"]).default("MANUAL"),
-  currencyCode: z.string().default("SAR"),
-  exchangeRate: z.number().positive().default(1),
-  descriptionEn: z.string().nullish(),
-  descriptionAr: z.string().nullish(),
-  reference: z.string().nullish(),
-  lines: z.array(lineSchema).min(2, "At least 2 lines required"),
-});
-
-const updateSchema = z.object({
-  fiscalYearId: z.string().uuid().optional(),
-  entryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  type: z.enum(["MANUAL", "AUTOMATIC", "OPENING", "CLOSING", "ADJUSTMENT"]).optional(),
-  currencyCode: z.string().optional(),
-  exchangeRate: z.number().positive().optional(),
-  descriptionEn: z.string().nullish(),
-  descriptionAr: z.string().nullish(),
-  reference: z.string().nullish(),
-  lines: z.array(lineSchema).min(2).optional(),
-});
 
 // ── LIST ────────────────────────────────────────────────────────────────────
 router.get("/", requireAuth(), async (req, res) => {
@@ -229,11 +198,19 @@ router.post("/", requireAuth(), async (req, res) => {
     if (!fiscalYear) return res.status(400).json({ error: "Fiscal year not found" });
     if (fiscalYear.status !== "OPEN") return res.status(400).json({ error: "Fiscal year is not open" });
 
-    const { totalDebit, totalCredit, balanced } = validateBalance(data.lines);
-    if (!balanced) return res.status(400).json({ error: `Entry is not balanced — Debit: ${totalDebit.toFixed(4)}, Credit: ${totalCredit.toFixed(4)}` });
-
-    const accountErrors = await validateAccounts(data.lines, orgId);
-    if (accountErrors.length > 0) return res.status(400).json({ error: accountErrors.join("; ") });
+    // TODO: Sprint 2.2 — remove this guard and enforce min 2 lines, balance,
+    // and account eligibility unconditionally on every create.
+    const lines = data.lines ?? [];
+    let totalDebit = 0;
+    let totalCredit = 0;
+    if (lines.length > 0) {
+      const { totalDebit: dr, totalCredit: cr, balanced } = validateBalance(lines);
+      totalDebit = dr;
+      totalCredit = cr;
+      if (!balanced) return res.status(400).json({ error: `Entry is not balanced — Debit: ${totalDebit.toFixed(4)}, Credit: ${totalCredit.toFixed(4)}` });
+      const accountErrors = await validateAccounts(lines, orgId);
+      if (accountErrors.length > 0) return res.status(400).json({ error: accountErrors.join("; ") });
+    }
 
     const entryYear = new Date(data.entryDate).getFullYear();
     const number = await generateJournalNumber(orgId, entryYear);
@@ -241,34 +218,36 @@ router.post("/", requireAuth(), async (req, res) => {
 
     const entry = await prisma.journalEntry.create({
       data: {
-        organizationId: orgId,
-        fiscalYearId:   data.fiscalYearId,
+        organizationId:  orgId,
+        fiscalYearId:    data.fiscalYearId,
         number,
-        entryDate:      new Date(data.entryDate),
-        type:           data.type,
-        status:         "DRAFT",
-        currencyCode:   data.currencyCode,
+        entryDate:       new Date(data.entryDate),
+        type:            data.type,
+        status:          "DRAFT",
+        currencyCode:    data.currencyCode,
         exchangeRate,
         totalDebit,
         totalCredit,
-        descriptionEn:  data.descriptionEn || null,
-        descriptionAr:  data.descriptionAr || null,
-        reference:      data.reference || null,
+        descriptionEn:   data.descriptionEn || null,
+        descriptionAr:   data.descriptionAr || null,
+        reference:       data.reference || null,
         createdByUserId: user.id,
-        lines: {
-          create: data.lines.map(l => ({
-            accountId:    l.accountId,
-            costCenterId: l.costCenterId || null,
-            lineNumber:   l.lineNumber,
-            descriptionEn: l.descriptionEn || null,
-            descriptionAr: l.descriptionAr || null,
-            debit:        l.debit,
-            credit:       l.credit,
-            debitBase:    l.debit * exchangeRate,
-            creditBase:   l.credit * exchangeRate,
-            reference:    l.reference || null,
-          })),
-        },
+        ...(lines.length > 0 ? {
+          lines: {
+            create: lines.map(l => ({
+              accountId:     l.accountId,
+              costCenterId:  l.costCenterId || null,
+              lineNumber:    l.lineNumber,
+              descriptionEn: l.descriptionEn || null,
+              descriptionAr: l.descriptionAr || null,
+              debit:         l.debit,
+              credit:        l.credit,
+              debitBase:     l.debit * exchangeRate,
+              creditBase:    l.credit * exchangeRate,
+              reference:     l.reference || null,
+            })),
+          },
+        } : {}),
       },
       include: { lines: true },
     });

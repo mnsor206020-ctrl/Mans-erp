@@ -1846,13 +1846,14 @@ components:
           type: ["string", "null"]
         lines:
           type: array
+          description: >
+            Optional in Sprint 2.1 — a draft may be saved with zero lines.
+            TODO: Sprint 2.2 — restore minItems: 2, add to required, enforce balance.
           items:
             $ref: "#/components/schemas/JournalEntryLineInput"
-          minItems: 2
       required:
         - fiscalYearId
         - entryDate
-        - lines
 
     UpdateJournalEntryInput:
       type: object
