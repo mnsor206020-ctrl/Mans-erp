@@ -58,6 +58,7 @@ import {
   Calendar,
   AlertTriangle,
 } from "lucide-react";
+import ApprovalTimeline from "@/components/journal-entries/ApprovalTimeline";
 
 const STATUS_COLORS: Record<string, string> = {
   DRAFT: "bg-slate-100 text-slate-700 border-slate-200",
@@ -500,50 +501,14 @@ export default function JournalEntryDetail({ params }: Props) {
       </Card>
 
       {/* Approval History */}
-      {approvals.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">{t("je.approvalHistory")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {approvals.map((ap, idx) => {
-                const Icon = ACTION_ICONS[ap.action] || ArrowRight;
-                const userName = ap.user ? `${ap.user.firstNameEn || ""} ${ap.user.lastNameEn || ""}`.trim() || ap.user.email : "—";
-                return (
-                  <div key={ap.id} className="flex gap-3 items-start">
-                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                      <Icon className="w-4 h-4 text-muted-foreground" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-medium text-sm">{ap.action}</span>
-                        {ap.fromStatus && ap.toStatus && (
-                          <span className="text-xs text-muted-foreground flex items-center gap-1">
-                            <span>{ap.fromStatus}</span>
-                            <ArrowRight className="w-3 h-3" />
-                            <span>{ap.toStatus}</span>
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-                        <User className="w-3 h-3" />
-                        <span>{userName}</span>
-                        <Calendar className="w-3 h-3 ms-2" />
-                        <span>{formatDateTime(ap.createdAt)}</span>
-                      </div>
-                      {ap.comment && (
-                        <p className="text-xs text-muted-foreground mt-1 italic">"{ap.comment}"</p>
-                      )}
-                    </div>
-                    {idx < approvals.length - 1 && <div className="absolute ms-4 mt-8 w-px h-3 bg-border" />}
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">{t("je.approvalHistory")}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ApprovalTimeline approvals={approvals} />
+        </CardContent>
+      </Card>
 
       {/* Comment Dialog (Submit / Approve / Reject) */}
       <Dialog open={!!commentDialog} onOpenChange={(o) => !o && setCommentDialog(null)}>
