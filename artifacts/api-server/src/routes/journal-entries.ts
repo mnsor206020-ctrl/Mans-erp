@@ -7,6 +7,8 @@ import {
   updateHeaderSchema as updateSchema,
   validateBalance,
   validateAccounts,
+  computeDuration,
+  rejectCommentSchema,
 } from "../lib/journal-entry-utils";
 
 const router = Router();
@@ -37,9 +39,30 @@ async function writeApprovalRecord(params: {
   comment?: string;
   fromStatus: string;
   toStatus: string;
+  ipAddress?: string;
+  userAgent?: string;
 }) {
   try {
-    await prisma.journalEntryApproval.create({ data: params });
+    const now = new Date();
+    const last = await prisma.journalEntryApproval.findFirst({
+      where: { journalEntryId: params.journalEntryId },
+      orderBy: { createdAt: "desc" },
+      select: { createdAt: true },
+    });
+    const durationSeconds = computeDuration(last?.createdAt ?? null, now);
+    await prisma.journalEntryApproval.create({
+      data: {
+        journalEntryId:  params.journalEntryId,
+        userId:          params.userId,
+        action:          params.action,
+        comment:         params.comment,
+        fromStatus:      params.fromStatus,
+        toStatus:        params.toStatus,
+        durationSeconds,
+        ipAddress:       params.ipAddress,
+        userAgent:       params.userAgent,
+      },
+    });
   } catch {}
 }
 
@@ -384,9 +407,19 @@ router.post("/:id/submit", requireAuth(), async (req, res) => {
       journalEntryId: req.params.id,
       userId: user.id,
       action: "SUBMIT",
-      comment: req.body.comment,
+      comment: req.body?.comment,
       fromStatus: "DRAFT",
       toStatus: "UNDER_REVIEW",
+      ipAddress: req.ip ?? undefined,
+      userAgent: req.headers["user-agent"] ?? undefined,
+    });
+    await writeAuditLog({
+      userId:     user.id,
+      userEmail:  user.email,
+      action:     "APPROVE",
+      entityType: "journal_entry",
+      entityId:   req.params.id,
+      description: `Submitted ${entry.number} for review`,
     });
 
     res.json(updated);
@@ -415,9 +448,11 @@ router.post("/:id/approve", requireAuth(), async (req, res) => {
       journalEntryId: req.params.id,
       userId: user.id,
       action: "APPROVE",
-      comment: req.body.comment,
+      comment: req.body?.comment,
       fromStatus: "UNDER_REVIEW",
       toStatus: "APPROVED",
+      ipAddress: req.ip ?? undefined,
+      userAgent: req.headers["user-agent"] ?? undefined,
     });
     await writeAuditLog({
       userId:     user.id,
@@ -438,6 +473,12 @@ router.post("/:id/approve", requireAuth(), async (req, res) => {
 // ── REJECT (UNDER_REVIEW|APPROVED → DRAFT) ───────────────────────────────
 router.post("/:id/reject", requireAuth(), async (req, res) => {
   try {
+    const bodyParse = rejectCommentSchema.safeParse(req.body);
+    if (!bodyParse.success) {
+      return res.status(400).json({ error: bodyParse.error.issues[0].message });
+    }
+    const { comment: rejectComment } = bodyParse.data;
+
     const { userId } = getAuth(req);
     const user = await getUser(userId!);
     if (!user) return res.status(401).json({ error: "User not found" });
@@ -463,9 +504,11 @@ router.post("/:id/reject", requireAuth(), async (req, res) => {
       journalEntryId: req.params.id,
       userId: user.id,
       action: "REJECT",
-      comment: req.body.comment,
+      comment: rejectComment,
       fromStatus,
       toStatus: "DRAFT",
+      ipAddress: req.ip ?? undefined,
+      userAgent: req.headers["user-agent"] ?? undefined,
     });
     await writeAuditLog({
       userId:     user.id,
@@ -473,7 +516,7 @@ router.post("/:id/reject", requireAuth(), async (req, res) => {
       action:     "REJECT",
       entityType: "journal_entry",
       entityId:   req.params.id,
-      description: `Rejected ${entry.number}: ${req.body.comment || ""}`,
+      description: `Rejected ${entry.number}: ${rejectComment}`,
     });
 
     res.json(updated);
@@ -528,6 +571,8 @@ router.post("/:id/post", requireAuth(), async (req, res) => {
       action: "POST",
       fromStatus: "APPROVED",
       toStatus: "POSTED",
+      ipAddress: req.ip ?? undefined,
+      userAgent: req.headers["user-agent"] ?? undefined,
     });
     await writeAuditLog({
       userId:     user.id,
@@ -566,6 +611,8 @@ router.post("/:id/lock", requireAuth(), async (req, res) => {
       action: "LOCK",
       fromStatus: "POSTED",
       toStatus: "LOCKED",
+      ipAddress: req.ip ?? undefined,
+      userAgent: req.headers["user-agent"] ?? undefined,
     });
 
     res.json(updated);
@@ -647,6 +694,8 @@ router.post("/:id/reverse", requireAuth(), async (req, res) => {
       comment: reason,
       fromStatus: entry.status,
       toStatus: "REVERSED",
+      ipAddress: req.ip ?? undefined,
+      userAgent: req.headers["user-agent"] ?? undefined,
     });
     await writeAuditLog({
       userId:     user.id,
@@ -746,6 +795,8 @@ router.post("/:id/void", requireAuth(), async (req, res) => {
       comment: reason,
       fromStatus: "POSTED",
       toStatus: "VOIDED",
+      ipAddress: req.ip ?? undefined,
+      userAgent: req.headers["user-agent"] ?? undefined,
     });
     await writeAuditLog({
       userId:     user.id,
@@ -760,6 +811,34 @@ router.post("/:id/void", requireAuth(), async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to void journal entry" });
+  }
+});
+
+// ── GET /:id/approvals — ordered approval history ─────────────────────────
+router.get("/:id/approvals", requireAuth(), async (req, res) => {
+  try {
+    const { userId } = getAuth(req);
+    const user = await getUser(userId!);
+    if (!user) return res.status(401).json({ error: "User not found" });
+
+    const entry = await prisma.journalEntry.findFirst({
+      where: { id: req.params.id, organizationId: user.organizationId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!entry) return res.status(404).json({ error: "Journal entry not found" });
+
+    const approvals = await prisma.journalEntryApproval.findMany({
+      where: { journalEntryId: req.params.id },
+      orderBy: { createdAt: "asc" },
+      include: {
+        user: { select: { id: true, firstNameEn: true, lastNameEn: true, email: true } },
+      },
+    });
+
+    res.json({ data: approvals });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch approval history" });
   }
 });
 

@@ -33,7 +33,9 @@ vi.mock("@workspace/prisma", () => ({
       createMany: vi.fn(),
     },
     journalEntryApproval: {
-      create: vi.fn(),
+      create:    vi.fn(),
+      findFirst: vi.fn(),
+      findMany:  vi.fn(),
     },
     auditLog: {
       create: vi.fn(),
@@ -85,11 +87,13 @@ app.use("/api/journal-entries", journalEntriesRouter);
 describe("Journal Entries API — Integration", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (prisma.user.findFirst              as any).mockResolvedValue(mockUser);
-    (prisma.auditLog.create             as any).mockResolvedValue({});
-    (prisma.journalEntryApproval.create as any).mockResolvedValue({});
-    (prisma.journalEntryLine.deleteMany as any).mockResolvedValue({ count: 0 });
-    (prisma.journalEntryLine.createMany as any).mockResolvedValue({ count: 2 });
+    (prisma.user.findFirst                   as any).mockResolvedValue(mockUser);
+    (prisma.auditLog.create                  as any).mockResolvedValue({});
+    (prisma.journalEntryApproval.create      as any).mockResolvedValue({});
+    (prisma.journalEntryApproval.findFirst   as any).mockResolvedValue(null);
+    (prisma.journalEntryApproval.findMany    as any).mockResolvedValue([]);
+    (prisma.journalEntryLine.deleteMany      as any).mockResolvedValue({ count: 0 });
+    (prisma.journalEntryLine.createMany      as any).mockResolvedValue({ count: 2 });
     // Restore $transaction implementation after clearAllMocks clears call history
     (prisma.$transaction as any).mockImplementation(async (fn: (tx: any) => Promise<any>) => fn(prisma));
   });
