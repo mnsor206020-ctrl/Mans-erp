@@ -225,7 +225,25 @@ const translations: Record<Language, Record<string, string>> = {
     "je.hash.tampered": "Tampered — hash mismatch",
     "je.hash.error":    "Verification failed",
     "je.export": "Export",
-    "je.print": "Print"
+    "je.print": "Print",
+    "je.attachments": "Attachments",
+    "je.attachments.empty": "No attachments yet",
+    "je.attachments.empty.desc": "Drag and drop files here, or click to browse",
+    "je.attachments.fileTypes": "PDF, JPEG, PNG, WebP, XLSX, XLS",
+    "je.attachments.maxFiles": "Max 10 files · 20 MB each",
+    "je.attachments.upload": "Upload Files",
+    "je.attachments.uploading": "Uploading…",
+    "je.attachments.uploaded": "Files uploaded",
+    "je.attachments.delete": "Delete attachment",
+    "je.attachments.deleted": "Attachment deleted",
+    "je.attachments.download": "Download",
+    "je.attachments.downloadError": "Download failed",
+    "je.attachments.primary": "Primary",
+    "je.attachments.setPrimary": "Toggle primary",
+    "je.attachments.error": "Failed to load attachments",
+    "je.attachments.uploadError": "Upload failed",
+    "je.attachments.deleteError": "Delete failed",
+    "je.attachments.uploadedBy": "Uploaded by"
   },
   ar: {
     "app.name": "منظومة مانز",
@@ -439,7 +457,25 @@ const translations: Record<Language, Record<string, string>> = {
     "je.hash.tampered": "مُعدَّل — عدم تطابق الهاش",
     "je.hash.error":    "فشل التحقق",
     "je.export": "تصدير",
-    "je.print": "طباعة"
+    "je.print": "طباعة",
+    "je.attachments": "المرفقات",
+    "je.attachments.empty": "لا توجد مرفقات بعد",
+    "je.attachments.empty.desc": "اسحب الملفات وأفلتها هنا، أو انقر للتصفح",
+    "je.attachments.fileTypes": "PDF، JPEG، PNG، WebP، XLSX، XLS",
+    "je.attachments.maxFiles": "حد أقصى 10 ملفات · 20 ميغابايت لكل ملف",
+    "je.attachments.upload": "رفع ملفات",
+    "je.attachments.uploading": "جاري الرفع…",
+    "je.attachments.uploaded": "تم رفع الملفات",
+    "je.attachments.delete": "حذف المرفق",
+    "je.attachments.deleted": "تم حذف المرفق",
+    "je.attachments.download": "تنزيل",
+    "je.attachments.downloadError": "فشل التنزيل",
+    "je.attachments.primary": "رئيسي",
+    "je.attachments.setPrimary": "تبديل الرئيسي",
+    "je.attachments.error": "فشل تحميل المرفقات",
+    "je.attachments.uploadError": "فشل الرفع",
+    "je.attachments.deleteError": "فشل الحذف",
+    "je.attachments.uploadedBy": "رفعه"
   }
 };
 
