@@ -11,8 +11,11 @@ import {
   computeDuration,
   rejectCommentSchema,
 } from "../lib/journal-entry-utils";
+import attachmentsRouter from "./journal-entry-attachments";
 
 const router = Router();
+
+router.use("/:id/attachments", attachmentsRouter);
 
 async function getUser(clerkId: string) {
   return prisma.user.findFirst({ where: { clerkId, deletedAt: null } });
