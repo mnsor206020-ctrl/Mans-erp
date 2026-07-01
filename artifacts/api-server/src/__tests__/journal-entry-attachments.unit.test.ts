@@ -19,25 +19,28 @@ vi.mock("@workspace/prisma", () => ({
       findFirst: vi.fn(),
     },
     journalEntryAttachment: {
-      count:  vi.fn(),
-      create: vi.fn(),
+      count:     vi.fn(),
+      create:    vi.fn(),
+      findFirst: vi.fn(),
     },
   },
 }));
 
 // ── Mock Object Storage before router import ───────────────────────────────────
 // Use vi.hoisted so the variables are available inside the vi.mock factory
-const { mockSave, mockFile, mockBucket } = vi.hoisted(() => {
-  const mockSave   = vi.fn().mockResolvedValue(undefined);
-  const mockFile   = vi.fn((_name: string) => ({ save: mockSave }));
-  const mockBucket = vi.fn((_name: string) => ({ file: mockFile }));
-  return { mockSave, mockFile, mockBucket };
+const { mockSave, mockFile, mockBucket, mockSignDownload } = vi.hoisted(() => {
+  const mockSave         = vi.fn().mockResolvedValue(undefined);
+  const mockFile         = vi.fn((_name: string) => ({ save: mockSave }));
+  const mockBucket       = vi.fn((_name: string) => ({ file: mockFile }));
+  const mockSignDownload = vi.fn().mockResolvedValue("https://storage.googleapis.com/signed?token=abc");
+  return { mockSave, mockFile, mockBucket, mockSignDownload };
 });
 
 vi.mock("../lib/objectStorage", () => ({
   objectStorageClient: {
     bucket: mockBucket,
   },
+  signObjectDownloadUrl: mockSignDownload,
 }));
 
 // ── Import router (gets mocked dependencies) ───────────────────────────────────
@@ -233,5 +236,105 @@ describe("POST /journal-entries/:id/attachments", () => {
 
       expect(res.status).toBe(201);
     }
+  });
+});
+
+// ── Download tests ────────────────────────────────────────────────────────────
+
+const ATTACH_ID = "ffffffff-0000-0000-0000-000000000010";
+const MOCK_ATTACHMENT_ROW = {
+  id:           ATTACH_ID,
+  storageBucket: "test-bucket",
+  storageKey:   "private/attachments/cccccccc-0000-0000-0000-000000000003/some-uuid",
+};
+const SIGNED_URL = "https://storage.googleapis.com/signed?token=abc";
+
+describe("GET /journal-entries/:id/attachments/:attachmentId/download", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.env.PRIVATE_OBJECT_DIR = "/test-bucket/private";
+
+    (prisma.user.findFirst as any).mockResolvedValue(mockUser);
+    (prisma.journalEntry.findFirst as any).mockResolvedValue(mockEntry);
+    (prisma.journalEntryAttachment as any).findFirst.mockResolvedValue(MOCK_ATTACHMENT_ROW);
+    mockSignDownload.mockResolvedValue(SIGNED_URL);
+  });
+
+  it("returns 200 with { url, expiresAt } for a valid attachment", async () => {
+    const app = makeApp();
+
+    const before = Date.now();
+    const res = await request(app)
+      .get(`/journal-entries/${ENTRY_ID}/attachments/${ATTACH_ID}/download`);
+    const after = Date.now();
+
+    expect(res.status).toBe(200);
+    expect(res.body.url).toBe(SIGNED_URL);
+    expect(typeof res.body.expiresAt).toBe("string");
+
+    // expiresAt must be ~15 minutes in the future
+    const expiresMs = new Date(res.body.expiresAt).getTime();
+    expect(expiresMs).toBeGreaterThanOrEqual(before + 900_000);
+    expect(expiresMs).toBeLessThanOrEqual(after  + 900_000);
+  });
+
+  it("calls signObjectDownloadUrl with correct bucket, key, and TTL", async () => {
+    const app = makeApp();
+    await request(app)
+      .get(`/journal-entries/${ENTRY_ID}/attachments/${ATTACH_ID}/download`);
+
+    expect(mockSignDownload).toHaveBeenCalledWith(
+      "test-bucket",
+      "private/attachments/cccccccc-0000-0000-0000-000000000003/some-uuid",
+      900,
+    );
+  });
+
+  it("returns 404 when the journal entry does not exist", async () => {
+    (prisma.journalEntry.findFirst as any).mockResolvedValue(null);
+    const app = makeApp();
+
+    const res = await request(app)
+      .get(`/journal-entries/${ENTRY_ID}/attachments/${ATTACH_ID}/download`);
+
+    expect(res.status).toBe(404);
+    expect(res.body.error).toMatch(/journal entry not found/i);
+    expect(mockSignDownload).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 when the attachment does not exist", async () => {
+    (prisma.journalEntryAttachment as any).findFirst.mockResolvedValue(null);
+    const app = makeApp();
+
+    const res = await request(app)
+      .get(`/journal-entries/${ENTRY_ID}/attachments/${ATTACH_ID}/download`);
+
+    expect(res.status).toBe(404);
+    expect(res.body.error).toMatch(/attachment not found/i);
+    expect(mockSignDownload).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 when attachment is soft-deleted (findFirst returns null)", async () => {
+    // Soft-deleted attachments have deletedAt != null — Prisma WHERE filters them;
+    // findFirst returns null the same as not found.
+    (prisma.journalEntryAttachment as any).findFirst.mockResolvedValue(null);
+    const app = makeApp();
+
+    const res = await request(app)
+      .get(`/journal-entries/${ENTRY_ID}/attachments/${ATTACH_ID}/download`);
+
+    expect(res.status).toBe(404);
+    expect(mockSignDownload).not.toHaveBeenCalled();
+  });
+
+  it("returns 401 when the user is not found in the database", async () => {
+    (prisma.user.findFirst as any).mockResolvedValue(null);
+    const app = makeApp();
+
+    const res = await request(app)
+      .get(`/journal-entries/${ENTRY_ID}/attachments/${ATTACH_ID}/download`);
+
+    expect(res.status).toBe(401);
+    expect(mockSignDownload).not.toHaveBeenCalled();
   });
 });

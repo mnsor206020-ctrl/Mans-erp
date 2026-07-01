@@ -3,7 +3,7 @@ import { requireAuth, getAuth } from "@clerk/express";
 import { prisma } from "@workspace/prisma";
 import multer from "multer";
 import { createHash, randomUUID } from "crypto";
-import { objectStorageClient } from "../lib/objectStorage";
+import { objectStorageClient, signObjectDownloadUrl } from "../lib/objectStorage";
 
 const router = Router({ mergeParams: true });
 
@@ -172,6 +172,56 @@ router.post("/", requireAuth(), async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to upload attachments" });
+  }
+});
+
+// ── GET /api/journal-entries/:id/attachments/:attachmentId/download ─────────────
+
+const DOWNLOAD_TTL_SEC = 900; // 15 minutes
+
+router.get("/:attachmentId/download", requireAuth(), async (req, res) => {
+  try {
+    const { userId } = getAuth(req);
+    const user = await getUser(userId!);
+    if (!user) {
+      res.status(401).json({ error: "User not found" });
+      return;
+    }
+
+    const entryId      = req.params.id as string;
+    const attachmentId = req.params.attachmentId as string;
+
+    // Verify journal entry belongs to this user's organisation
+    const entry = await prisma.journalEntry.findFirst({
+      where: { id: entryId, organizationId: user.organizationId ?? undefined, deletedAt: null },
+      select: { id: true },
+    });
+    if (!entry) {
+      res.status(404).json({ error: "Journal entry not found" });
+      return;
+    }
+
+    // Verify attachment exists, belongs to this entry, and is not soft-deleted
+    const attachment = await (prisma.journalEntryAttachment as any).findFirst({
+      where: { id: attachmentId, journalEntryId: entryId, deletedAt: null },
+      select: { id: true, storageBucket: true, storageKey: true },
+    });
+    if (!attachment) {
+      res.status(404).json({ error: "Attachment not found" });
+      return;
+    }
+
+    const expiresAt = new Date(Date.now() + DOWNLOAD_TTL_SEC * 1000);
+    const url = await signObjectDownloadUrl(
+      attachment.storageBucket,
+      attachment.storageKey,
+      DOWNLOAD_TTL_SEC,
+    );
+
+    res.json({ url, expiresAt: expiresAt.toISOString() });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to generate download URL" });
   }
 });
 

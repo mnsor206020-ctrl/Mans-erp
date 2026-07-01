@@ -227,6 +227,18 @@ function parseObjectPath(path: string): {
   };
 }
 
+/**
+ * Generate a signed GET URL for a private object.
+ * TTL defaults to 900 seconds (15 minutes).
+ */
+export async function signObjectDownloadUrl(
+  bucketName: string,
+  objectName: string,
+  ttlSec: number = 900,
+): Promise<string> {
+  return signObjectURL({ bucketName, objectName, method: "GET", ttlSec });
+}
+
 async function signObjectURL({
   bucketName,
   objectName,
