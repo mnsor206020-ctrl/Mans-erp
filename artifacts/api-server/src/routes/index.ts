@@ -8,6 +8,7 @@ import journalEntriesRouter from "./journal-entries";
 import journalEntryTemplatesRouter from "./journal-entry-templates";
 import fiscalYearsRouter from "./fiscal-years";
 import costCentersRouter from "./cost-centers";
+import notificationsRouter from "./notifications";
 
 const router: IRouter = Router();
 
@@ -20,5 +21,6 @@ router.use("/journal-entries", journalEntriesRouter);
 router.use("/journal-entry-templates", journalEntryTemplatesRouter);
 router.use("/fiscal-years", fiscalYearsRouter);
 router.use("/cost-centers", costCentersRouter);
+router.use("/notifications", notificationsRouter);
 
 export default router;
