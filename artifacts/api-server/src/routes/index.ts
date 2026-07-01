@@ -12,6 +12,7 @@ import notificationsRouter from "./notifications";
 import banksRouter from "./banks";
 import currenciesRouter from "./currencies";
 import branchesRouter from "./branches";
+import bankAccountsRouter from "./bank-accounts";
 
 const router: IRouter = Router();
 
@@ -28,5 +29,6 @@ router.use("/notifications", notificationsRouter);
 router.use("/banks", banksRouter);
 router.use("/currencies", currenciesRouter);
 router.use("/branches", branchesRouter);
+router.use("/bank-accounts", bankAccountsRouter);
 
 export default router;
