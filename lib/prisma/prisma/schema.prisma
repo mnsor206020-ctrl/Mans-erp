@@ -578,6 +578,9 @@ model JournalEntry {
   reference       String?
   sourceType      String?            @map("source_type")
   sourceId        String?            @map("source_id") @db.Uuid
+  integrityHash   String?            @map("integrity_hash")
+  hashAlgorithm   String?            @default("SHA-256") @map("hash_algorithm")
+  hashedAt        DateTime?          @map("hashed_at")
   postedAt        DateTime?          @map("posted_at")
   postedByUserId  String?            @map("posted_by_user_id") @db.Uuid
   voidedAt           DateTime?          @map("voided_at")
