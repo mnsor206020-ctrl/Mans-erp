@@ -23,6 +23,13 @@ import type {
   ActivityItem,
   ApproveJournalEntryBody,
   AttachmentDownloadResponse,
+  Bank,
+  BankAccount,
+  BankAccountCreate,
+  BankAccountUpdate,
+  CashBox,
+  CashBoxCreate,
+  CashBoxUpdate,
   ChartOfAccount,
   ChartOfAccountDetail,
   ChartOfAccountNode,
@@ -32,6 +39,7 @@ import type {
   CreateFiscalYearInput,
   CreateJournalEntryInput,
   CreateJournalEntryTemplateInput,
+  Currency,
   DashboardStats,
   DeleteChartOfAccount200,
   DeleteJournalEntry200,
@@ -46,8 +54,11 @@ import type {
   JournalEntryAttachment,
   JournalEntryDetail,
   JournalEntryTemplate,
+  ListBankAccountsParams,
+  ListCashBoxesParams,
   ListChartOfAccountsParams,
   ListCostCentersParams,
+  ListCurrenciesParams,
   ListFiscalYearsParams,
   ListJournalEntriesParams,
   ListJournalEntryAttachments200,
@@ -3668,5 +3679,1058 @@ export const useUseJournalEntryTemplate = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getUseJournalEntryTemplateMutationOptions(options));
+    }
+
+export const getListBanksUrl = () => {
+
+
+
+
+  return `/api/banks`
+}
+
+/**
+ * Returns all active banks for use in dropdowns. Read-only seeded reference data.
+ * @summary List all active banks
+ */
+export const listBanks = async ( options?: RequestInit): Promise<Bank[]> => {
+
+  return customFetch<Bank[]>(getListBanksUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListBanksQueryKey = () => {
+    return [
+    `/api/banks`
+    ] as const;
+    }
+
+
+export const getListBanksQueryOptions = <TData = Awaited<ReturnType<typeof listBanks>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listBanks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListBanksQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listBanks>>> = ({ signal }) => listBanks({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listBanks>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListBanksQueryResult = NonNullable<Awaited<ReturnType<typeof listBanks>>>
+export type ListBanksQueryError = ErrorType<void>
+
+
+/**
+ * @summary List all active banks
+ */
+
+export function useListBanks<TData = Awaited<ReturnType<typeof listBanks>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listBanks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListBanksQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListCurrenciesUrl = (params?: ListCurrenciesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/currencies?${stringifiedParams}` : `/api/currencies`
+}
+
+/**
+ * Returns all currencies. Filter by status to get only active ones.
+ * @summary List currencies
+ */
+export const listCurrencies = async (params?: ListCurrenciesParams, options?: RequestInit): Promise<Currency[]> => {
+
+  return customFetch<Currency[]>(getListCurrenciesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCurrenciesQueryKey = (params?: ListCurrenciesParams,) => {
+    return [
+    `/api/currencies`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListCurrenciesQueryOptions = <TData = Awaited<ReturnType<typeof listCurrencies>>, TError = ErrorType<void>>(params?: ListCurrenciesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCurrencies>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCurrenciesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCurrencies>>> = ({ signal }) => listCurrencies(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCurrencies>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCurrenciesQueryResult = NonNullable<Awaited<ReturnType<typeof listCurrencies>>>
+export type ListCurrenciesQueryError = ErrorType<void>
+
+
+/**
+ * @summary List currencies
+ */
+
+export function useListCurrencies<TData = Awaited<ReturnType<typeof listCurrencies>>, TError = ErrorType<void>>(
+ params?: ListCurrenciesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCurrencies>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCurrenciesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListBankAccountsUrl = (params?: ListBankAccountsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/bank-accounts?${stringifiedParams}` : `/api/bank-accounts`
+}
+
+/**
+ * @summary List organization bank accounts
+ */
+export const listBankAccounts = async (params?: ListBankAccountsParams, options?: RequestInit): Promise<BankAccount[]> => {
+
+  return customFetch<BankAccount[]>(getListBankAccountsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListBankAccountsQueryKey = (params?: ListBankAccountsParams,) => {
+    return [
+    `/api/bank-accounts`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListBankAccountsQueryOptions = <TData = Awaited<ReturnType<typeof listBankAccounts>>, TError = ErrorType<void>>(params?: ListBankAccountsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listBankAccounts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListBankAccountsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listBankAccounts>>> = ({ signal }) => listBankAccounts(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listBankAccounts>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListBankAccountsQueryResult = NonNullable<Awaited<ReturnType<typeof listBankAccounts>>>
+export type ListBankAccountsQueryError = ErrorType<void>
+
+
+/**
+ * @summary List organization bank accounts
+ */
+
+export function useListBankAccounts<TData = Awaited<ReturnType<typeof listBankAccounts>>, TError = ErrorType<void>>(
+ params?: ListBankAccountsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listBankAccounts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListBankAccountsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateBankAccountUrl = () => {
+
+
+
+
+  return `/api/bank-accounts`
+}
+
+/**
+ * Creates a new bank account. currentBalance is initialized to openingBalance.
+ * @summary Create a bank account
+ */
+export const createBankAccount = async (bankAccountCreate: BankAccountCreate, options?: RequestInit): Promise<BankAccount> => {
+
+  return customFetch<BankAccount>(getCreateBankAccountUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(bankAccountCreate)
+  }
+);}
+
+
+
+
+export const getCreateBankAccountMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBankAccount>>, TError,{data: BodyType<BankAccountCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createBankAccount>>, TError,{data: BodyType<BankAccountCreate>}, TContext> => {
+
+const mutationKey = ['createBankAccount'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createBankAccount>>, {data: BodyType<BankAccountCreate>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createBankAccount(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateBankAccountMutationResult = NonNullable<Awaited<ReturnType<typeof createBankAccount>>>
+    export type CreateBankAccountMutationBody = BodyType<BankAccountCreate>
+    export type CreateBankAccountMutationError = ErrorType<void>
+
+    /**
+ * @summary Create a bank account
+ */
+export const useCreateBankAccount = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBankAccount>>, TError,{data: BodyType<BankAccountCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createBankAccount>>,
+        TError,
+        {data: BodyType<BankAccountCreate>},
+        TContext
+      > => {
+      return useMutation(getCreateBankAccountMutationOptions(options));
+    }
+
+export const getGetBankAccountUrl = (id: string,) => {
+
+
+
+
+  return `/api/bank-accounts/${id}`
+}
+
+/**
+ * @summary Get bank account by ID
+ */
+export const getBankAccount = async (id: string, options?: RequestInit): Promise<BankAccount> => {
+
+  return customFetch<BankAccount>(getGetBankAccountUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetBankAccountQueryKey = (id: string,) => {
+    return [
+    `/api/bank-accounts/${id}`
+    ] as const;
+    }
+
+
+export const getGetBankAccountQueryOptions = <TData = Awaited<ReturnType<typeof getBankAccount>>, TError = ErrorType<void>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBankAccount>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetBankAccountQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBankAccount>>> = ({ signal }) => getBankAccount(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getBankAccount>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetBankAccountQueryResult = NonNullable<Awaited<ReturnType<typeof getBankAccount>>>
+export type GetBankAccountQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get bank account by ID
+ */
+
+export function useGetBankAccount<TData = Awaited<ReturnType<typeof getBankAccount>>, TError = ErrorType<void>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBankAccount>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetBankAccountQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateBankAccountUrl = (id: string,) => {
+
+
+
+
+  return `/api/bank-accounts/${id}`
+}
+
+/**
+ * Updates mutable fields. openingBalance and currentBalance cannot be changed via this endpoint — opening balance is immutable after creation; current balance is maintained by the system via receipt/payment transactions.
+ * @summary Update a bank account
+ */
+export const updateBankAccount = async (id: string,
+    bankAccountUpdate: BankAccountUpdate, options?: RequestInit): Promise<BankAccount> => {
+
+  return customFetch<BankAccount>(getUpdateBankAccountUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(bankAccountUpdate)
+  }
+);}
+
+
+
+
+export const getUpdateBankAccountMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateBankAccount>>, TError,{id: string;data: BodyType<BankAccountUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateBankAccount>>, TError,{id: string;data: BodyType<BankAccountUpdate>}, TContext> => {
+
+const mutationKey = ['updateBankAccount'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateBankAccount>>, {id: string;data: BodyType<BankAccountUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateBankAccount(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateBankAccountMutationResult = NonNullable<Awaited<ReturnType<typeof updateBankAccount>>>
+    export type UpdateBankAccountMutationBody = BodyType<BankAccountUpdate>
+    export type UpdateBankAccountMutationError = ErrorType<void>
+
+    /**
+ * @summary Update a bank account
+ */
+export const useUpdateBankAccount = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateBankAccount>>, TError,{id: string;data: BodyType<BankAccountUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateBankAccount>>,
+        TError,
+        {id: string;data: BodyType<BankAccountUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateBankAccountMutationOptions(options));
+    }
+
+export const getDeleteBankAccountUrl = (id: string,) => {
+
+
+
+
+  return `/api/bank-accounts/${id}`
+}
+
+/**
+ * Soft-deletes the bank account. Returns 409 if currentBalance ≠ 0.
+ * @summary Soft-delete a bank account
+ */
+export const deleteBankAccount = async (id: string, options?: RequestInit): Promise<OkResponse> => {
+
+  return customFetch<OkResponse>(getDeleteBankAccountUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteBankAccountMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteBankAccount>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteBankAccount>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['deleteBankAccount'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteBankAccount>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteBankAccount(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteBankAccountMutationResult = NonNullable<Awaited<ReturnType<typeof deleteBankAccount>>>
+
+    export type DeleteBankAccountMutationError = ErrorType<void>
+
+    /**
+ * @summary Soft-delete a bank account
+ */
+export const useDeleteBankAccount = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteBankAccount>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteBankAccount>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getDeleteBankAccountMutationOptions(options));
+    }
+
+export const getToggleBankAccountActiveUrl = (id: string,) => {
+
+
+
+
+  return `/api/bank-accounts/${id}/toggle-active`
+}
+
+/**
+ * @summary Toggle bank account active/inactive status
+ */
+export const toggleBankAccountActive = async (id: string, options?: RequestInit): Promise<BankAccount> => {
+
+  return customFetch<BankAccount>(getToggleBankAccountActiveUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getToggleBankAccountActiveMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof toggleBankAccountActive>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof toggleBankAccountActive>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['toggleBankAccountActive'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof toggleBankAccountActive>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  toggleBankAccountActive(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ToggleBankAccountActiveMutationResult = NonNullable<Awaited<ReturnType<typeof toggleBankAccountActive>>>
+
+    export type ToggleBankAccountActiveMutationError = ErrorType<void>
+
+    /**
+ * @summary Toggle bank account active/inactive status
+ */
+export const useToggleBankAccountActive = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof toggleBankAccountActive>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof toggleBankAccountActive>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getToggleBankAccountActiveMutationOptions(options));
+    }
+
+export const getListCashBoxesUrl = (params?: ListCashBoxesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/cash-boxes?${stringifiedParams}` : `/api/cash-boxes`
+}
+
+/**
+ * @summary List organization cash boxes
+ */
+export const listCashBoxes = async (params?: ListCashBoxesParams, options?: RequestInit): Promise<CashBox[]> => {
+
+  return customFetch<CashBox[]>(getListCashBoxesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCashBoxesQueryKey = (params?: ListCashBoxesParams,) => {
+    return [
+    `/api/cash-boxes`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListCashBoxesQueryOptions = <TData = Awaited<ReturnType<typeof listCashBoxes>>, TError = ErrorType<void>>(params?: ListCashBoxesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCashBoxes>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCashBoxesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCashBoxes>>> = ({ signal }) => listCashBoxes(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCashBoxes>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCashBoxesQueryResult = NonNullable<Awaited<ReturnType<typeof listCashBoxes>>>
+export type ListCashBoxesQueryError = ErrorType<void>
+
+
+/**
+ * @summary List organization cash boxes
+ */
+
+export function useListCashBoxes<TData = Awaited<ReturnType<typeof listCashBoxes>>, TError = ErrorType<void>>(
+ params?: ListCashBoxesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCashBoxes>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCashBoxesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateCashBoxUrl = () => {
+
+
+
+
+  return `/api/cash-boxes`
+}
+
+/**
+ * Creates a new cash box. currentBalance is initialized to openingBalance.
+ * @summary Create a cash box
+ */
+export const createCashBox = async (cashBoxCreate: CashBoxCreate, options?: RequestInit): Promise<CashBox> => {
+
+  return customFetch<CashBox>(getCreateCashBoxUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(cashBoxCreate)
+  }
+);}
+
+
+
+
+export const getCreateCashBoxMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCashBox>>, TError,{data: BodyType<CashBoxCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createCashBox>>, TError,{data: BodyType<CashBoxCreate>}, TContext> => {
+
+const mutationKey = ['createCashBox'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createCashBox>>, {data: BodyType<CashBoxCreate>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createCashBox(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateCashBoxMutationResult = NonNullable<Awaited<ReturnType<typeof createCashBox>>>
+    export type CreateCashBoxMutationBody = BodyType<CashBoxCreate>
+    export type CreateCashBoxMutationError = ErrorType<void>
+
+    /**
+ * @summary Create a cash box
+ */
+export const useCreateCashBox = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCashBox>>, TError,{data: BodyType<CashBoxCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createCashBox>>,
+        TError,
+        {data: BodyType<CashBoxCreate>},
+        TContext
+      > => {
+      return useMutation(getCreateCashBoxMutationOptions(options));
+    }
+
+export const getGetCashBoxUrl = (id: string,) => {
+
+
+
+
+  return `/api/cash-boxes/${id}`
+}
+
+/**
+ * @summary Get cash box by ID
+ */
+export const getCashBox = async (id: string, options?: RequestInit): Promise<CashBox> => {
+
+  return customFetch<CashBox>(getGetCashBoxUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCashBoxQueryKey = (id: string,) => {
+    return [
+    `/api/cash-boxes/${id}`
+    ] as const;
+    }
+
+
+export const getGetCashBoxQueryOptions = <TData = Awaited<ReturnType<typeof getCashBox>>, TError = ErrorType<void>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCashBox>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCashBoxQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCashBox>>> = ({ signal }) => getCashBox(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCashBox>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCashBoxQueryResult = NonNullable<Awaited<ReturnType<typeof getCashBox>>>
+export type GetCashBoxQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get cash box by ID
+ */
+
+export function useGetCashBox<TData = Awaited<ReturnType<typeof getCashBox>>, TError = ErrorType<void>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCashBox>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCashBoxQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateCashBoxUrl = (id: string,) => {
+
+
+
+
+  return `/api/cash-boxes/${id}`
+}
+
+/**
+ * Updates mutable fields. openingBalance and currentBalance cannot be changed via this endpoint.
+ * @summary Update a cash box
+ */
+export const updateCashBox = async (id: string,
+    cashBoxUpdate: CashBoxUpdate, options?: RequestInit): Promise<CashBox> => {
+
+  return customFetch<CashBox>(getUpdateCashBoxUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(cashBoxUpdate)
+  }
+);}
+
+
+
+
+export const getUpdateCashBoxMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCashBox>>, TError,{id: string;data: BodyType<CashBoxUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateCashBox>>, TError,{id: string;data: BodyType<CashBoxUpdate>}, TContext> => {
+
+const mutationKey = ['updateCashBox'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateCashBox>>, {id: string;data: BodyType<CashBoxUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateCashBox(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateCashBoxMutationResult = NonNullable<Awaited<ReturnType<typeof updateCashBox>>>
+    export type UpdateCashBoxMutationBody = BodyType<CashBoxUpdate>
+    export type UpdateCashBoxMutationError = ErrorType<void>
+
+    /**
+ * @summary Update a cash box
+ */
+export const useUpdateCashBox = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCashBox>>, TError,{id: string;data: BodyType<CashBoxUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateCashBox>>,
+        TError,
+        {id: string;data: BodyType<CashBoxUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateCashBoxMutationOptions(options));
+    }
+
+export const getDeleteCashBoxUrl = (id: string,) => {
+
+
+
+
+  return `/api/cash-boxes/${id}`
+}
+
+/**
+ * Soft-deletes the cash box. Returns 409 if currentBalance ≠ 0.
+ * @summary Soft-delete a cash box
+ */
+export const deleteCashBox = async (id: string, options?: RequestInit): Promise<OkResponse> => {
+
+  return customFetch<OkResponse>(getDeleteCashBoxUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteCashBoxMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCashBox>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteCashBox>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['deleteCashBox'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteCashBox>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteCashBox(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteCashBoxMutationResult = NonNullable<Awaited<ReturnType<typeof deleteCashBox>>>
+
+    export type DeleteCashBoxMutationError = ErrorType<void>
+
+    /**
+ * @summary Soft-delete a cash box
+ */
+export const useDeleteCashBox = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCashBox>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteCashBox>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getDeleteCashBoxMutationOptions(options));
+    }
+
+export const getToggleCashBoxActiveUrl = (id: string,) => {
+
+
+
+
+  return `/api/cash-boxes/${id}/toggle-active`
+}
+
+/**
+ * @summary Toggle cash box active/inactive status
+ */
+export const toggleCashBoxActive = async (id: string, options?: RequestInit): Promise<CashBox> => {
+
+  return customFetch<CashBox>(getToggleCashBoxActiveUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getToggleCashBoxActiveMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof toggleCashBoxActive>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof toggleCashBoxActive>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['toggleCashBoxActive'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof toggleCashBoxActive>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  toggleCashBoxActive(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ToggleCashBoxActiveMutationResult = NonNullable<Awaited<ReturnType<typeof toggleCashBoxActive>>>
+
+    export type ToggleCashBoxActiveMutationError = ErrorType<void>
+
+    /**
+ * @summary Toggle cash box active/inactive status
+ */
+export const useToggleCashBoxActive = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof toggleCashBoxActive>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof toggleCashBoxActive>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getToggleCashBoxActiveMutationOptions(options));
     }
 

@@ -833,6 +833,189 @@ export interface Notification {
   createdAt: string;
 }
 
+export interface Bank {
+  id: string;
+  nameEn: string;
+  nameAr: string;
+  /** @nullable */
+  swiftCode?: string | null;
+  /** @nullable */
+  ibanPrefix?: string | null;
+  /** @nullable */
+  country?: string | null;
+  /** @nullable */
+  logoUrl?: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CurrencyStatus = typeof CurrencyStatus[keyof typeof CurrencyStatus];
+
+
+export const CurrencyStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface Currency {
+  id: string;
+  /** ISO 4217 currency code (e.g. SAR, USD) */
+  code: string;
+  nameEn: string;
+  nameAr: string;
+  symbol: string;
+  decimalPlaces: number;
+  /** True for the organization base currency (SAR) */
+  isBase: boolean;
+  status: CurrencyStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type BankAccountType = typeof BankAccountType[keyof typeof BankAccountType];
+
+
+export const BankAccountType = {
+  CURRENT: 'CURRENT',
+  SAVINGS: 'SAVINGS',
+  FIXED_DEPOSIT: 'FIXED_DEPOSIT',
+  PETTY_CASH: 'PETTY_CASH',
+} as const;
+
+export interface BankAccount {
+  id: string;
+  organizationId: string;
+  /** @nullable */
+  branchId?: string | null;
+  bankId: string;
+  currencyCode: string;
+  accountNumber: string;
+  /** @nullable */
+  iban?: string | null;
+  accountNameEn: string;
+  accountNameAr: string;
+  type: BankAccountType;
+  /** Set at creation; immutable thereafter */
+  openingBalance: number;
+  /** Maintained by the system via receipt/payment transactions */
+  currentBalance: number;
+  /**
+     * Linked Chart of Accounts leaf account (optional)
+     * @nullable
+     */
+  glAccountId?: string | null;
+  isActive: boolean;
+  /** Nested bank object (included in GET responses) */
+  bank?: Bank;
+  /** @nullable */
+  deletedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type BankAccountCreateType = typeof BankAccountCreateType[keyof typeof BankAccountCreateType];
+
+
+export const BankAccountCreateType = {
+  CURRENT: 'CURRENT',
+  SAVINGS: 'SAVINGS',
+  FIXED_DEPOSIT: 'FIXED_DEPOSIT',
+  PETTY_CASH: 'PETTY_CASH',
+} as const;
+
+export interface BankAccountCreate {
+  bankId: string;
+  /** ISO 4217 currency code */
+  currencyCode: string;
+  accountNumber: string;
+  iban?: string;
+  accountNameEn: string;
+  accountNameAr: string;
+  type: BankAccountCreateType;
+  /** @minimum 0 */
+  openingBalance?: number;
+  /** Optional link to a Chart of Accounts leaf account */
+  glAccountId?: string;
+  branchId?: string;
+}
+
+export type BankAccountUpdateType = typeof BankAccountUpdateType[keyof typeof BankAccountUpdateType];
+
+
+export const BankAccountUpdateType = {
+  CURRENT: 'CURRENT',
+  SAVINGS: 'SAVINGS',
+  FIXED_DEPOSIT: 'FIXED_DEPOSIT',
+  PETTY_CASH: 'PETTY_CASH',
+} as const;
+
+/**
+ * Partial update of a bank account. openingBalance and currentBalance are not accepted — they are immutable / system-managed.
+ */
+export interface BankAccountUpdate {
+  iban?: string;
+  accountNameEn?: string;
+  accountNameAr?: string;
+  type?: BankAccountUpdateType;
+  /** @nullable */
+  glAccountId?: string | null;
+  /** @nullable */
+  branchId?: string | null;
+}
+
+export interface CashBox {
+  id: string;
+  organizationId: string;
+  /** @nullable */
+  branchId?: string | null;
+  currencyCode: string;
+  nameEn: string;
+  nameAr: string;
+  /** Unique code within the organization */
+  code: string;
+  /** Set at creation; immutable thereafter */
+  openingBalance: number;
+  /** Maintained by the system via petty cash transactions */
+  currentBalance: number;
+  /**
+     * Linked Chart of Accounts leaf account (optional)
+     * @nullable
+     */
+  glAccountId?: string | null;
+  isActive: boolean;
+  /** @nullable */
+  deletedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CashBoxCreate {
+  /** ISO 4217 currency code */
+  currencyCode: string;
+  nameEn: string;
+  nameAr: string;
+  /** Unique code within the organization (e.g. CB-001) */
+  code: string;
+  /** @minimum 0 */
+  openingBalance?: number;
+  /** Optional link to a Chart of Accounts leaf account */
+  glAccountId?: string;
+  branchId?: string;
+}
+
+/**
+ * Partial update of a cash box. openingBalance and currentBalance are not accepted — they are immutable / system-managed.
+ */
+export interface CashBoxUpdate {
+  nameEn?: string;
+  nameAr?: string;
+  /** @nullable */
+  glAccountId?: string | null;
+  /** @nullable */
+  branchId?: string | null;
+}
+
 export interface OkResponse {
   ok: boolean;
 }
@@ -966,5 +1149,56 @@ export type UseJournalEntryTemplateBody = {
   fiscalYearId: string;
   entryDate?: string;
   exchangeRate?: number;
+};
+
+export type ListCurrenciesParams = {
+/**
+ * Filter by currency status
+ */
+status?: ListCurrenciesStatus;
+};
+
+export type ListCurrenciesStatus = typeof ListCurrenciesStatus[keyof typeof ListCurrenciesStatus];
+
+
+export const ListCurrenciesStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export type ListBankAccountsParams = {
+/**
+ * Filter by account type
+ */
+type?: ListBankAccountsType;
+/**
+ * Filter by active status
+ */
+isActive?: boolean;
+/**
+ * Filter by currency code (e.g. SAR, USD)
+ */
+currencyCode?: string;
+};
+
+export type ListBankAccountsType = typeof ListBankAccountsType[keyof typeof ListBankAccountsType];
+
+
+export const ListBankAccountsType = {
+  CURRENT: 'CURRENT',
+  SAVINGS: 'SAVINGS',
+  FIXED_DEPOSIT: 'FIXED_DEPOSIT',
+  PETTY_CASH: 'PETTY_CASH',
+} as const;
+
+export type ListCashBoxesParams = {
+/**
+ * Filter by active status
+ */
+isActive?: boolean;
+/**
+ * Filter by currency code
+ */
+currencyCode?: string;
 };
 

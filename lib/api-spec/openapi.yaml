@@ -21,6 +21,14 @@ tags:
     description: Journal entry file attachments
   - name: notifications
     description: In-app user notifications
+  - name: banks
+    description: Bank reference data (read-only)
+  - name: bank-accounts
+    description: Organization bank account management
+  - name: cash-boxes
+    description: Organization cash box (petty cash) management
+  - name: currencies
+    description: Currency reference data (read-only)
 paths:
   /healthz:
     get:
@@ -1231,6 +1239,404 @@ paths:
               schema:
                 $ref: "#/components/schemas/JournalEntry"
 
+  # ─── Banks ───────────────────────────────────────────────────────────────────
+
+  /banks:
+    get:
+      operationId: listBanks
+      tags: [banks]
+      summary: List all active banks
+      description: Returns all active banks for use in dropdowns. Read-only seeded reference data.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of banks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Bank"
+        "401":
+          description: Unauthorized
+
+  # ─── Currencies ───────────────────────────────────────────────────────────────
+
+  /currencies:
+    get:
+      operationId: listCurrencies
+      tags: [currencies]
+      summary: List currencies
+      description: Returns all currencies. Filter by status to get only active ones.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [ACTIVE, INACTIVE]
+          description: Filter by currency status
+      responses:
+        "200":
+          description: List of currencies
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Currency"
+        "401":
+          description: Unauthorized
+
+  # ─── Bank Accounts ────────────────────────────────────────────────────────────
+
+  /bank-accounts:
+    get:
+      operationId: listBankAccounts
+      tags: [bank-accounts]
+      summary: List organization bank accounts
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [CURRENT, SAVINGS, FIXED_DEPOSIT, PETTY_CASH]
+          description: Filter by account type
+        - name: isActive
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Filter by active status
+        - name: currencyCode
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by currency code (e.g. SAR, USD)
+      responses:
+        "200":
+          description: List of bank accounts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BankAccount"
+        "401":
+          description: Unauthorized
+
+    post:
+      operationId: createBankAccount
+      tags: [bank-accounts]
+      summary: Create a bank account
+      description: Creates a new bank account. currentBalance is initialized to openingBalance.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BankAccountCreate"
+      responses:
+        "201":
+          description: Bank account created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BankAccount"
+        "400":
+          description: Validation error
+        "401":
+          description: Unauthorized
+        "409":
+          description: Account number already exists for this organization
+
+  /bank-accounts/{id}:
+    get:
+      operationId: getBankAccount
+      tags: [bank-accounts]
+      summary: Get bank account by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Bank account detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BankAccount"
+        "401":
+          description: Unauthorized
+        "404":
+          description: Not found
+
+    patch:
+      operationId: updateBankAccount
+      tags: [bank-accounts]
+      summary: Update a bank account
+      description: >
+        Updates mutable fields. openingBalance and currentBalance cannot be
+        changed via this endpoint — opening balance is immutable after creation;
+        current balance is maintained by the system via receipt/payment transactions.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BankAccountUpdate"
+      responses:
+        "200":
+          description: Updated bank account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BankAccount"
+        "400":
+          description: Validation error
+        "401":
+          description: Unauthorized
+        "404":
+          description: Not found
+
+    delete:
+      operationId: deleteBankAccount
+      tags: [bank-accounts]
+      summary: Soft-delete a bank account
+      description: Soft-deletes the bank account. Returns 409 if currentBalance ≠ 0.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "401":
+          description: Unauthorized
+        "404":
+          description: Not found
+        "409":
+          description: Cannot delete — account has a non-zero balance
+
+  /bank-accounts/{id}/toggle-active:
+    post:
+      operationId: toggleBankAccountActive
+      tags: [bank-accounts]
+      summary: Toggle bank account active/inactive status
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Updated bank account with flipped isActive
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BankAccount"
+        "401":
+          description: Unauthorized
+        "404":
+          description: Not found
+
+  # ─── Cash Boxes ───────────────────────────────────────────────────────────────
+
+  /cash-boxes:
+    get:
+      operationId: listCashBoxes
+      tags: [cash-boxes]
+      summary: List organization cash boxes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: isActive
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Filter by active status
+        - name: currencyCode
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by currency code
+      responses:
+        "200":
+          description: List of cash boxes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CashBox"
+        "401":
+          description: Unauthorized
+
+    post:
+      operationId: createCashBox
+      tags: [cash-boxes]
+      summary: Create a cash box
+      description: Creates a new cash box. currentBalance is initialized to openingBalance.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CashBoxCreate"
+      responses:
+        "201":
+          description: Cash box created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CashBox"
+        "400":
+          description: Validation error
+        "401":
+          description: Unauthorized
+        "409":
+          description: Code already exists for this organization
+
+  /cash-boxes/{id}:
+    get:
+      operationId: getCashBox
+      tags: [cash-boxes]
+      summary: Get cash box by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Cash box detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CashBox"
+        "401":
+          description: Unauthorized
+        "404":
+          description: Not found
+
+    patch:
+      operationId: updateCashBox
+      tags: [cash-boxes]
+      summary: Update a cash box
+      description: >
+        Updates mutable fields. openingBalance and currentBalance cannot be
+        changed via this endpoint.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CashBoxUpdate"
+      responses:
+        "200":
+          description: Updated cash box
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CashBox"
+        "400":
+          description: Validation error
+        "401":
+          description: Unauthorized
+        "404":
+          description: Not found
+
+    delete:
+      operationId: deleteCashBox
+      tags: [cash-boxes]
+      summary: Soft-delete a cash box
+      description: Soft-deletes the cash box. Returns 409 if currentBalance ≠ 0.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "401":
+          description: Unauthorized
+        "404":
+          description: Not found
+        "409":
+          description: Cannot delete — cash box has a non-zero balance
+
+  /cash-boxes/{id}/toggle-active:
+    post:
+      operationId: toggleCashBoxActive
+      tags: [cash-boxes]
+      summary: Toggle cash box active/inactive status
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Updated cash box with flipped isActive
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CashBox"
+        "401":
+          description: Unauthorized
+        "404":
+          description: Not found
+
 components:
   securitySchemes:
     bearerAuth:
@@ -2415,6 +2821,318 @@ components:
         - titleAr
         - isRead
         - createdAt
+
+    # ─── Banking reference data ───────────────────────────────────────────────────
+
+    Bank:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        nameEn:
+          type: string
+        nameAr:
+          type: string
+        swiftCode:
+          type: ["string", "null"]
+        ibanPrefix:
+          type: ["string", "null"]
+        country:
+          type: ["string", "null"]
+        logoUrl:
+          type: ["string", "null"]
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - nameEn
+        - nameAr
+        - isActive
+        - createdAt
+        - updatedAt
+
+    Currency:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+          description: ISO 4217 currency code (e.g. SAR, USD)
+        nameEn:
+          type: string
+        nameAr:
+          type: string
+        symbol:
+          type: string
+        decimalPlaces:
+          type: integer
+        isBase:
+          type: boolean
+          description: True for the organization base currency (SAR)
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - code
+        - nameEn
+        - nameAr
+        - symbol
+        - decimalPlaces
+        - isBase
+        - status
+        - createdAt
+        - updatedAt
+
+    # ─── Bank Accounts ────────────────────────────────────────────────────────────
+
+    BankAccount:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        organizationId:
+          type: string
+          format: uuid
+        branchId:
+          type: ["string", "null"]
+          format: uuid
+        bankId:
+          type: string
+          format: uuid
+        currencyCode:
+          type: string
+        accountNumber:
+          type: string
+        iban:
+          type: ["string", "null"]
+        accountNameEn:
+          type: string
+        accountNameAr:
+          type: string
+        type:
+          type: string
+          enum: [CURRENT, SAVINGS, FIXED_DEPOSIT, PETTY_CASH]
+        openingBalance:
+          type: number
+          description: Set at creation; immutable thereafter
+        currentBalance:
+          type: number
+          description: Maintained by the system via receipt/payment transactions
+        glAccountId:
+          type: ["string", "null"]
+          format: uuid
+          description: Linked Chart of Accounts leaf account (optional)
+        isActive:
+          type: boolean
+        bank:
+          $ref: "#/components/schemas/Bank"
+          description: Nested bank object (included in GET responses)
+        deletedAt:
+          type: ["string", "null"]
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - organizationId
+        - bankId
+        - currencyCode
+        - accountNumber
+        - accountNameEn
+        - accountNameAr
+        - type
+        - openingBalance
+        - currentBalance
+        - isActive
+        - createdAt
+        - updatedAt
+
+    BankAccountCreate:
+      type: object
+      properties:
+        bankId:
+          type: string
+          format: uuid
+        currencyCode:
+          type: string
+          description: ISO 4217 currency code
+        accountNumber:
+          type: string
+        iban:
+          type: string
+        accountNameEn:
+          type: string
+        accountNameAr:
+          type: string
+        type:
+          type: string
+          enum: [CURRENT, SAVINGS, FIXED_DEPOSIT, PETTY_CASH]
+          default: CURRENT
+        openingBalance:
+          type: number
+          minimum: 0
+          default: 0
+        glAccountId:
+          type: string
+          format: uuid
+          description: Optional link to a Chart of Accounts leaf account
+        branchId:
+          type: string
+          format: uuid
+      required:
+        - bankId
+        - currencyCode
+        - accountNumber
+        - accountNameEn
+        - accountNameAr
+        - type
+
+    BankAccountUpdate:
+      type: object
+      description: >
+        Partial update of a bank account. openingBalance and currentBalance
+        are not accepted — they are immutable / system-managed.
+      properties:
+        iban:
+          type: string
+        accountNameEn:
+          type: string
+        accountNameAr:
+          type: string
+        type:
+          type: string
+          enum: [CURRENT, SAVINGS, FIXED_DEPOSIT, PETTY_CASH]
+        glAccountId:
+          type: ["string", "null"]
+          format: uuid
+        branchId:
+          type: ["string", "null"]
+          format: uuid
+
+    # ─── Cash Boxes ───────────────────────────────────────────────────────────────
+
+    CashBox:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        organizationId:
+          type: string
+          format: uuid
+        branchId:
+          type: ["string", "null"]
+          format: uuid
+        currencyCode:
+          type: string
+        nameEn:
+          type: string
+        nameAr:
+          type: string
+        code:
+          type: string
+          description: Unique code within the organization
+        openingBalance:
+          type: number
+          description: Set at creation; immutable thereafter
+        currentBalance:
+          type: number
+          description: Maintained by the system via petty cash transactions
+        glAccountId:
+          type: ["string", "null"]
+          format: uuid
+          description: Linked Chart of Accounts leaf account (optional)
+        isActive:
+          type: boolean
+        deletedAt:
+          type: ["string", "null"]
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - organizationId
+        - currencyCode
+        - nameEn
+        - nameAr
+        - code
+        - openingBalance
+        - currentBalance
+        - isActive
+        - createdAt
+        - updatedAt
+
+    CashBoxCreate:
+      type: object
+      properties:
+        currencyCode:
+          type: string
+          description: ISO 4217 currency code
+        nameEn:
+          type: string
+        nameAr:
+          type: string
+        code:
+          type: string
+          description: Unique code within the organization (e.g. CB-001)
+        openingBalance:
+          type: number
+          minimum: 0
+          default: 0
+        glAccountId:
+          type: string
+          format: uuid
+          description: Optional link to a Chart of Accounts leaf account
+        branchId:
+          type: string
+          format: uuid
+      required:
+        - currencyCode
+        - nameEn
+        - nameAr
+        - code
+
+    CashBoxUpdate:
+      type: object
+      description: >
+        Partial update of a cash box. openingBalance and currentBalance
+        are not accepted — they are immutable / system-managed.
+      properties:
+        nameEn:
+          type: string
+        nameAr:
+          type: string
+        glAccountId:
+          type: ["string", "null"]
+          format: uuid
+        branchId:
+          type: ["string", "null"]
+          format: uuid
 
     OkResponse:
       type: object

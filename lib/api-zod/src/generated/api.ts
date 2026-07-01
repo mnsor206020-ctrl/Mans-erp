@@ -2216,3 +2216,447 @@ export const UseJournalEntryTemplateResponse = zod.object({
 })
 
 
+/**
+ * Returns all active banks for use in dropdowns. Read-only seeded reference data.
+ * @summary List all active banks
+ */
+export const ListBanksResponseItem = zod.object({
+  "id": zod.string().uuid(),
+  "nameEn": zod.string(),
+  "nameAr": zod.string(),
+  "swiftCode": zod.string().nullish(),
+  "ibanPrefix": zod.string().nullish(),
+  "country": zod.string().nullish(),
+  "logoUrl": zod.string().nullish(),
+  "isActive": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListBanksResponse = zod.array(ListBanksResponseItem)
+
+
+/**
+ * Returns all currencies. Filter by status to get only active ones.
+ * @summary List currencies
+ */
+export const ListCurrenciesQueryParams = zod.object({
+  "status": zod.enum(['ACTIVE', 'INACTIVE']).optional().describe('Filter by currency status')
+})
+
+export const ListCurrenciesResponseItem = zod.object({
+  "id": zod.string().uuid(),
+  "code": zod.string().describe('ISO 4217 currency code (e.g. SAR, USD)'),
+  "nameEn": zod.string(),
+  "nameAr": zod.string(),
+  "symbol": zod.string(),
+  "decimalPlaces": zod.number(),
+  "isBase": zod.boolean().describe('True for the organization base currency (SAR)'),
+  "status": zod.enum(['ACTIVE', 'INACTIVE']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListCurrenciesResponse = zod.array(ListCurrenciesResponseItem)
+
+
+/**
+ * @summary List organization bank accounts
+ */
+export const ListBankAccountsQueryParams = zod.object({
+  "type": zod.enum(['CURRENT', 'SAVINGS', 'FIXED_DEPOSIT', 'PETTY_CASH']).optional().describe('Filter by account type'),
+  "isActive": zod.coerce.boolean().optional().describe('Filter by active status'),
+  "currencyCode": zod.coerce.string().optional().describe('Filter by currency code (e.g. SAR, USD)')
+})
+
+export const ListBankAccountsResponseItem = zod.object({
+  "id": zod.string().uuid(),
+  "organizationId": zod.string().uuid(),
+  "branchId": zod.string().uuid().nullish(),
+  "bankId": zod.string().uuid(),
+  "currencyCode": zod.string(),
+  "accountNumber": zod.string(),
+  "iban": zod.string().nullish(),
+  "accountNameEn": zod.string(),
+  "accountNameAr": zod.string(),
+  "type": zod.enum(['CURRENT', 'SAVINGS', 'FIXED_DEPOSIT', 'PETTY_CASH']),
+  "openingBalance": zod.number().describe('Set at creation; immutable thereafter'),
+  "currentBalance": zod.number().describe('Maintained by the system via receipt\/payment transactions'),
+  "glAccountId": zod.string().uuid().nullish().describe('Linked Chart of Accounts leaf account (optional)'),
+  "isActive": zod.boolean(),
+  "bank": zod.object({
+  "id": zod.string().uuid(),
+  "nameEn": zod.string(),
+  "nameAr": zod.string(),
+  "swiftCode": zod.string().nullish(),
+  "ibanPrefix": zod.string().nullish(),
+  "country": zod.string().nullish(),
+  "logoUrl": zod.string().nullish(),
+  "isActive": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}).optional().describe('Nested bank object (included in GET responses)'),
+  "deletedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListBankAccountsResponse = zod.array(ListBankAccountsResponseItem)
+
+
+/**
+ * Creates a new bank account. currentBalance is initialized to openingBalance.
+ * @summary Create a bank account
+ */
+export const createBankAccountBodyTypeDefault = `CURRENT`;
+export const createBankAccountBodyOpeningBalanceDefault = 0;
+export const createBankAccountBodyOpeningBalanceMin = 0;
+
+
+
+export const CreateBankAccountBody = zod.object({
+  "bankId": zod.string().uuid(),
+  "currencyCode": zod.string().describe('ISO 4217 currency code'),
+  "accountNumber": zod.string(),
+  "iban": zod.string().optional(),
+  "accountNameEn": zod.string(),
+  "accountNameAr": zod.string(),
+  "type": zod.enum(['CURRENT', 'SAVINGS', 'FIXED_DEPOSIT', 'PETTY_CASH']).default(createBankAccountBodyTypeDefault),
+  "openingBalance": zod.number().min(createBankAccountBodyOpeningBalanceMin).default(createBankAccountBodyOpeningBalanceDefault),
+  "glAccountId": zod.string().uuid().optional().describe('Optional link to a Chart of Accounts leaf account'),
+  "branchId": zod.string().uuid().optional()
+})
+
+export const CreateBankAccountResponse = zod.object({
+  "id": zod.string().uuid(),
+  "organizationId": zod.string().uuid(),
+  "branchId": zod.string().uuid().nullish(),
+  "bankId": zod.string().uuid(),
+  "currencyCode": zod.string(),
+  "accountNumber": zod.string(),
+  "iban": zod.string().nullish(),
+  "accountNameEn": zod.string(),
+  "accountNameAr": zod.string(),
+  "type": zod.enum(['CURRENT', 'SAVINGS', 'FIXED_DEPOSIT', 'PETTY_CASH']),
+  "openingBalance": zod.number().describe('Set at creation; immutable thereafter'),
+  "currentBalance": zod.number().describe('Maintained by the system via receipt\/payment transactions'),
+  "glAccountId": zod.string().uuid().nullish().describe('Linked Chart of Accounts leaf account (optional)'),
+  "isActive": zod.boolean(),
+  "bank": zod.object({
+  "id": zod.string().uuid(),
+  "nameEn": zod.string(),
+  "nameAr": zod.string(),
+  "swiftCode": zod.string().nullish(),
+  "ibanPrefix": zod.string().nullish(),
+  "country": zod.string().nullish(),
+  "logoUrl": zod.string().nullish(),
+  "isActive": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}).optional().describe('Nested bank object (included in GET responses)'),
+  "deletedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Get bank account by ID
+ */
+export const GetBankAccountParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const GetBankAccountResponse = zod.object({
+  "id": zod.string().uuid(),
+  "organizationId": zod.string().uuid(),
+  "branchId": zod.string().uuid().nullish(),
+  "bankId": zod.string().uuid(),
+  "currencyCode": zod.string(),
+  "accountNumber": zod.string(),
+  "iban": zod.string().nullish(),
+  "accountNameEn": zod.string(),
+  "accountNameAr": zod.string(),
+  "type": zod.enum(['CURRENT', 'SAVINGS', 'FIXED_DEPOSIT', 'PETTY_CASH']),
+  "openingBalance": zod.number().describe('Set at creation; immutable thereafter'),
+  "currentBalance": zod.number().describe('Maintained by the system via receipt\/payment transactions'),
+  "glAccountId": zod.string().uuid().nullish().describe('Linked Chart of Accounts leaf account (optional)'),
+  "isActive": zod.boolean(),
+  "bank": zod.object({
+  "id": zod.string().uuid(),
+  "nameEn": zod.string(),
+  "nameAr": zod.string(),
+  "swiftCode": zod.string().nullish(),
+  "ibanPrefix": zod.string().nullish(),
+  "country": zod.string().nullish(),
+  "logoUrl": zod.string().nullish(),
+  "isActive": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}).optional().describe('Nested bank object (included in GET responses)'),
+  "deletedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * Updates mutable fields. openingBalance and currentBalance cannot be changed via this endpoint — opening balance is immutable after creation; current balance is maintained by the system via receipt/payment transactions.
+ * @summary Update a bank account
+ */
+export const UpdateBankAccountParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const UpdateBankAccountBody = zod.object({
+  "iban": zod.string().optional(),
+  "accountNameEn": zod.string().optional(),
+  "accountNameAr": zod.string().optional(),
+  "type": zod.enum(['CURRENT', 'SAVINGS', 'FIXED_DEPOSIT', 'PETTY_CASH']).optional(),
+  "glAccountId": zod.string().uuid().nullish(),
+  "branchId": zod.string().uuid().nullish()
+}).describe('Partial update of a bank account. openingBalance and currentBalance are not accepted — they are immutable \/ system-managed.\n')
+
+export const UpdateBankAccountResponse = zod.object({
+  "id": zod.string().uuid(),
+  "organizationId": zod.string().uuid(),
+  "branchId": zod.string().uuid().nullish(),
+  "bankId": zod.string().uuid(),
+  "currencyCode": zod.string(),
+  "accountNumber": zod.string(),
+  "iban": zod.string().nullish(),
+  "accountNameEn": zod.string(),
+  "accountNameAr": zod.string(),
+  "type": zod.enum(['CURRENT', 'SAVINGS', 'FIXED_DEPOSIT', 'PETTY_CASH']),
+  "openingBalance": zod.number().describe('Set at creation; immutable thereafter'),
+  "currentBalance": zod.number().describe('Maintained by the system via receipt\/payment transactions'),
+  "glAccountId": zod.string().uuid().nullish().describe('Linked Chart of Accounts leaf account (optional)'),
+  "isActive": zod.boolean(),
+  "bank": zod.object({
+  "id": zod.string().uuid(),
+  "nameEn": zod.string(),
+  "nameAr": zod.string(),
+  "swiftCode": zod.string().nullish(),
+  "ibanPrefix": zod.string().nullish(),
+  "country": zod.string().nullish(),
+  "logoUrl": zod.string().nullish(),
+  "isActive": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}).optional().describe('Nested bank object (included in GET responses)'),
+  "deletedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * Soft-deletes the bank account. Returns 409 if currentBalance ≠ 0.
+ * @summary Soft-delete a bank account
+ */
+export const DeleteBankAccountParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const DeleteBankAccountResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+
+/**
+ * @summary Toggle bank account active/inactive status
+ */
+export const ToggleBankAccountActiveParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const ToggleBankAccountActiveResponse = zod.object({
+  "id": zod.string().uuid(),
+  "organizationId": zod.string().uuid(),
+  "branchId": zod.string().uuid().nullish(),
+  "bankId": zod.string().uuid(),
+  "currencyCode": zod.string(),
+  "accountNumber": zod.string(),
+  "iban": zod.string().nullish(),
+  "accountNameEn": zod.string(),
+  "accountNameAr": zod.string(),
+  "type": zod.enum(['CURRENT', 'SAVINGS', 'FIXED_DEPOSIT', 'PETTY_CASH']),
+  "openingBalance": zod.number().describe('Set at creation; immutable thereafter'),
+  "currentBalance": zod.number().describe('Maintained by the system via receipt\/payment transactions'),
+  "glAccountId": zod.string().uuid().nullish().describe('Linked Chart of Accounts leaf account (optional)'),
+  "isActive": zod.boolean(),
+  "bank": zod.object({
+  "id": zod.string().uuid(),
+  "nameEn": zod.string(),
+  "nameAr": zod.string(),
+  "swiftCode": zod.string().nullish(),
+  "ibanPrefix": zod.string().nullish(),
+  "country": zod.string().nullish(),
+  "logoUrl": zod.string().nullish(),
+  "isActive": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}).optional().describe('Nested bank object (included in GET responses)'),
+  "deletedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary List organization cash boxes
+ */
+export const ListCashBoxesQueryParams = zod.object({
+  "isActive": zod.coerce.boolean().optional().describe('Filter by active status'),
+  "currencyCode": zod.coerce.string().optional().describe('Filter by currency code')
+})
+
+export const ListCashBoxesResponseItem = zod.object({
+  "id": zod.string().uuid(),
+  "organizationId": zod.string().uuid(),
+  "branchId": zod.string().uuid().nullish(),
+  "currencyCode": zod.string(),
+  "nameEn": zod.string(),
+  "nameAr": zod.string(),
+  "code": zod.string().describe('Unique code within the organization'),
+  "openingBalance": zod.number().describe('Set at creation; immutable thereafter'),
+  "currentBalance": zod.number().describe('Maintained by the system via petty cash transactions'),
+  "glAccountId": zod.string().uuid().nullish().describe('Linked Chart of Accounts leaf account (optional)'),
+  "isActive": zod.boolean(),
+  "deletedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListCashBoxesResponse = zod.array(ListCashBoxesResponseItem)
+
+
+/**
+ * Creates a new cash box. currentBalance is initialized to openingBalance.
+ * @summary Create a cash box
+ */
+export const createCashBoxBodyOpeningBalanceDefault = 0;
+export const createCashBoxBodyOpeningBalanceMin = 0;
+
+
+
+export const CreateCashBoxBody = zod.object({
+  "currencyCode": zod.string().describe('ISO 4217 currency code'),
+  "nameEn": zod.string(),
+  "nameAr": zod.string(),
+  "code": zod.string().describe('Unique code within the organization (e.g. CB-001)'),
+  "openingBalance": zod.number().min(createCashBoxBodyOpeningBalanceMin).default(createCashBoxBodyOpeningBalanceDefault),
+  "glAccountId": zod.string().uuid().optional().describe('Optional link to a Chart of Accounts leaf account'),
+  "branchId": zod.string().uuid().optional()
+})
+
+export const CreateCashBoxResponse = zod.object({
+  "id": zod.string().uuid(),
+  "organizationId": zod.string().uuid(),
+  "branchId": zod.string().uuid().nullish(),
+  "currencyCode": zod.string(),
+  "nameEn": zod.string(),
+  "nameAr": zod.string(),
+  "code": zod.string().describe('Unique code within the organization'),
+  "openingBalance": zod.number().describe('Set at creation; immutable thereafter'),
+  "currentBalance": zod.number().describe('Maintained by the system via petty cash transactions'),
+  "glAccountId": zod.string().uuid().nullish().describe('Linked Chart of Accounts leaf account (optional)'),
+  "isActive": zod.boolean(),
+  "deletedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Get cash box by ID
+ */
+export const GetCashBoxParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const GetCashBoxResponse = zod.object({
+  "id": zod.string().uuid(),
+  "organizationId": zod.string().uuid(),
+  "branchId": zod.string().uuid().nullish(),
+  "currencyCode": zod.string(),
+  "nameEn": zod.string(),
+  "nameAr": zod.string(),
+  "code": zod.string().describe('Unique code within the organization'),
+  "openingBalance": zod.number().describe('Set at creation; immutable thereafter'),
+  "currentBalance": zod.number().describe('Maintained by the system via petty cash transactions'),
+  "glAccountId": zod.string().uuid().nullish().describe('Linked Chart of Accounts leaf account (optional)'),
+  "isActive": zod.boolean(),
+  "deletedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * Updates mutable fields. openingBalance and currentBalance cannot be changed via this endpoint.
+ * @summary Update a cash box
+ */
+export const UpdateCashBoxParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const UpdateCashBoxBody = zod.object({
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional(),
+  "glAccountId": zod.string().uuid().nullish(),
+  "branchId": zod.string().uuid().nullish()
+}).describe('Partial update of a cash box. openingBalance and currentBalance are not accepted — they are immutable \/ system-managed.\n')
+
+export const UpdateCashBoxResponse = zod.object({
+  "id": zod.string().uuid(),
+  "organizationId": zod.string().uuid(),
+  "branchId": zod.string().uuid().nullish(),
+  "currencyCode": zod.string(),
+  "nameEn": zod.string(),
+  "nameAr": zod.string(),
+  "code": zod.string().describe('Unique code within the organization'),
+  "openingBalance": zod.number().describe('Set at creation; immutable thereafter'),
+  "currentBalance": zod.number().describe('Maintained by the system via petty cash transactions'),
+  "glAccountId": zod.string().uuid().nullish().describe('Linked Chart of Accounts leaf account (optional)'),
+  "isActive": zod.boolean(),
+  "deletedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * Soft-deletes the cash box. Returns 409 if currentBalance ≠ 0.
+ * @summary Soft-delete a cash box
+ */
+export const DeleteCashBoxParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const DeleteCashBoxResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+
+/**
+ * @summary Toggle cash box active/inactive status
+ */
+export const ToggleCashBoxActiveParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const ToggleCashBoxActiveResponse = zod.object({
+  "id": zod.string().uuid(),
+  "organizationId": zod.string().uuid(),
+  "branchId": zod.string().uuid().nullish(),
+  "currencyCode": zod.string(),
+  "nameEn": zod.string(),
+  "nameAr": zod.string(),
+  "code": zod.string().describe('Unique code within the organization'),
+  "openingBalance": zod.number().describe('Set at creation; immutable thereafter'),
+  "currentBalance": zod.number().describe('Maintained by the system via petty cash transactions'),
+  "glAccountId": zod.string().uuid().nullish().describe('Linked Chart of Accounts leaf account (optional)'),
+  "isActive": zod.boolean(),
+  "deletedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
