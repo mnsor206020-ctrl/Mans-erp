@@ -14,6 +14,9 @@ import currenciesRouter from "./currencies";
 import branchesRouter from "./branches";
 import bankAccountsRouter from "./bank-accounts";
 import cashBoxesRouter from "./cash-boxes";
+import receiptsRouter from "./receipts";
+import paymentsRouter from "./payments";
+import pettyCashRouter from "./petty-cash";
 
 const router: IRouter = Router();
 
@@ -32,5 +35,8 @@ router.use("/currencies", currenciesRouter);
 router.use("/branches", branchesRouter);
 router.use("/bank-accounts", bankAccountsRouter);
 router.use("/cash-boxes", cashBoxesRouter);
+router.use("/receipts", receiptsRouter);
+router.use("/payments", paymentsRouter);
+router.use("/petty-cash", pettyCashRouter);
 
 export default router;

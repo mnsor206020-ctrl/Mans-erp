@@ -1016,6 +1016,378 @@ export interface CashBoxUpdate {
   branchId?: string | null;
 }
 
+/**
+ * Lifecycle status of a receipt or payment
+ */
+export type TransactionStatus = typeof TransactionStatus[keyof typeof TransactionStatus];
+
+
+export const TransactionStatus = {
+  DRAFT: 'DRAFT',
+  CONFIRMED: 'CONFIRMED',
+  RECONCILED: 'RECONCILED',
+  VOIDED: 'VOIDED',
+} as const;
+
+/**
+ * Method used to receive or disburse funds
+ */
+export type PaymentMethod = typeof PaymentMethod[keyof typeof PaymentMethod];
+
+
+export const PaymentMethod = {
+  CASH: 'CASH',
+  BANK_TRANSFER: 'BANK_TRANSFER',
+  CHEQUE: 'CHEQUE',
+  CREDIT_CARD: 'CREDIT_CARD',
+  ONLINE: 'ONLINE',
+  OTHER: 'OTHER',
+} as const;
+
+/**
+ * Direction of a petty cash entry
+ */
+export type PettyCashType = typeof PettyCashType[keyof typeof PettyCashType];
+
+
+export const PettyCashType = {
+  IN: 'IN',
+  OUT: 'OUT',
+} as const;
+
+export type ReceiptBankAccount = {
+  id?: string;
+  accountNameEn?: string;
+  accountNameAr?: string;
+  accountNumber?: string;
+  currencyCode?: string;
+} | null;
+
+export type ReceiptCashBox = {
+  id?: string;
+  nameEn?: string;
+  nameAr?: string;
+  code?: string;
+  currencyCode?: string;
+} | null;
+
+export interface Receipt {
+  id: string;
+  organizationId: string;
+  /** @nullable */
+  branchId?: string | null;
+  /** Auto-generated receipt number (e.g. RCP-2026-0001) */
+  number: string;
+  receiptDate: string;
+  paymentMethod: PaymentMethod;
+  status: TransactionStatus;
+  currencyCode: string;
+  exchangeRate: number;
+  amount: number;
+  /** amount × exchangeRate in base currency */
+  amountBase: number;
+  /** @nullable */
+  bankAccountId?: string | null;
+  /** @nullable */
+  cashBoxId?: string | null;
+  /** @nullable */
+  payerName?: string | null;
+  /** @nullable */
+  payerNameAr?: string | null;
+  /** @nullable */
+  payerType?: string | null;
+  /** @nullable */
+  payerId?: string | null;
+  /** @nullable */
+  chequeNumber?: string | null;
+  /** @nullable */
+  chequeDate?: string | null;
+  /** @nullable */
+  chequeBankName?: string | null;
+  /** @nullable */
+  descriptionEn?: string | null;
+  /** @nullable */
+  descriptionAr?: string | null;
+  /** @nullable */
+  reference?: string | null;
+  /**
+     * Set externally when a journal entry is created for this receipt
+     * @nullable
+     */
+  journalEntryId?: string | null;
+  /** @nullable */
+  confirmedAt?: string | null;
+  /** @nullable */
+  voidedAt?: string | null;
+  /** @nullable */
+  voidReason?: string | null;
+  bankAccount?: ReceiptBankAccount;
+  cashBox?: ReceiptCashBox;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ReceiptCreate {
+  receiptDate: string;
+  paymentMethod: PaymentMethod;
+  currencyCode?: string;
+  /** @minimum 0 */
+  exchangeRate?: number;
+  /** @minimum 0 */
+  amount: number;
+  /** Required when paymentMethod ≠ CASH */
+  bankAccountId?: string;
+  /** Required when paymentMethod = CASH */
+  cashBoxId?: string;
+  branchId?: string;
+  payerName?: string;
+  payerNameAr?: string;
+  payerType?: string;
+  payerId?: string;
+  /** Required when paymentMethod = CHEQUE */
+  chequeNumber?: string;
+  chequeDate?: string;
+  chequeBankName?: string;
+  descriptionEn?: string;
+  descriptionAr?: string;
+  reference?: string;
+}
+
+/**
+ * Partial update. Only allowed while status is DRAFT.
+ */
+export interface ReceiptUpdate {
+  receiptDate?: string;
+  paymentMethod?: PaymentMethod;
+  currencyCode?: string;
+  /** @minimum 0 */
+  exchangeRate?: number;
+  /** @minimum 0 */
+  amount?: number;
+  /** @nullable */
+  bankAccountId?: string | null;
+  /** @nullable */
+  cashBoxId?: string | null;
+  /** @nullable */
+  branchId?: string | null;
+  /** @nullable */
+  payerName?: string | null;
+  /** @nullable */
+  payerNameAr?: string | null;
+  /** @nullable */
+  payerType?: string | null;
+  /** @nullable */
+  payerId?: string | null;
+  /** @nullable */
+  chequeNumber?: string | null;
+  /** @nullable */
+  chequeDate?: string | null;
+  /** @nullable */
+  chequeBankName?: string | null;
+  /** @nullable */
+  descriptionEn?: string | null;
+  /** @nullable */
+  descriptionAr?: string | null;
+  /** @nullable */
+  reference?: string | null;
+}
+
+export type PaymentBankAccount = {
+  id?: string;
+  accountNameEn?: string;
+  accountNameAr?: string;
+  accountNumber?: string;
+  currencyCode?: string;
+} | null;
+
+export type PaymentCashBox = {
+  id?: string;
+  nameEn?: string;
+  nameAr?: string;
+  code?: string;
+  currencyCode?: string;
+} | null;
+
+export interface Payment {
+  id: string;
+  organizationId: string;
+  /** @nullable */
+  branchId?: string | null;
+  /** Auto-generated payment number (e.g. PMT-2026-0001) */
+  number: string;
+  paymentDate: string;
+  paymentMethod: PaymentMethod;
+  status: TransactionStatus;
+  currencyCode: string;
+  exchangeRate: number;
+  amount: number;
+  /** amount × exchangeRate in base currency */
+  amountBase: number;
+  /** @nullable */
+  bankAccountId?: string | null;
+  /** @nullable */
+  cashBoxId?: string | null;
+  /** @nullable */
+  payeeName?: string | null;
+  /** @nullable */
+  payeeNameAr?: string | null;
+  /** @nullable */
+  payeeType?: string | null;
+  /** @nullable */
+  payeeId?: string | null;
+  /** @nullable */
+  chequeNumber?: string | null;
+  /** @nullable */
+  chequeDate?: string | null;
+  /** @nullable */
+  chequeBankName?: string | null;
+  /** @nullable */
+  descriptionEn?: string | null;
+  /** @nullable */
+  descriptionAr?: string | null;
+  /** @nullable */
+  reference?: string | null;
+  /**
+     * Set externally when a journal entry is created for this payment
+     * @nullable
+     */
+  journalEntryId?: string | null;
+  /** @nullable */
+  confirmedAt?: string | null;
+  /** @nullable */
+  voidedAt?: string | null;
+  /** @nullable */
+  voidReason?: string | null;
+  bankAccount?: PaymentBankAccount;
+  cashBox?: PaymentCashBox;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PaymentCreate {
+  paymentDate: string;
+  paymentMethod: PaymentMethod;
+  currencyCode?: string;
+  /** @minimum 0 */
+  exchangeRate?: number;
+  /** @minimum 0 */
+  amount: number;
+  /** Required when paymentMethod ≠ CASH */
+  bankAccountId?: string;
+  /** Required when paymentMethod = CASH */
+  cashBoxId?: string;
+  branchId?: string;
+  payeeName?: string;
+  payeeNameAr?: string;
+  payeeType?: string;
+  payeeId?: string;
+  /** Required when paymentMethod = CHEQUE */
+  chequeNumber?: string;
+  chequeDate?: string;
+  chequeBankName?: string;
+  descriptionEn?: string;
+  descriptionAr?: string;
+  reference?: string;
+}
+
+/**
+ * Partial update. Only allowed while status is DRAFT.
+ */
+export interface PaymentUpdate {
+  paymentDate?: string;
+  paymentMethod?: PaymentMethod;
+  currencyCode?: string;
+  /** @minimum 0 */
+  exchangeRate?: number;
+  /** @minimum 0 */
+  amount?: number;
+  /** @nullable */
+  bankAccountId?: string | null;
+  /** @nullable */
+  cashBoxId?: string | null;
+  /** @nullable */
+  branchId?: string | null;
+  /** @nullable */
+  payeeName?: string | null;
+  /** @nullable */
+  payeeNameAr?: string | null;
+  /** @nullable */
+  payeeType?: string | null;
+  /** @nullable */
+  payeeId?: string | null;
+  /** @nullable */
+  chequeNumber?: string | null;
+  /** @nullable */
+  chequeDate?: string | null;
+  /** @nullable */
+  chequeBankName?: string | null;
+  /** @nullable */
+  descriptionEn?: string | null;
+  /** @nullable */
+  descriptionAr?: string | null;
+  /** @nullable */
+  reference?: string | null;
+}
+
+export type PettyCashCashBox = {
+  id?: string;
+  nameEn?: string;
+  nameAr?: string;
+  code?: string;
+  currencyCode?: string;
+};
+
+export interface PettyCash {
+  id: string;
+  cashBoxId: string;
+  type: PettyCashType;
+  transactionDate: string;
+  amount: number;
+  descriptionEn: string;
+  descriptionAr: string;
+  /** @nullable */
+  reference?: string | null;
+  /** @nullable */
+  receiptNumber?: string | null;
+  /** @nullable */
+  categoryId?: string | null;
+  /** @nullable */
+  glAccountId?: string | null;
+  /** @nullable */
+  costCenterId?: string | null;
+  /** @nullable */
+  journalEntryId?: string | null;
+  /** @nullable */
+  approvedByUserId?: string | null;
+  /** @nullable */
+  approvedAt?: string | null;
+  cashBox?: PettyCashCashBox;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PettyCashCreate {
+  cashBoxId: string;
+  type: PettyCashType;
+  transactionDate: string;
+  /** @minimum 0 */
+  amount: number;
+  /** @minLength 1 */
+  descriptionEn: string;
+  /** @minLength 1 */
+  descriptionAr: string;
+  reference?: string;
+  receiptNumber?: string;
+  categoryId?: string;
+  glAccountId?: string;
+  costCenterId?: string;
+}
+
+export interface VoidRequest {
+  /** @minLength 1 */
+  voidReason: string;
+}
+
 export interface OkResponse {
   ok: boolean;
 }
@@ -1200,5 +1572,142 @@ isActive?: boolean;
  * Filter by currency code
  */
 currencyCode?: string;
+};
+
+export type ListReceiptsParams = {
+/**
+ * Filter by status
+ */
+status?: ListReceiptsStatus;
+/**
+ * Filter by payment method
+ */
+paymentMethod?: ListReceiptsPaymentMethod;
+/**
+ * Filter by bank account
+ */
+bankAccountId?: string;
+/**
+ * Filter by cash box
+ */
+cashBoxId?: string;
+/**
+ * Filter receipts on or after this date
+ */
+dateFrom?: string;
+/**
+ * Filter receipts on or before this date
+ */
+dateTo?: string;
+};
+
+export type ListReceiptsStatus = typeof ListReceiptsStatus[keyof typeof ListReceiptsStatus];
+
+
+export const ListReceiptsStatus = {
+  DRAFT: 'DRAFT',
+  CONFIRMED: 'CONFIRMED',
+  RECONCILED: 'RECONCILED',
+  VOIDED: 'VOIDED',
+} as const;
+
+export type ListReceiptsPaymentMethod = typeof ListReceiptsPaymentMethod[keyof typeof ListReceiptsPaymentMethod];
+
+
+export const ListReceiptsPaymentMethod = {
+  CASH: 'CASH',
+  BANK_TRANSFER: 'BANK_TRANSFER',
+  CHEQUE: 'CHEQUE',
+  CREDIT_CARD: 'CREDIT_CARD',
+  ONLINE: 'ONLINE',
+  OTHER: 'OTHER',
+} as const;
+
+export type ListReceipts200 = {
+  data?: Receipt[];
+};
+
+export type ListPaymentsParams = {
+/**
+ * Filter by status
+ */
+status?: ListPaymentsStatus;
+/**
+ * Filter by payment method
+ */
+paymentMethod?: ListPaymentsPaymentMethod;
+/**
+ * Filter by bank account
+ */
+bankAccountId?: string;
+/**
+ * Filter by cash box
+ */
+cashBoxId?: string;
+/**
+ * Filter payments on or after this date
+ */
+dateFrom?: string;
+/**
+ * Filter payments on or before this date
+ */
+dateTo?: string;
+};
+
+export type ListPaymentsStatus = typeof ListPaymentsStatus[keyof typeof ListPaymentsStatus];
+
+
+export const ListPaymentsStatus = {
+  DRAFT: 'DRAFT',
+  CONFIRMED: 'CONFIRMED',
+  RECONCILED: 'RECONCILED',
+  VOIDED: 'VOIDED',
+} as const;
+
+export type ListPaymentsPaymentMethod = typeof ListPaymentsPaymentMethod[keyof typeof ListPaymentsPaymentMethod];
+
+
+export const ListPaymentsPaymentMethod = {
+  CASH: 'CASH',
+  BANK_TRANSFER: 'BANK_TRANSFER',
+  CHEQUE: 'CHEQUE',
+  CREDIT_CARD: 'CREDIT_CARD',
+  ONLINE: 'ONLINE',
+  OTHER: 'OTHER',
+} as const;
+
+export type ListPayments200 = {
+  data?: Payment[];
+};
+
+export type ListPettyCashParams = {
+/**
+ * Filter by cash box
+ */
+cashBoxId?: string;
+/**
+ * Filter by entry type
+ */
+type?: ListPettyCashType;
+/**
+ * Filter entries on or after this date
+ */
+dateFrom?: string;
+/**
+ * Filter entries on or before this date
+ */
+dateTo?: string;
+};
+
+export type ListPettyCashType = typeof ListPettyCashType[keyof typeof ListPettyCashType];
+
+
+export const ListPettyCashType = {
+  IN: 'IN',
+  OUT: 'OUT',
+} as const;
+
+export type ListPettyCash200 = {
+  data?: PettyCash[];
 };
 

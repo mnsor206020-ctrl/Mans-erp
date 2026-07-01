@@ -2660,3 +2660,957 @@ export const ToggleCashBoxActiveResponse = zod.object({
 })
 
 
+/**
+ * @summary List receipts
+ */
+export const ListReceiptsQueryParams = zod.object({
+  "status": zod.enum(['DRAFT', 'CONFIRMED', 'RECONCILED', 'VOIDED']).optional().describe('Filter by status'),
+  "paymentMethod": zod.enum(['CASH', 'BANK_TRANSFER', 'CHEQUE', 'CREDIT_CARD', 'ONLINE', 'OTHER']).optional().describe('Filter by payment method'),
+  "bankAccountId": zod.coerce.string().uuid().optional().describe('Filter by bank account'),
+  "cashBoxId": zod.coerce.string().uuid().optional().describe('Filter by cash box'),
+  "dateFrom": zod.date().optional().describe('Filter receipts on or after this date'),
+  "dateTo": zod.date().optional().describe('Filter receipts on or before this date')
+})
+
+export const ListReceiptsResponse = zod.object({
+  "data": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "organizationId": zod.string().uuid(),
+  "branchId": zod.string().uuid().nullish(),
+  "number": zod.string().describe('Auto-generated receipt number (e.g. RCP-2026-0001)'),
+  "receiptDate": zod.coerce.date(),
+  "paymentMethod": zod.enum(['CASH', 'BANK_TRANSFER', 'CHEQUE', 'CREDIT_CARD', 'ONLINE', 'OTHER']).describe('Method used to receive or disburse funds'),
+  "status": zod.enum(['DRAFT', 'CONFIRMED', 'RECONCILED', 'VOIDED']).describe('Lifecycle status of a receipt or payment'),
+  "currencyCode": zod.string(),
+  "exchangeRate": zod.number(),
+  "amount": zod.number(),
+  "amountBase": zod.number().describe('amount × exchangeRate in base currency'),
+  "bankAccountId": zod.string().uuid().nullish(),
+  "cashBoxId": zod.string().uuid().nullish(),
+  "payerName": zod.string().nullish(),
+  "payerNameAr": zod.string().nullish(),
+  "payerType": zod.string().nullish(),
+  "payerId": zod.string().uuid().nullish(),
+  "chequeNumber": zod.string().nullish(),
+  "chequeDate": zod.coerce.date().nullish(),
+  "chequeBankName": zod.string().nullish(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "reference": zod.string().nullish(),
+  "journalEntryId": zod.string().uuid().nullish().describe('Set externally when a journal entry is created for this receipt'),
+  "confirmedAt": zod.coerce.date().nullish(),
+  "voidedAt": zod.coerce.date().nullish(),
+  "voidReason": zod.string().nullish(),
+  "bankAccount": zod.object({
+  "id": zod.string().uuid().optional(),
+  "accountNameEn": zod.string().optional(),
+  "accountNameAr": zod.string().optional(),
+  "accountNumber": zod.string().optional(),
+  "currencyCode": zod.string().optional()
+}).nullish(),
+  "cashBox": zod.object({
+  "id": zod.string().uuid().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional(),
+  "code": zod.string().optional(),
+  "currencyCode": zod.string().optional()
+}).nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})).optional()
+})
+
+
+/**
+ * Creates a new receipt in DRAFT status.
+ * @summary Create a receipt
+ */
+export const createReceiptBodyCurrencyCodeDefault = `SAR`;
+export const createReceiptBodyExchangeRateDefault = 1;
+export const createReceiptBodyExchangeRateMin = 0;
+
+export const createReceiptBodyAmountMin = 0;
+
+
+
+export const CreateReceiptBody = zod.object({
+  "receiptDate": zod.coerce.date(),
+  "paymentMethod": zod.enum(['CASH', 'BANK_TRANSFER', 'CHEQUE', 'CREDIT_CARD', 'ONLINE', 'OTHER']).describe('Method used to receive or disburse funds'),
+  "currencyCode": zod.string().default(createReceiptBodyCurrencyCodeDefault),
+  "exchangeRate": zod.number().min(createReceiptBodyExchangeRateMin).default(createReceiptBodyExchangeRateDefault),
+  "amount": zod.number().min(createReceiptBodyAmountMin),
+  "bankAccountId": zod.string().uuid().optional().describe('Required when paymentMethod ≠ CASH'),
+  "cashBoxId": zod.string().uuid().optional().describe('Required when paymentMethod = CASH'),
+  "branchId": zod.string().uuid().optional(),
+  "payerName": zod.string().optional(),
+  "payerNameAr": zod.string().optional(),
+  "payerType": zod.string().optional(),
+  "payerId": zod.string().uuid().optional(),
+  "chequeNumber": zod.string().optional().describe('Required when paymentMethod = CHEQUE'),
+  "chequeDate": zod.coerce.date().optional(),
+  "chequeBankName": zod.string().optional(),
+  "descriptionEn": zod.string().optional(),
+  "descriptionAr": zod.string().optional(),
+  "reference": zod.string().optional()
+})
+
+export const CreateReceiptResponse = zod.object({
+  "id": zod.string().uuid(),
+  "organizationId": zod.string().uuid(),
+  "branchId": zod.string().uuid().nullish(),
+  "number": zod.string().describe('Auto-generated receipt number (e.g. RCP-2026-0001)'),
+  "receiptDate": zod.coerce.date(),
+  "paymentMethod": zod.enum(['CASH', 'BANK_TRANSFER', 'CHEQUE', 'CREDIT_CARD', 'ONLINE', 'OTHER']).describe('Method used to receive or disburse funds'),
+  "status": zod.enum(['DRAFT', 'CONFIRMED', 'RECONCILED', 'VOIDED']).describe('Lifecycle status of a receipt or payment'),
+  "currencyCode": zod.string(),
+  "exchangeRate": zod.number(),
+  "amount": zod.number(),
+  "amountBase": zod.number().describe('amount × exchangeRate in base currency'),
+  "bankAccountId": zod.string().uuid().nullish(),
+  "cashBoxId": zod.string().uuid().nullish(),
+  "payerName": zod.string().nullish(),
+  "payerNameAr": zod.string().nullish(),
+  "payerType": zod.string().nullish(),
+  "payerId": zod.string().uuid().nullish(),
+  "chequeNumber": zod.string().nullish(),
+  "chequeDate": zod.coerce.date().nullish(),
+  "chequeBankName": zod.string().nullish(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "reference": zod.string().nullish(),
+  "journalEntryId": zod.string().uuid().nullish().describe('Set externally when a journal entry is created for this receipt'),
+  "confirmedAt": zod.coerce.date().nullish(),
+  "voidedAt": zod.coerce.date().nullish(),
+  "voidReason": zod.string().nullish(),
+  "bankAccount": zod.object({
+  "id": zod.string().uuid().optional(),
+  "accountNameEn": zod.string().optional(),
+  "accountNameAr": zod.string().optional(),
+  "accountNumber": zod.string().optional(),
+  "currencyCode": zod.string().optional()
+}).nullish(),
+  "cashBox": zod.object({
+  "id": zod.string().uuid().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional(),
+  "code": zod.string().optional(),
+  "currencyCode": zod.string().optional()
+}).nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Get receipt by ID
+ */
+export const GetReceiptParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const GetReceiptResponse = zod.object({
+  "id": zod.string().uuid(),
+  "organizationId": zod.string().uuid(),
+  "branchId": zod.string().uuid().nullish(),
+  "number": zod.string().describe('Auto-generated receipt number (e.g. RCP-2026-0001)'),
+  "receiptDate": zod.coerce.date(),
+  "paymentMethod": zod.enum(['CASH', 'BANK_TRANSFER', 'CHEQUE', 'CREDIT_CARD', 'ONLINE', 'OTHER']).describe('Method used to receive or disburse funds'),
+  "status": zod.enum(['DRAFT', 'CONFIRMED', 'RECONCILED', 'VOIDED']).describe('Lifecycle status of a receipt or payment'),
+  "currencyCode": zod.string(),
+  "exchangeRate": zod.number(),
+  "amount": zod.number(),
+  "amountBase": zod.number().describe('amount × exchangeRate in base currency'),
+  "bankAccountId": zod.string().uuid().nullish(),
+  "cashBoxId": zod.string().uuid().nullish(),
+  "payerName": zod.string().nullish(),
+  "payerNameAr": zod.string().nullish(),
+  "payerType": zod.string().nullish(),
+  "payerId": zod.string().uuid().nullish(),
+  "chequeNumber": zod.string().nullish(),
+  "chequeDate": zod.coerce.date().nullish(),
+  "chequeBankName": zod.string().nullish(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "reference": zod.string().nullish(),
+  "journalEntryId": zod.string().uuid().nullish().describe('Set externally when a journal entry is created for this receipt'),
+  "confirmedAt": zod.coerce.date().nullish(),
+  "voidedAt": zod.coerce.date().nullish(),
+  "voidReason": zod.string().nullish(),
+  "bankAccount": zod.object({
+  "id": zod.string().uuid().optional(),
+  "accountNameEn": zod.string().optional(),
+  "accountNameAr": zod.string().optional(),
+  "accountNumber": zod.string().optional(),
+  "currencyCode": zod.string().optional()
+}).nullish(),
+  "cashBox": zod.object({
+  "id": zod.string().uuid().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional(),
+  "code": zod.string().optional(),
+  "currencyCode": zod.string().optional()
+}).nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * Updates mutable fields. Only allowed while status is DRAFT.
+ * @summary Update a receipt
+ */
+export const UpdateReceiptParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const updateReceiptBodyExchangeRateMin = 0;
+
+export const updateReceiptBodyAmountMin = 0;
+
+
+
+export const UpdateReceiptBody = zod.object({
+  "receiptDate": zod.coerce.date().optional(),
+  "paymentMethod": zod.enum(['CASH', 'BANK_TRANSFER', 'CHEQUE', 'CREDIT_CARD', 'ONLINE', 'OTHER']).optional().describe('Method used to receive or disburse funds'),
+  "currencyCode": zod.string().optional(),
+  "exchangeRate": zod.number().min(updateReceiptBodyExchangeRateMin).optional(),
+  "amount": zod.number().min(updateReceiptBodyAmountMin).optional(),
+  "bankAccountId": zod.string().uuid().nullish(),
+  "cashBoxId": zod.string().uuid().nullish(),
+  "branchId": zod.string().uuid().nullish(),
+  "payerName": zod.string().nullish(),
+  "payerNameAr": zod.string().nullish(),
+  "payerType": zod.string().nullish(),
+  "payerId": zod.string().uuid().nullish(),
+  "chequeNumber": zod.string().nullish(),
+  "chequeDate": zod.coerce.date().nullish(),
+  "chequeBankName": zod.string().nullish(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "reference": zod.string().nullish()
+}).describe('Partial update. Only allowed while status is DRAFT.')
+
+export const UpdateReceiptResponse = zod.object({
+  "id": zod.string().uuid(),
+  "organizationId": zod.string().uuid(),
+  "branchId": zod.string().uuid().nullish(),
+  "number": zod.string().describe('Auto-generated receipt number (e.g. RCP-2026-0001)'),
+  "receiptDate": zod.coerce.date(),
+  "paymentMethod": zod.enum(['CASH', 'BANK_TRANSFER', 'CHEQUE', 'CREDIT_CARD', 'ONLINE', 'OTHER']).describe('Method used to receive or disburse funds'),
+  "status": zod.enum(['DRAFT', 'CONFIRMED', 'RECONCILED', 'VOIDED']).describe('Lifecycle status of a receipt or payment'),
+  "currencyCode": zod.string(),
+  "exchangeRate": zod.number(),
+  "amount": zod.number(),
+  "amountBase": zod.number().describe('amount × exchangeRate in base currency'),
+  "bankAccountId": zod.string().uuid().nullish(),
+  "cashBoxId": zod.string().uuid().nullish(),
+  "payerName": zod.string().nullish(),
+  "payerNameAr": zod.string().nullish(),
+  "payerType": zod.string().nullish(),
+  "payerId": zod.string().uuid().nullish(),
+  "chequeNumber": zod.string().nullish(),
+  "chequeDate": zod.coerce.date().nullish(),
+  "chequeBankName": zod.string().nullish(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "reference": zod.string().nullish(),
+  "journalEntryId": zod.string().uuid().nullish().describe('Set externally when a journal entry is created for this receipt'),
+  "confirmedAt": zod.coerce.date().nullish(),
+  "voidedAt": zod.coerce.date().nullish(),
+  "voidReason": zod.string().nullish(),
+  "bankAccount": zod.object({
+  "id": zod.string().uuid().optional(),
+  "accountNameEn": zod.string().optional(),
+  "accountNameAr": zod.string().optional(),
+  "accountNumber": zod.string().optional(),
+  "currencyCode": zod.string().optional()
+}).nullish(),
+  "cashBox": zod.object({
+  "id": zod.string().uuid().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional(),
+  "code": zod.string().optional(),
+  "currencyCode": zod.string().optional()
+}).nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * Soft-deletes the receipt. Only allowed while status is DRAFT.
+ * @summary Soft-delete a receipt
+ */
+export const DeleteReceiptParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const DeleteReceiptResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+
+/**
+ * Transitions status from DRAFT to CONFIRMED. Atomically increments currentBalance on the linked bank account or cash box by amountBase.
+ * @summary Confirm a receipt
+ */
+export const ConfirmReceiptParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const ConfirmReceiptResponse = zod.object({
+  "id": zod.string().uuid(),
+  "organizationId": zod.string().uuid(),
+  "branchId": zod.string().uuid().nullish(),
+  "number": zod.string().describe('Auto-generated receipt number (e.g. RCP-2026-0001)'),
+  "receiptDate": zod.coerce.date(),
+  "paymentMethod": zod.enum(['CASH', 'BANK_TRANSFER', 'CHEQUE', 'CREDIT_CARD', 'ONLINE', 'OTHER']).describe('Method used to receive or disburse funds'),
+  "status": zod.enum(['DRAFT', 'CONFIRMED', 'RECONCILED', 'VOIDED']).describe('Lifecycle status of a receipt or payment'),
+  "currencyCode": zod.string(),
+  "exchangeRate": zod.number(),
+  "amount": zod.number(),
+  "amountBase": zod.number().describe('amount × exchangeRate in base currency'),
+  "bankAccountId": zod.string().uuid().nullish(),
+  "cashBoxId": zod.string().uuid().nullish(),
+  "payerName": zod.string().nullish(),
+  "payerNameAr": zod.string().nullish(),
+  "payerType": zod.string().nullish(),
+  "payerId": zod.string().uuid().nullish(),
+  "chequeNumber": zod.string().nullish(),
+  "chequeDate": zod.coerce.date().nullish(),
+  "chequeBankName": zod.string().nullish(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "reference": zod.string().nullish(),
+  "journalEntryId": zod.string().uuid().nullish().describe('Set externally when a journal entry is created for this receipt'),
+  "confirmedAt": zod.coerce.date().nullish(),
+  "voidedAt": zod.coerce.date().nullish(),
+  "voidReason": zod.string().nullish(),
+  "bankAccount": zod.object({
+  "id": zod.string().uuid().optional(),
+  "accountNameEn": zod.string().optional(),
+  "accountNameAr": zod.string().optional(),
+  "accountNumber": zod.string().optional(),
+  "currencyCode": zod.string().optional()
+}).nullish(),
+  "cashBox": zod.object({
+  "id": zod.string().uuid().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional(),
+  "code": zod.string().optional(),
+  "currencyCode": zod.string().optional()
+}).nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * Transitions status from CONFIRMED to VOIDED. Atomically decrements currentBalance on the linked bank account or cash box by amountBase (reversal). A void reason is required.
+ * @summary Void a receipt
+ */
+export const VoidReceiptParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+
+
+
+export const VoidReceiptBody = zod.object({
+  "voidReason": zod.string().min(1)
+})
+
+export const VoidReceiptResponse = zod.object({
+  "id": zod.string().uuid(),
+  "organizationId": zod.string().uuid(),
+  "branchId": zod.string().uuid().nullish(),
+  "number": zod.string().describe('Auto-generated receipt number (e.g. RCP-2026-0001)'),
+  "receiptDate": zod.coerce.date(),
+  "paymentMethod": zod.enum(['CASH', 'BANK_TRANSFER', 'CHEQUE', 'CREDIT_CARD', 'ONLINE', 'OTHER']).describe('Method used to receive or disburse funds'),
+  "status": zod.enum(['DRAFT', 'CONFIRMED', 'RECONCILED', 'VOIDED']).describe('Lifecycle status of a receipt or payment'),
+  "currencyCode": zod.string(),
+  "exchangeRate": zod.number(),
+  "amount": zod.number(),
+  "amountBase": zod.number().describe('amount × exchangeRate in base currency'),
+  "bankAccountId": zod.string().uuid().nullish(),
+  "cashBoxId": zod.string().uuid().nullish(),
+  "payerName": zod.string().nullish(),
+  "payerNameAr": zod.string().nullish(),
+  "payerType": zod.string().nullish(),
+  "payerId": zod.string().uuid().nullish(),
+  "chequeNumber": zod.string().nullish(),
+  "chequeDate": zod.coerce.date().nullish(),
+  "chequeBankName": zod.string().nullish(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "reference": zod.string().nullish(),
+  "journalEntryId": zod.string().uuid().nullish().describe('Set externally when a journal entry is created for this receipt'),
+  "confirmedAt": zod.coerce.date().nullish(),
+  "voidedAt": zod.coerce.date().nullish(),
+  "voidReason": zod.string().nullish(),
+  "bankAccount": zod.object({
+  "id": zod.string().uuid().optional(),
+  "accountNameEn": zod.string().optional(),
+  "accountNameAr": zod.string().optional(),
+  "accountNumber": zod.string().optional(),
+  "currencyCode": zod.string().optional()
+}).nullish(),
+  "cashBox": zod.object({
+  "id": zod.string().uuid().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional(),
+  "code": zod.string().optional(),
+  "currencyCode": zod.string().optional()
+}).nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary List payments
+ */
+export const ListPaymentsQueryParams = zod.object({
+  "status": zod.enum(['DRAFT', 'CONFIRMED', 'RECONCILED', 'VOIDED']).optional().describe('Filter by status'),
+  "paymentMethod": zod.enum(['CASH', 'BANK_TRANSFER', 'CHEQUE', 'CREDIT_CARD', 'ONLINE', 'OTHER']).optional().describe('Filter by payment method'),
+  "bankAccountId": zod.coerce.string().uuid().optional().describe('Filter by bank account'),
+  "cashBoxId": zod.coerce.string().uuid().optional().describe('Filter by cash box'),
+  "dateFrom": zod.date().optional().describe('Filter payments on or after this date'),
+  "dateTo": zod.date().optional().describe('Filter payments on or before this date')
+})
+
+export const ListPaymentsResponse = zod.object({
+  "data": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "organizationId": zod.string().uuid(),
+  "branchId": zod.string().uuid().nullish(),
+  "number": zod.string().describe('Auto-generated payment number (e.g. PMT-2026-0001)'),
+  "paymentDate": zod.coerce.date(),
+  "paymentMethod": zod.enum(['CASH', 'BANK_TRANSFER', 'CHEQUE', 'CREDIT_CARD', 'ONLINE', 'OTHER']).describe('Method used to receive or disburse funds'),
+  "status": zod.enum(['DRAFT', 'CONFIRMED', 'RECONCILED', 'VOIDED']).describe('Lifecycle status of a receipt or payment'),
+  "currencyCode": zod.string(),
+  "exchangeRate": zod.number(),
+  "amount": zod.number(),
+  "amountBase": zod.number().describe('amount × exchangeRate in base currency'),
+  "bankAccountId": zod.string().uuid().nullish(),
+  "cashBoxId": zod.string().uuid().nullish(),
+  "payeeName": zod.string().nullish(),
+  "payeeNameAr": zod.string().nullish(),
+  "payeeType": zod.string().nullish(),
+  "payeeId": zod.string().uuid().nullish(),
+  "chequeNumber": zod.string().nullish(),
+  "chequeDate": zod.coerce.date().nullish(),
+  "chequeBankName": zod.string().nullish(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "reference": zod.string().nullish(),
+  "journalEntryId": zod.string().uuid().nullish().describe('Set externally when a journal entry is created for this payment'),
+  "confirmedAt": zod.coerce.date().nullish(),
+  "voidedAt": zod.coerce.date().nullish(),
+  "voidReason": zod.string().nullish(),
+  "bankAccount": zod.object({
+  "id": zod.string().uuid().optional(),
+  "accountNameEn": zod.string().optional(),
+  "accountNameAr": zod.string().optional(),
+  "accountNumber": zod.string().optional(),
+  "currencyCode": zod.string().optional()
+}).nullish(),
+  "cashBox": zod.object({
+  "id": zod.string().uuid().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional(),
+  "code": zod.string().optional(),
+  "currencyCode": zod.string().optional()
+}).nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})).optional()
+})
+
+
+/**
+ * Creates a new payment in DRAFT status.
+ * @summary Create a payment
+ */
+export const createPaymentBodyCurrencyCodeDefault = `SAR`;
+export const createPaymentBodyExchangeRateDefault = 1;
+export const createPaymentBodyExchangeRateMin = 0;
+
+export const createPaymentBodyAmountMin = 0;
+
+
+
+export const CreatePaymentBody = zod.object({
+  "paymentDate": zod.coerce.date(),
+  "paymentMethod": zod.enum(['CASH', 'BANK_TRANSFER', 'CHEQUE', 'CREDIT_CARD', 'ONLINE', 'OTHER']).describe('Method used to receive or disburse funds'),
+  "currencyCode": zod.string().default(createPaymentBodyCurrencyCodeDefault),
+  "exchangeRate": zod.number().min(createPaymentBodyExchangeRateMin).default(createPaymentBodyExchangeRateDefault),
+  "amount": zod.number().min(createPaymentBodyAmountMin),
+  "bankAccountId": zod.string().uuid().optional().describe('Required when paymentMethod ≠ CASH'),
+  "cashBoxId": zod.string().uuid().optional().describe('Required when paymentMethod = CASH'),
+  "branchId": zod.string().uuid().optional(),
+  "payeeName": zod.string().optional(),
+  "payeeNameAr": zod.string().optional(),
+  "payeeType": zod.string().optional(),
+  "payeeId": zod.string().uuid().optional(),
+  "chequeNumber": zod.string().optional().describe('Required when paymentMethod = CHEQUE'),
+  "chequeDate": zod.coerce.date().optional(),
+  "chequeBankName": zod.string().optional(),
+  "descriptionEn": zod.string().optional(),
+  "descriptionAr": zod.string().optional(),
+  "reference": zod.string().optional()
+})
+
+export const CreatePaymentResponse = zod.object({
+  "id": zod.string().uuid(),
+  "organizationId": zod.string().uuid(),
+  "branchId": zod.string().uuid().nullish(),
+  "number": zod.string().describe('Auto-generated payment number (e.g. PMT-2026-0001)'),
+  "paymentDate": zod.coerce.date(),
+  "paymentMethod": zod.enum(['CASH', 'BANK_TRANSFER', 'CHEQUE', 'CREDIT_CARD', 'ONLINE', 'OTHER']).describe('Method used to receive or disburse funds'),
+  "status": zod.enum(['DRAFT', 'CONFIRMED', 'RECONCILED', 'VOIDED']).describe('Lifecycle status of a receipt or payment'),
+  "currencyCode": zod.string(),
+  "exchangeRate": zod.number(),
+  "amount": zod.number(),
+  "amountBase": zod.number().describe('amount × exchangeRate in base currency'),
+  "bankAccountId": zod.string().uuid().nullish(),
+  "cashBoxId": zod.string().uuid().nullish(),
+  "payeeName": zod.string().nullish(),
+  "payeeNameAr": zod.string().nullish(),
+  "payeeType": zod.string().nullish(),
+  "payeeId": zod.string().uuid().nullish(),
+  "chequeNumber": zod.string().nullish(),
+  "chequeDate": zod.coerce.date().nullish(),
+  "chequeBankName": zod.string().nullish(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "reference": zod.string().nullish(),
+  "journalEntryId": zod.string().uuid().nullish().describe('Set externally when a journal entry is created for this payment'),
+  "confirmedAt": zod.coerce.date().nullish(),
+  "voidedAt": zod.coerce.date().nullish(),
+  "voidReason": zod.string().nullish(),
+  "bankAccount": zod.object({
+  "id": zod.string().uuid().optional(),
+  "accountNameEn": zod.string().optional(),
+  "accountNameAr": zod.string().optional(),
+  "accountNumber": zod.string().optional(),
+  "currencyCode": zod.string().optional()
+}).nullish(),
+  "cashBox": zod.object({
+  "id": zod.string().uuid().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional(),
+  "code": zod.string().optional(),
+  "currencyCode": zod.string().optional()
+}).nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Get payment by ID
+ */
+export const GetPaymentParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const GetPaymentResponse = zod.object({
+  "id": zod.string().uuid(),
+  "organizationId": zod.string().uuid(),
+  "branchId": zod.string().uuid().nullish(),
+  "number": zod.string().describe('Auto-generated payment number (e.g. PMT-2026-0001)'),
+  "paymentDate": zod.coerce.date(),
+  "paymentMethod": zod.enum(['CASH', 'BANK_TRANSFER', 'CHEQUE', 'CREDIT_CARD', 'ONLINE', 'OTHER']).describe('Method used to receive or disburse funds'),
+  "status": zod.enum(['DRAFT', 'CONFIRMED', 'RECONCILED', 'VOIDED']).describe('Lifecycle status of a receipt or payment'),
+  "currencyCode": zod.string(),
+  "exchangeRate": zod.number(),
+  "amount": zod.number(),
+  "amountBase": zod.number().describe('amount × exchangeRate in base currency'),
+  "bankAccountId": zod.string().uuid().nullish(),
+  "cashBoxId": zod.string().uuid().nullish(),
+  "payeeName": zod.string().nullish(),
+  "payeeNameAr": zod.string().nullish(),
+  "payeeType": zod.string().nullish(),
+  "payeeId": zod.string().uuid().nullish(),
+  "chequeNumber": zod.string().nullish(),
+  "chequeDate": zod.coerce.date().nullish(),
+  "chequeBankName": zod.string().nullish(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "reference": zod.string().nullish(),
+  "journalEntryId": zod.string().uuid().nullish().describe('Set externally when a journal entry is created for this payment'),
+  "confirmedAt": zod.coerce.date().nullish(),
+  "voidedAt": zod.coerce.date().nullish(),
+  "voidReason": zod.string().nullish(),
+  "bankAccount": zod.object({
+  "id": zod.string().uuid().optional(),
+  "accountNameEn": zod.string().optional(),
+  "accountNameAr": zod.string().optional(),
+  "accountNumber": zod.string().optional(),
+  "currencyCode": zod.string().optional()
+}).nullish(),
+  "cashBox": zod.object({
+  "id": zod.string().uuid().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional(),
+  "code": zod.string().optional(),
+  "currencyCode": zod.string().optional()
+}).nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * Updates mutable fields. Only allowed while status is DRAFT.
+ * @summary Update a payment
+ */
+export const UpdatePaymentParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const updatePaymentBodyExchangeRateMin = 0;
+
+export const updatePaymentBodyAmountMin = 0;
+
+
+
+export const UpdatePaymentBody = zod.object({
+  "paymentDate": zod.coerce.date().optional(),
+  "paymentMethod": zod.enum(['CASH', 'BANK_TRANSFER', 'CHEQUE', 'CREDIT_CARD', 'ONLINE', 'OTHER']).optional().describe('Method used to receive or disburse funds'),
+  "currencyCode": zod.string().optional(),
+  "exchangeRate": zod.number().min(updatePaymentBodyExchangeRateMin).optional(),
+  "amount": zod.number().min(updatePaymentBodyAmountMin).optional(),
+  "bankAccountId": zod.string().uuid().nullish(),
+  "cashBoxId": zod.string().uuid().nullish(),
+  "branchId": zod.string().uuid().nullish(),
+  "payeeName": zod.string().nullish(),
+  "payeeNameAr": zod.string().nullish(),
+  "payeeType": zod.string().nullish(),
+  "payeeId": zod.string().uuid().nullish(),
+  "chequeNumber": zod.string().nullish(),
+  "chequeDate": zod.coerce.date().nullish(),
+  "chequeBankName": zod.string().nullish(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "reference": zod.string().nullish()
+}).describe('Partial update. Only allowed while status is DRAFT.')
+
+export const UpdatePaymentResponse = zod.object({
+  "id": zod.string().uuid(),
+  "organizationId": zod.string().uuid(),
+  "branchId": zod.string().uuid().nullish(),
+  "number": zod.string().describe('Auto-generated payment number (e.g. PMT-2026-0001)'),
+  "paymentDate": zod.coerce.date(),
+  "paymentMethod": zod.enum(['CASH', 'BANK_TRANSFER', 'CHEQUE', 'CREDIT_CARD', 'ONLINE', 'OTHER']).describe('Method used to receive or disburse funds'),
+  "status": zod.enum(['DRAFT', 'CONFIRMED', 'RECONCILED', 'VOIDED']).describe('Lifecycle status of a receipt or payment'),
+  "currencyCode": zod.string(),
+  "exchangeRate": zod.number(),
+  "amount": zod.number(),
+  "amountBase": zod.number().describe('amount × exchangeRate in base currency'),
+  "bankAccountId": zod.string().uuid().nullish(),
+  "cashBoxId": zod.string().uuid().nullish(),
+  "payeeName": zod.string().nullish(),
+  "payeeNameAr": zod.string().nullish(),
+  "payeeType": zod.string().nullish(),
+  "payeeId": zod.string().uuid().nullish(),
+  "chequeNumber": zod.string().nullish(),
+  "chequeDate": zod.coerce.date().nullish(),
+  "chequeBankName": zod.string().nullish(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "reference": zod.string().nullish(),
+  "journalEntryId": zod.string().uuid().nullish().describe('Set externally when a journal entry is created for this payment'),
+  "confirmedAt": zod.coerce.date().nullish(),
+  "voidedAt": zod.coerce.date().nullish(),
+  "voidReason": zod.string().nullish(),
+  "bankAccount": zod.object({
+  "id": zod.string().uuid().optional(),
+  "accountNameEn": zod.string().optional(),
+  "accountNameAr": zod.string().optional(),
+  "accountNumber": zod.string().optional(),
+  "currencyCode": zod.string().optional()
+}).nullish(),
+  "cashBox": zod.object({
+  "id": zod.string().uuid().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional(),
+  "code": zod.string().optional(),
+  "currencyCode": zod.string().optional()
+}).nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * Soft-deletes the payment. Only allowed while status is DRAFT.
+ * @summary Soft-delete a payment
+ */
+export const DeletePaymentParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const DeletePaymentResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+
+/**
+ * Transitions status from DRAFT to CONFIRMED. Atomically decrements currentBalance on the linked bank account or cash box by amountBase.
+ * @summary Confirm a payment
+ */
+export const ConfirmPaymentParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const ConfirmPaymentResponse = zod.object({
+  "id": zod.string().uuid(),
+  "organizationId": zod.string().uuid(),
+  "branchId": zod.string().uuid().nullish(),
+  "number": zod.string().describe('Auto-generated payment number (e.g. PMT-2026-0001)'),
+  "paymentDate": zod.coerce.date(),
+  "paymentMethod": zod.enum(['CASH', 'BANK_TRANSFER', 'CHEQUE', 'CREDIT_CARD', 'ONLINE', 'OTHER']).describe('Method used to receive or disburse funds'),
+  "status": zod.enum(['DRAFT', 'CONFIRMED', 'RECONCILED', 'VOIDED']).describe('Lifecycle status of a receipt or payment'),
+  "currencyCode": zod.string(),
+  "exchangeRate": zod.number(),
+  "amount": zod.number(),
+  "amountBase": zod.number().describe('amount × exchangeRate in base currency'),
+  "bankAccountId": zod.string().uuid().nullish(),
+  "cashBoxId": zod.string().uuid().nullish(),
+  "payeeName": zod.string().nullish(),
+  "payeeNameAr": zod.string().nullish(),
+  "payeeType": zod.string().nullish(),
+  "payeeId": zod.string().uuid().nullish(),
+  "chequeNumber": zod.string().nullish(),
+  "chequeDate": zod.coerce.date().nullish(),
+  "chequeBankName": zod.string().nullish(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "reference": zod.string().nullish(),
+  "journalEntryId": zod.string().uuid().nullish().describe('Set externally when a journal entry is created for this payment'),
+  "confirmedAt": zod.coerce.date().nullish(),
+  "voidedAt": zod.coerce.date().nullish(),
+  "voidReason": zod.string().nullish(),
+  "bankAccount": zod.object({
+  "id": zod.string().uuid().optional(),
+  "accountNameEn": zod.string().optional(),
+  "accountNameAr": zod.string().optional(),
+  "accountNumber": zod.string().optional(),
+  "currencyCode": zod.string().optional()
+}).nullish(),
+  "cashBox": zod.object({
+  "id": zod.string().uuid().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional(),
+  "code": zod.string().optional(),
+  "currencyCode": zod.string().optional()
+}).nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * Transitions status from CONFIRMED to VOIDED. Atomically increments currentBalance on the linked bank account or cash box by amountBase (reversal). A void reason is required.
+ * @summary Void a payment
+ */
+export const VoidPaymentParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+
+
+
+export const VoidPaymentBody = zod.object({
+  "voidReason": zod.string().min(1)
+})
+
+export const VoidPaymentResponse = zod.object({
+  "id": zod.string().uuid(),
+  "organizationId": zod.string().uuid(),
+  "branchId": zod.string().uuid().nullish(),
+  "number": zod.string().describe('Auto-generated payment number (e.g. PMT-2026-0001)'),
+  "paymentDate": zod.coerce.date(),
+  "paymentMethod": zod.enum(['CASH', 'BANK_TRANSFER', 'CHEQUE', 'CREDIT_CARD', 'ONLINE', 'OTHER']).describe('Method used to receive or disburse funds'),
+  "status": zod.enum(['DRAFT', 'CONFIRMED', 'RECONCILED', 'VOIDED']).describe('Lifecycle status of a receipt or payment'),
+  "currencyCode": zod.string(),
+  "exchangeRate": zod.number(),
+  "amount": zod.number(),
+  "amountBase": zod.number().describe('amount × exchangeRate in base currency'),
+  "bankAccountId": zod.string().uuid().nullish(),
+  "cashBoxId": zod.string().uuid().nullish(),
+  "payeeName": zod.string().nullish(),
+  "payeeNameAr": zod.string().nullish(),
+  "payeeType": zod.string().nullish(),
+  "payeeId": zod.string().uuid().nullish(),
+  "chequeNumber": zod.string().nullish(),
+  "chequeDate": zod.coerce.date().nullish(),
+  "chequeBankName": zod.string().nullish(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "reference": zod.string().nullish(),
+  "journalEntryId": zod.string().uuid().nullish().describe('Set externally when a journal entry is created for this payment'),
+  "confirmedAt": zod.coerce.date().nullish(),
+  "voidedAt": zod.coerce.date().nullish(),
+  "voidReason": zod.string().nullish(),
+  "bankAccount": zod.object({
+  "id": zod.string().uuid().optional(),
+  "accountNameEn": zod.string().optional(),
+  "accountNameAr": zod.string().optional(),
+  "accountNumber": zod.string().optional(),
+  "currencyCode": zod.string().optional()
+}).nullish(),
+  "cashBox": zod.object({
+  "id": zod.string().uuid().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional(),
+  "code": zod.string().optional(),
+  "currencyCode": zod.string().optional()
+}).nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary List petty cash entries
+ */
+export const ListPettyCashQueryParams = zod.object({
+  "cashBoxId": zod.coerce.string().uuid().optional().describe('Filter by cash box'),
+  "type": zod.enum(['IN', 'OUT']).optional().describe('Filter by entry type'),
+  "dateFrom": zod.date().optional().describe('Filter entries on or after this date'),
+  "dateTo": zod.date().optional().describe('Filter entries on or before this date')
+})
+
+export const ListPettyCashResponse = zod.object({
+  "data": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "cashBoxId": zod.string().uuid(),
+  "type": zod.enum(['IN', 'OUT']).describe('Direction of a petty cash entry'),
+  "transactionDate": zod.coerce.date(),
+  "amount": zod.number(),
+  "descriptionEn": zod.string(),
+  "descriptionAr": zod.string(),
+  "reference": zod.string().nullish(),
+  "receiptNumber": zod.string().nullish(),
+  "categoryId": zod.string().uuid().nullish(),
+  "glAccountId": zod.string().uuid().nullish(),
+  "costCenterId": zod.string().uuid().nullish(),
+  "journalEntryId": zod.string().uuid().nullish(),
+  "approvedByUserId": zod.string().uuid().nullish(),
+  "approvedAt": zod.coerce.date().nullish(),
+  "cashBox": zod.object({
+  "id": zod.string().uuid().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional(),
+  "code": zod.string().optional(),
+  "currencyCode": zod.string().optional()
+}).optional(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})).optional()
+})
+
+
+/**
+ * Creates a petty cash entry and immediately updates CashBox.currentBalance. IN entries increment the balance; OUT entries decrement it.
+ * @summary Create a petty cash entry
+ */
+export const createPettyCashBodyAmountMin = 0;
+
+
+
+
+
+export const CreatePettyCashBody = zod.object({
+  "cashBoxId": zod.string().uuid(),
+  "type": zod.enum(['IN', 'OUT']).describe('Direction of a petty cash entry'),
+  "transactionDate": zod.coerce.date(),
+  "amount": zod.number().min(createPettyCashBodyAmountMin),
+  "descriptionEn": zod.string().min(1),
+  "descriptionAr": zod.string().min(1),
+  "reference": zod.string().optional(),
+  "receiptNumber": zod.string().optional(),
+  "categoryId": zod.string().uuid().optional(),
+  "glAccountId": zod.string().uuid().optional(),
+  "costCenterId": zod.string().uuid().optional()
+})
+
+export const CreatePettyCashResponse = zod.object({
+  "id": zod.string().uuid(),
+  "cashBoxId": zod.string().uuid(),
+  "type": zod.enum(['IN', 'OUT']).describe('Direction of a petty cash entry'),
+  "transactionDate": zod.coerce.date(),
+  "amount": zod.number(),
+  "descriptionEn": zod.string(),
+  "descriptionAr": zod.string(),
+  "reference": zod.string().nullish(),
+  "receiptNumber": zod.string().nullish(),
+  "categoryId": zod.string().uuid().nullish(),
+  "glAccountId": zod.string().uuid().nullish(),
+  "costCenterId": zod.string().uuid().nullish(),
+  "journalEntryId": zod.string().uuid().nullish(),
+  "approvedByUserId": zod.string().uuid().nullish(),
+  "approvedAt": zod.coerce.date().nullish(),
+  "cashBox": zod.object({
+  "id": zod.string().uuid().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional(),
+  "code": zod.string().optional(),
+  "currencyCode": zod.string().optional()
+}).optional(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Get petty cash entry by ID
+ */
+export const GetPettyCashParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const GetPettyCashResponse = zod.object({
+  "id": zod.string().uuid(),
+  "cashBoxId": zod.string().uuid(),
+  "type": zod.enum(['IN', 'OUT']).describe('Direction of a petty cash entry'),
+  "transactionDate": zod.coerce.date(),
+  "amount": zod.number(),
+  "descriptionEn": zod.string(),
+  "descriptionAr": zod.string(),
+  "reference": zod.string().nullish(),
+  "receiptNumber": zod.string().nullish(),
+  "categoryId": zod.string().uuid().nullish(),
+  "glAccountId": zod.string().uuid().nullish(),
+  "costCenterId": zod.string().uuid().nullish(),
+  "journalEntryId": zod.string().uuid().nullish(),
+  "approvedByUserId": zod.string().uuid().nullish(),
+  "approvedAt": zod.coerce.date().nullish(),
+  "cashBox": zod.object({
+  "id": zod.string().uuid().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional(),
+  "code": zod.string().optional(),
+  "currencyCode": zod.string().optional()
+}).optional(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * Soft-deletes the entry and atomically reverses the balance update: IN entries decrement CashBox.currentBalance; OUT entries increment it.
+ * @summary Soft-delete a petty cash entry
+ */
+export const DeletePettyCashParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const DeletePettyCashResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+

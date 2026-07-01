@@ -25,6 +25,9 @@ import BankAccountDetail from "@/pages/BankAccountDetail";
 import CashBoxes from "@/pages/CashBoxes";
 import CashBoxForm from "@/pages/CashBoxForm";
 import CashBoxDetail from "@/pages/CashBoxDetail";
+import Receipts from "@/pages/Receipts";
+import Payments from "@/pages/Payments";
+import PettyCash from "@/pages/PettyCash";
 import NotFound from "@/pages/not-found";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 
@@ -235,6 +238,18 @@ function ClerkProviderWithRoutes() {
                 <CashBoxDetail params={params as { id: string }} />
               </DashboardLayout>
             )}
+          </Route>
+
+          <Route path="/receipts">
+            <ProtectedRoute component={Receipts} />
+          </Route>
+
+          <Route path="/payments">
+            <ProtectedRoute component={Payments} />
+          </Route>
+
+          <Route path="/petty-cash">
+            <ProtectedRoute component={PettyCash} />
           </Route>
 
           <Route component={NotFound} />

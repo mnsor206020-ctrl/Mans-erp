@@ -63,12 +63,26 @@ import type {
   ListJournalEntriesParams,
   ListJournalEntryAttachments200,
   ListJournalEntryTemplatesParams,
+  ListPayments200,
+  ListPaymentsParams,
+  ListPettyCash200,
+  ListPettyCashParams,
+  ListReceipts200,
+  ListReceiptsParams,
   OkResponse,
   Organization,
   OrganizationInput,
   OrganizationUpdate,
   PaginatedChartOfAccounts,
   PaginatedJournalEntries,
+  Payment,
+  PaymentCreate,
+  PaymentUpdate,
+  PettyCash,
+  PettyCashCreate,
+  Receipt,
+  ReceiptCreate,
+  ReceiptUpdate,
   RejectJournalEntryBody,
   ReverseJournalEntryBody,
   SubmitJournalEntryBody,
@@ -80,7 +94,8 @@ import type {
   UseJournalEntryTemplateBody,
   UserProfile,
   UserProfileUpdate,
-  VoidJournalEntryBody
+  VoidJournalEntryBody,
+  VoidRequest
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -4732,5 +4747,1344 @@ export const useToggleCashBoxActive = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getToggleCashBoxActiveMutationOptions(options));
+    }
+
+export const getListReceiptsUrl = (params?: ListReceiptsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/receipts?${stringifiedParams}` : `/api/receipts`
+}
+
+/**
+ * @summary List receipts
+ */
+export const listReceipts = async (params?: ListReceiptsParams, options?: RequestInit): Promise<ListReceipts200> => {
+
+  return customFetch<ListReceipts200>(getListReceiptsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListReceiptsQueryKey = (params?: ListReceiptsParams,) => {
+    return [
+    `/api/receipts`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListReceiptsQueryOptions = <TData = Awaited<ReturnType<typeof listReceipts>>, TError = ErrorType<void>>(params?: ListReceiptsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listReceipts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListReceiptsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listReceipts>>> = ({ signal }) => listReceipts(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listReceipts>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListReceiptsQueryResult = NonNullable<Awaited<ReturnType<typeof listReceipts>>>
+export type ListReceiptsQueryError = ErrorType<void>
+
+
+/**
+ * @summary List receipts
+ */
+
+export function useListReceipts<TData = Awaited<ReturnType<typeof listReceipts>>, TError = ErrorType<void>>(
+ params?: ListReceiptsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listReceipts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListReceiptsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateReceiptUrl = () => {
+
+
+
+
+  return `/api/receipts`
+}
+
+/**
+ * Creates a new receipt in DRAFT status.
+ * @summary Create a receipt
+ */
+export const createReceipt = async (receiptCreate: ReceiptCreate, options?: RequestInit): Promise<Receipt> => {
+
+  return customFetch<Receipt>(getCreateReceiptUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(receiptCreate)
+  }
+);}
+
+
+
+
+export const getCreateReceiptMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createReceipt>>, TError,{data: BodyType<ReceiptCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createReceipt>>, TError,{data: BodyType<ReceiptCreate>}, TContext> => {
+
+const mutationKey = ['createReceipt'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createReceipt>>, {data: BodyType<ReceiptCreate>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createReceipt(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateReceiptMutationResult = NonNullable<Awaited<ReturnType<typeof createReceipt>>>
+    export type CreateReceiptMutationBody = BodyType<ReceiptCreate>
+    export type CreateReceiptMutationError = ErrorType<void>
+
+    /**
+ * @summary Create a receipt
+ */
+export const useCreateReceipt = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createReceipt>>, TError,{data: BodyType<ReceiptCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createReceipt>>,
+        TError,
+        {data: BodyType<ReceiptCreate>},
+        TContext
+      > => {
+      return useMutation(getCreateReceiptMutationOptions(options));
+    }
+
+export const getGetReceiptUrl = (id: string,) => {
+
+
+
+
+  return `/api/receipts/${id}`
+}
+
+/**
+ * @summary Get receipt by ID
+ */
+export const getReceipt = async (id: string, options?: RequestInit): Promise<Receipt> => {
+
+  return customFetch<Receipt>(getGetReceiptUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetReceiptQueryKey = (id: string,) => {
+    return [
+    `/api/receipts/${id}`
+    ] as const;
+    }
+
+
+export const getGetReceiptQueryOptions = <TData = Awaited<ReturnType<typeof getReceipt>>, TError = ErrorType<void>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getReceipt>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetReceiptQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getReceipt>>> = ({ signal }) => getReceipt(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getReceipt>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetReceiptQueryResult = NonNullable<Awaited<ReturnType<typeof getReceipt>>>
+export type GetReceiptQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get receipt by ID
+ */
+
+export function useGetReceipt<TData = Awaited<ReturnType<typeof getReceipt>>, TError = ErrorType<void>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getReceipt>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetReceiptQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateReceiptUrl = (id: string,) => {
+
+
+
+
+  return `/api/receipts/${id}`
+}
+
+/**
+ * Updates mutable fields. Only allowed while status is DRAFT.
+ * @summary Update a receipt
+ */
+export const updateReceipt = async (id: string,
+    receiptUpdate: ReceiptUpdate, options?: RequestInit): Promise<Receipt> => {
+
+  return customFetch<Receipt>(getUpdateReceiptUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(receiptUpdate)
+  }
+);}
+
+
+
+
+export const getUpdateReceiptMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateReceipt>>, TError,{id: string;data: BodyType<ReceiptUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateReceipt>>, TError,{id: string;data: BodyType<ReceiptUpdate>}, TContext> => {
+
+const mutationKey = ['updateReceipt'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateReceipt>>, {id: string;data: BodyType<ReceiptUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateReceipt(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateReceiptMutationResult = NonNullable<Awaited<ReturnType<typeof updateReceipt>>>
+    export type UpdateReceiptMutationBody = BodyType<ReceiptUpdate>
+    export type UpdateReceiptMutationError = ErrorType<void>
+
+    /**
+ * @summary Update a receipt
+ */
+export const useUpdateReceipt = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateReceipt>>, TError,{id: string;data: BodyType<ReceiptUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateReceipt>>,
+        TError,
+        {id: string;data: BodyType<ReceiptUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateReceiptMutationOptions(options));
+    }
+
+export const getDeleteReceiptUrl = (id: string,) => {
+
+
+
+
+  return `/api/receipts/${id}`
+}
+
+/**
+ * Soft-deletes the receipt. Only allowed while status is DRAFT.
+ * @summary Soft-delete a receipt
+ */
+export const deleteReceipt = async (id: string, options?: RequestInit): Promise<OkResponse> => {
+
+  return customFetch<OkResponse>(getDeleteReceiptUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteReceiptMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteReceipt>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteReceipt>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['deleteReceipt'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteReceipt>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteReceipt(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteReceiptMutationResult = NonNullable<Awaited<ReturnType<typeof deleteReceipt>>>
+
+    export type DeleteReceiptMutationError = ErrorType<void>
+
+    /**
+ * @summary Soft-delete a receipt
+ */
+export const useDeleteReceipt = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteReceipt>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteReceipt>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getDeleteReceiptMutationOptions(options));
+    }
+
+export const getConfirmReceiptUrl = (id: string,) => {
+
+
+
+
+  return `/api/receipts/${id}/confirm`
+}
+
+/**
+ * Transitions status from DRAFT to CONFIRMED. Atomically increments currentBalance on the linked bank account or cash box by amountBase.
+ * @summary Confirm a receipt
+ */
+export const confirmReceipt = async (id: string, options?: RequestInit): Promise<Receipt> => {
+
+  return customFetch<Receipt>(getConfirmReceiptUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getConfirmReceiptMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmReceipt>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmReceipt>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['confirmReceipt'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmReceipt>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  confirmReceipt(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConfirmReceiptMutationResult = NonNullable<Awaited<ReturnType<typeof confirmReceipt>>>
+
+    export type ConfirmReceiptMutationError = ErrorType<void>
+
+    /**
+ * @summary Confirm a receipt
+ */
+export const useConfirmReceipt = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmReceipt>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof confirmReceipt>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getConfirmReceiptMutationOptions(options));
+    }
+
+export const getVoidReceiptUrl = (id: string,) => {
+
+
+
+
+  return `/api/receipts/${id}/void`
+}
+
+/**
+ * Transitions status from CONFIRMED to VOIDED. Atomically decrements currentBalance on the linked bank account or cash box by amountBase (reversal). A void reason is required.
+ * @summary Void a receipt
+ */
+export const voidReceipt = async (id: string,
+    voidRequest: VoidRequest, options?: RequestInit): Promise<Receipt> => {
+
+  return customFetch<Receipt>(getVoidReceiptUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(voidRequest)
+  }
+);}
+
+
+
+
+export const getVoidReceiptMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof voidReceipt>>, TError,{id: string;data: BodyType<VoidRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof voidReceipt>>, TError,{id: string;data: BodyType<VoidRequest>}, TContext> => {
+
+const mutationKey = ['voidReceipt'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof voidReceipt>>, {id: string;data: BodyType<VoidRequest>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  voidReceipt(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type VoidReceiptMutationResult = NonNullable<Awaited<ReturnType<typeof voidReceipt>>>
+    export type VoidReceiptMutationBody = BodyType<VoidRequest>
+    export type VoidReceiptMutationError = ErrorType<void>
+
+    /**
+ * @summary Void a receipt
+ */
+export const useVoidReceipt = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof voidReceipt>>, TError,{id: string;data: BodyType<VoidRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof voidReceipt>>,
+        TError,
+        {id: string;data: BodyType<VoidRequest>},
+        TContext
+      > => {
+      return useMutation(getVoidReceiptMutationOptions(options));
+    }
+
+export const getListPaymentsUrl = (params?: ListPaymentsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/payments?${stringifiedParams}` : `/api/payments`
+}
+
+/**
+ * @summary List payments
+ */
+export const listPayments = async (params?: ListPaymentsParams, options?: RequestInit): Promise<ListPayments200> => {
+
+  return customFetch<ListPayments200>(getListPaymentsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPaymentsQueryKey = (params?: ListPaymentsParams,) => {
+    return [
+    `/api/payments`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListPaymentsQueryOptions = <TData = Awaited<ReturnType<typeof listPayments>>, TError = ErrorType<void>>(params?: ListPaymentsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPayments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPaymentsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPayments>>> = ({ signal }) => listPayments(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPayments>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPaymentsQueryResult = NonNullable<Awaited<ReturnType<typeof listPayments>>>
+export type ListPaymentsQueryError = ErrorType<void>
+
+
+/**
+ * @summary List payments
+ */
+
+export function useListPayments<TData = Awaited<ReturnType<typeof listPayments>>, TError = ErrorType<void>>(
+ params?: ListPaymentsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPayments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPaymentsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreatePaymentUrl = () => {
+
+
+
+
+  return `/api/payments`
+}
+
+/**
+ * Creates a new payment in DRAFT status.
+ * @summary Create a payment
+ */
+export const createPayment = async (paymentCreate: PaymentCreate, options?: RequestInit): Promise<Payment> => {
+
+  return customFetch<Payment>(getCreatePaymentUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(paymentCreate)
+  }
+);}
+
+
+
+
+export const getCreatePaymentMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPayment>>, TError,{data: BodyType<PaymentCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createPayment>>, TError,{data: BodyType<PaymentCreate>}, TContext> => {
+
+const mutationKey = ['createPayment'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createPayment>>, {data: BodyType<PaymentCreate>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createPayment(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreatePaymentMutationResult = NonNullable<Awaited<ReturnType<typeof createPayment>>>
+    export type CreatePaymentMutationBody = BodyType<PaymentCreate>
+    export type CreatePaymentMutationError = ErrorType<void>
+
+    /**
+ * @summary Create a payment
+ */
+export const useCreatePayment = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPayment>>, TError,{data: BodyType<PaymentCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createPayment>>,
+        TError,
+        {data: BodyType<PaymentCreate>},
+        TContext
+      > => {
+      return useMutation(getCreatePaymentMutationOptions(options));
+    }
+
+export const getGetPaymentUrl = (id: string,) => {
+
+
+
+
+  return `/api/payments/${id}`
+}
+
+/**
+ * @summary Get payment by ID
+ */
+export const getPayment = async (id: string, options?: RequestInit): Promise<Payment> => {
+
+  return customFetch<Payment>(getGetPaymentUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPaymentQueryKey = (id: string,) => {
+    return [
+    `/api/payments/${id}`
+    ] as const;
+    }
+
+
+export const getGetPaymentQueryOptions = <TData = Awaited<ReturnType<typeof getPayment>>, TError = ErrorType<void>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPayment>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPaymentQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPayment>>> = ({ signal }) => getPayment(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPayment>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPaymentQueryResult = NonNullable<Awaited<ReturnType<typeof getPayment>>>
+export type GetPaymentQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get payment by ID
+ */
+
+export function useGetPayment<TData = Awaited<ReturnType<typeof getPayment>>, TError = ErrorType<void>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPayment>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPaymentQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdatePaymentUrl = (id: string,) => {
+
+
+
+
+  return `/api/payments/${id}`
+}
+
+/**
+ * Updates mutable fields. Only allowed while status is DRAFT.
+ * @summary Update a payment
+ */
+export const updatePayment = async (id: string,
+    paymentUpdate: PaymentUpdate, options?: RequestInit): Promise<Payment> => {
+
+  return customFetch<Payment>(getUpdatePaymentUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(paymentUpdate)
+  }
+);}
+
+
+
+
+export const getUpdatePaymentMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePayment>>, TError,{id: string;data: BodyType<PaymentUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updatePayment>>, TError,{id: string;data: BodyType<PaymentUpdate>}, TContext> => {
+
+const mutationKey = ['updatePayment'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updatePayment>>, {id: string;data: BodyType<PaymentUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updatePayment(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdatePaymentMutationResult = NonNullable<Awaited<ReturnType<typeof updatePayment>>>
+    export type UpdatePaymentMutationBody = BodyType<PaymentUpdate>
+    export type UpdatePaymentMutationError = ErrorType<void>
+
+    /**
+ * @summary Update a payment
+ */
+export const useUpdatePayment = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePayment>>, TError,{id: string;data: BodyType<PaymentUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updatePayment>>,
+        TError,
+        {id: string;data: BodyType<PaymentUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdatePaymentMutationOptions(options));
+    }
+
+export const getDeletePaymentUrl = (id: string,) => {
+
+
+
+
+  return `/api/payments/${id}`
+}
+
+/**
+ * Soft-deletes the payment. Only allowed while status is DRAFT.
+ * @summary Soft-delete a payment
+ */
+export const deletePayment = async (id: string, options?: RequestInit): Promise<OkResponse> => {
+
+  return customFetch<OkResponse>(getDeletePaymentUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeletePaymentMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePayment>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deletePayment>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['deletePayment'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deletePayment>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deletePayment(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeletePaymentMutationResult = NonNullable<Awaited<ReturnType<typeof deletePayment>>>
+
+    export type DeletePaymentMutationError = ErrorType<void>
+
+    /**
+ * @summary Soft-delete a payment
+ */
+export const useDeletePayment = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePayment>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deletePayment>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getDeletePaymentMutationOptions(options));
+    }
+
+export const getConfirmPaymentUrl = (id: string,) => {
+
+
+
+
+  return `/api/payments/${id}/confirm`
+}
+
+/**
+ * Transitions status from DRAFT to CONFIRMED. Atomically decrements currentBalance on the linked bank account or cash box by amountBase.
+ * @summary Confirm a payment
+ */
+export const confirmPayment = async (id: string, options?: RequestInit): Promise<Payment> => {
+
+  return customFetch<Payment>(getConfirmPaymentUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getConfirmPaymentMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmPayment>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmPayment>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['confirmPayment'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmPayment>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  confirmPayment(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConfirmPaymentMutationResult = NonNullable<Awaited<ReturnType<typeof confirmPayment>>>
+
+    export type ConfirmPaymentMutationError = ErrorType<void>
+
+    /**
+ * @summary Confirm a payment
+ */
+export const useConfirmPayment = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmPayment>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof confirmPayment>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getConfirmPaymentMutationOptions(options));
+    }
+
+export const getVoidPaymentUrl = (id: string,) => {
+
+
+
+
+  return `/api/payments/${id}/void`
+}
+
+/**
+ * Transitions status from CONFIRMED to VOIDED. Atomically increments currentBalance on the linked bank account or cash box by amountBase (reversal). A void reason is required.
+ * @summary Void a payment
+ */
+export const voidPayment = async (id: string,
+    voidRequest: VoidRequest, options?: RequestInit): Promise<Payment> => {
+
+  return customFetch<Payment>(getVoidPaymentUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(voidRequest)
+  }
+);}
+
+
+
+
+export const getVoidPaymentMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof voidPayment>>, TError,{id: string;data: BodyType<VoidRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof voidPayment>>, TError,{id: string;data: BodyType<VoidRequest>}, TContext> => {
+
+const mutationKey = ['voidPayment'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof voidPayment>>, {id: string;data: BodyType<VoidRequest>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  voidPayment(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type VoidPaymentMutationResult = NonNullable<Awaited<ReturnType<typeof voidPayment>>>
+    export type VoidPaymentMutationBody = BodyType<VoidRequest>
+    export type VoidPaymentMutationError = ErrorType<void>
+
+    /**
+ * @summary Void a payment
+ */
+export const useVoidPayment = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof voidPayment>>, TError,{id: string;data: BodyType<VoidRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof voidPayment>>,
+        TError,
+        {id: string;data: BodyType<VoidRequest>},
+        TContext
+      > => {
+      return useMutation(getVoidPaymentMutationOptions(options));
+    }
+
+export const getListPettyCashUrl = (params?: ListPettyCashParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/petty-cash?${stringifiedParams}` : `/api/petty-cash`
+}
+
+/**
+ * @summary List petty cash entries
+ */
+export const listPettyCash = async (params?: ListPettyCashParams, options?: RequestInit): Promise<ListPettyCash200> => {
+
+  return customFetch<ListPettyCash200>(getListPettyCashUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPettyCashQueryKey = (params?: ListPettyCashParams,) => {
+    return [
+    `/api/petty-cash`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListPettyCashQueryOptions = <TData = Awaited<ReturnType<typeof listPettyCash>>, TError = ErrorType<void>>(params?: ListPettyCashParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPettyCash>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPettyCashQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPettyCash>>> = ({ signal }) => listPettyCash(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPettyCash>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPettyCashQueryResult = NonNullable<Awaited<ReturnType<typeof listPettyCash>>>
+export type ListPettyCashQueryError = ErrorType<void>
+
+
+/**
+ * @summary List petty cash entries
+ */
+
+export function useListPettyCash<TData = Awaited<ReturnType<typeof listPettyCash>>, TError = ErrorType<void>>(
+ params?: ListPettyCashParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPettyCash>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPettyCashQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreatePettyCashUrl = () => {
+
+
+
+
+  return `/api/petty-cash`
+}
+
+/**
+ * Creates a petty cash entry and immediately updates CashBox.currentBalance. IN entries increment the balance; OUT entries decrement it.
+ * @summary Create a petty cash entry
+ */
+export const createPettyCash = async (pettyCashCreate: PettyCashCreate, options?: RequestInit): Promise<PettyCash> => {
+
+  return customFetch<PettyCash>(getCreatePettyCashUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(pettyCashCreate)
+  }
+);}
+
+
+
+
+export const getCreatePettyCashMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPettyCash>>, TError,{data: BodyType<PettyCashCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createPettyCash>>, TError,{data: BodyType<PettyCashCreate>}, TContext> => {
+
+const mutationKey = ['createPettyCash'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createPettyCash>>, {data: BodyType<PettyCashCreate>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createPettyCash(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreatePettyCashMutationResult = NonNullable<Awaited<ReturnType<typeof createPettyCash>>>
+    export type CreatePettyCashMutationBody = BodyType<PettyCashCreate>
+    export type CreatePettyCashMutationError = ErrorType<void>
+
+    /**
+ * @summary Create a petty cash entry
+ */
+export const useCreatePettyCash = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPettyCash>>, TError,{data: BodyType<PettyCashCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createPettyCash>>,
+        TError,
+        {data: BodyType<PettyCashCreate>},
+        TContext
+      > => {
+      return useMutation(getCreatePettyCashMutationOptions(options));
+    }
+
+export const getGetPettyCashUrl = (id: string,) => {
+
+
+
+
+  return `/api/petty-cash/${id}`
+}
+
+/**
+ * @summary Get petty cash entry by ID
+ */
+export const getPettyCash = async (id: string, options?: RequestInit): Promise<PettyCash> => {
+
+  return customFetch<PettyCash>(getGetPettyCashUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPettyCashQueryKey = (id: string,) => {
+    return [
+    `/api/petty-cash/${id}`
+    ] as const;
+    }
+
+
+export const getGetPettyCashQueryOptions = <TData = Awaited<ReturnType<typeof getPettyCash>>, TError = ErrorType<void>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPettyCash>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPettyCashQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPettyCash>>> = ({ signal }) => getPettyCash(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPettyCash>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPettyCashQueryResult = NonNullable<Awaited<ReturnType<typeof getPettyCash>>>
+export type GetPettyCashQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get petty cash entry by ID
+ */
+
+export function useGetPettyCash<TData = Awaited<ReturnType<typeof getPettyCash>>, TError = ErrorType<void>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPettyCash>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPettyCashQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getDeletePettyCashUrl = (id: string,) => {
+
+
+
+
+  return `/api/petty-cash/${id}`
+}
+
+/**
+ * Soft-deletes the entry and atomically reverses the balance update: IN entries decrement CashBox.currentBalance; OUT entries increment it.
+ * @summary Soft-delete a petty cash entry
+ */
+export const deletePettyCash = async (id: string, options?: RequestInit): Promise<OkResponse> => {
+
+  return customFetch<OkResponse>(getDeletePettyCashUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeletePettyCashMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePettyCash>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deletePettyCash>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['deletePettyCash'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deletePettyCash>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deletePettyCash(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeletePettyCashMutationResult = NonNullable<Awaited<ReturnType<typeof deletePettyCash>>>
+
+    export type DeletePettyCashMutationError = ErrorType<void>
+
+    /**
+ * @summary Soft-delete a petty cash entry
+ */
+export const useDeletePettyCash = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePettyCash>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deletePettyCash>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getDeletePettyCashMutationOptions(options));
     }
 

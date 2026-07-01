@@ -29,6 +29,12 @@ tags:
     description: Organization cash box (petty cash) management
   - name: currencies
     description: Currency reference data (read-only)
+  - name: receipts
+    description: Money received by the organization (bank account or cash box)
+  - name: payments
+    description: Money paid out by the organization (bank account or cash box)
+  - name: petty-cash
+    description: Petty cash IN/OUT entries against a cash box
 paths:
   /healthz:
     get:
@@ -1637,6 +1643,620 @@ paths:
         "404":
           description: Not found
 
+  # ─── Receipts ─────────────────────────────────────────────────────────────────
+
+  /receipts:
+    get:
+      operationId: listReceipts
+      tags: [receipts]
+      summary: List receipts
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [DRAFT, CONFIRMED, RECONCILED, VOIDED]
+          description: Filter by status
+        - name: paymentMethod
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [CASH, BANK_TRANSFER, CHEQUE, CREDIT_CARD, ONLINE, OTHER]
+          description: Filter by payment method
+        - name: bankAccountId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Filter by bank account
+        - name: cashBoxId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Filter by cash box
+        - name: dateFrom
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Filter receipts on or after this date
+        - name: dateTo
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Filter receipts on or before this date
+      responses:
+        "200":
+          description: List of receipts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Receipt"
+        "401":
+          description: Unauthorized
+
+    post:
+      operationId: createReceipt
+      tags: [receipts]
+      summary: Create a receipt
+      description: Creates a new receipt in DRAFT status.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReceiptCreate"
+      responses:
+        "201":
+          description: Receipt created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Receipt"
+        "400":
+          description: Validation error
+        "401":
+          description: Unauthorized
+        "409":
+          description: Receipt number already exists for this organization
+
+  /receipts/{id}:
+    get:
+      operationId: getReceipt
+      tags: [receipts]
+      summary: Get receipt by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Receipt detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Receipt"
+        "401":
+          description: Unauthorized
+        "404":
+          description: Not found
+
+    patch:
+      operationId: updateReceipt
+      tags: [receipts]
+      summary: Update a receipt
+      description: Updates mutable fields. Only allowed while status is DRAFT.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReceiptUpdate"
+      responses:
+        "200":
+          description: Updated receipt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Receipt"
+        "400":
+          description: Validation error or receipt is not in DRAFT status
+        "401":
+          description: Unauthorized
+        "404":
+          description: Not found
+
+    delete:
+      operationId: deleteReceipt
+      tags: [receipts]
+      summary: Soft-delete a receipt
+      description: Soft-deletes the receipt. Only allowed while status is DRAFT.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "400":
+          description: Cannot delete — receipt is not in DRAFT status
+        "401":
+          description: Unauthorized
+        "404":
+          description: Not found
+
+  /receipts/{id}/confirm:
+    post:
+      operationId: confirmReceipt
+      tags: [receipts]
+      summary: Confirm a receipt
+      description: >
+        Transitions status from DRAFT to CONFIRMED. Atomically increments
+        currentBalance on the linked bank account or cash box by amountBase.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Confirmed receipt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Receipt"
+        "400":
+          description: Receipt is not in DRAFT status, or no bank account/cash box linked
+        "401":
+          description: Unauthorized
+        "404":
+          description: Not found
+
+  /receipts/{id}/void:
+    post:
+      operationId: voidReceipt
+      tags: [receipts]
+      summary: Void a receipt
+      description: >
+        Transitions status from CONFIRMED to VOIDED. Atomically decrements
+        currentBalance on the linked bank account or cash box by amountBase (reversal).
+        A void reason is required.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VoidRequest"
+      responses:
+        "200":
+          description: Voided receipt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Receipt"
+        "400":
+          description: Receipt is not in CONFIRMED status, or void reason missing
+        "401":
+          description: Unauthorized
+        "404":
+          description: Not found
+
+  # ─── Payments ─────────────────────────────────────────────────────────────────
+
+  /payments:
+    get:
+      operationId: listPayments
+      tags: [payments]
+      summary: List payments
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [DRAFT, CONFIRMED, RECONCILED, VOIDED]
+          description: Filter by status
+        - name: paymentMethod
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [CASH, BANK_TRANSFER, CHEQUE, CREDIT_CARD, ONLINE, OTHER]
+          description: Filter by payment method
+        - name: bankAccountId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Filter by bank account
+        - name: cashBoxId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Filter by cash box
+        - name: dateFrom
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Filter payments on or after this date
+        - name: dateTo
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Filter payments on or before this date
+      responses:
+        "200":
+          description: List of payments
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Payment"
+        "401":
+          description: Unauthorized
+
+    post:
+      operationId: createPayment
+      tags: [payments]
+      summary: Create a payment
+      description: Creates a new payment in DRAFT status.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentCreate"
+      responses:
+        "201":
+          description: Payment created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payment"
+        "400":
+          description: Validation error
+        "401":
+          description: Unauthorized
+        "409":
+          description: Payment number already exists for this organization
+
+  /payments/{id}:
+    get:
+      operationId: getPayment
+      tags: [payments]
+      summary: Get payment by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Payment detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payment"
+        "401":
+          description: Unauthorized
+        "404":
+          description: Not found
+
+    patch:
+      operationId: updatePayment
+      tags: [payments]
+      summary: Update a payment
+      description: Updates mutable fields. Only allowed while status is DRAFT.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentUpdate"
+      responses:
+        "200":
+          description: Updated payment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payment"
+        "400":
+          description: Validation error or payment is not in DRAFT status
+        "401":
+          description: Unauthorized
+        "404":
+          description: Not found
+
+    delete:
+      operationId: deletePayment
+      tags: [payments]
+      summary: Soft-delete a payment
+      description: Soft-deletes the payment. Only allowed while status is DRAFT.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "400":
+          description: Cannot delete — payment is not in DRAFT status
+        "401":
+          description: Unauthorized
+        "404":
+          description: Not found
+
+  /payments/{id}/confirm:
+    post:
+      operationId: confirmPayment
+      tags: [payments]
+      summary: Confirm a payment
+      description: >
+        Transitions status from DRAFT to CONFIRMED. Atomically decrements
+        currentBalance on the linked bank account or cash box by amountBase.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Confirmed payment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payment"
+        "400":
+          description: Payment is not in DRAFT status, or no bank account/cash box linked
+        "401":
+          description: Unauthorized
+        "404":
+          description: Not found
+
+  /payments/{id}/void:
+    post:
+      operationId: voidPayment
+      tags: [payments]
+      summary: Void a payment
+      description: >
+        Transitions status from CONFIRMED to VOIDED. Atomically increments
+        currentBalance on the linked bank account or cash box by amountBase (reversal).
+        A void reason is required.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VoidRequest"
+      responses:
+        "200":
+          description: Voided payment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payment"
+        "400":
+          description: Payment is not in CONFIRMED status, or void reason missing
+        "401":
+          description: Unauthorized
+        "404":
+          description: Not found
+
+  # ─── Petty Cash ───────────────────────────────────────────────────────────────
+
+  /petty-cash:
+    get:
+      operationId: listPettyCash
+      tags: [petty-cash]
+      summary: List petty cash entries
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: cashBoxId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Filter by cash box
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [IN, OUT]
+          description: Filter by entry type
+        - name: dateFrom
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Filter entries on or after this date
+        - name: dateTo
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Filter entries on or before this date
+      responses:
+        "200":
+          description: List of petty cash entries
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/PettyCash"
+        "401":
+          description: Unauthorized
+
+    post:
+      operationId: createPettyCash
+      tags: [petty-cash]
+      summary: Create a petty cash entry
+      description: >
+        Creates a petty cash entry and immediately updates CashBox.currentBalance.
+        IN entries increment the balance; OUT entries decrement it.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PettyCashCreate"
+      responses:
+        "201":
+          description: Petty cash entry created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PettyCash"
+        "400":
+          description: Validation error
+        "401":
+          description: Unauthorized
+        "404":
+          description: Cash box not found
+
+  /petty-cash/{id}:
+    get:
+      operationId: getPettyCash
+      tags: [petty-cash]
+      summary: Get petty cash entry by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Petty cash entry detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PettyCash"
+        "401":
+          description: Unauthorized
+        "404":
+          description: Not found
+
+    delete:
+      operationId: deletePettyCash
+      tags: [petty-cash]
+      summary: Soft-delete a petty cash entry
+      description: >
+        Soft-deletes the entry and atomically reverses the balance update:
+        IN entries decrement CashBox.currentBalance; OUT entries increment it.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "401":
+          description: Unauthorized
+        "404":
+          description: Not found
+
 components:
   securitySchemes:
     bearerAuth:
@@ -3133,6 +3753,578 @@ components:
         branchId:
           type: ["string", "null"]
           format: uuid
+
+    # ─── Transaction enums ────────────────────────────────────────────────────────
+
+    TransactionStatus:
+      type: string
+      enum: [DRAFT, CONFIRMED, RECONCILED, VOIDED]
+      description: Lifecycle status of a receipt or payment
+
+    PaymentMethod:
+      type: string
+      enum: [CASH, BANK_TRANSFER, CHEQUE, CREDIT_CARD, ONLINE, OTHER]
+      description: Method used to receive or disburse funds
+
+    PettyCashType:
+      type: string
+      enum: [IN, OUT]
+      description: Direction of a petty cash entry
+
+    # ─── Receipts ─────────────────────────────────────────────────────────────────
+
+    Receipt:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        organizationId:
+          type: string
+          format: uuid
+        branchId:
+          type: ["string", "null"]
+          format: uuid
+        number:
+          type: string
+          description: Auto-generated receipt number (e.g. RCP-2026-0001)
+        receiptDate:
+          type: string
+          format: date
+        paymentMethod:
+          $ref: "#/components/schemas/PaymentMethod"
+        status:
+          $ref: "#/components/schemas/TransactionStatus"
+        currencyCode:
+          type: string
+        exchangeRate:
+          type: number
+        amount:
+          type: number
+        amountBase:
+          type: number
+          description: amount × exchangeRate in base currency
+        bankAccountId:
+          type: ["string", "null"]
+          format: uuid
+        cashBoxId:
+          type: ["string", "null"]
+          format: uuid
+        payerName:
+          type: ["string", "null"]
+        payerNameAr:
+          type: ["string", "null"]
+        payerType:
+          type: ["string", "null"]
+        payerId:
+          type: ["string", "null"]
+          format: uuid
+        chequeNumber:
+          type: ["string", "null"]
+        chequeDate:
+          type: ["string", "null"]
+          format: date
+        chequeBankName:
+          type: ["string", "null"]
+        descriptionEn:
+          type: ["string", "null"]
+        descriptionAr:
+          type: ["string", "null"]
+        reference:
+          type: ["string", "null"]
+        journalEntryId:
+          type: ["string", "null"]
+          format: uuid
+          description: Set externally when a journal entry is created for this receipt
+        confirmedAt:
+          type: ["string", "null"]
+          format: date-time
+        voidedAt:
+          type: ["string", "null"]
+          format: date-time
+        voidReason:
+          type: ["string", "null"]
+        bankAccount:
+          nullable: true
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            accountNameEn: { type: string }
+            accountNameAr: { type: string }
+            accountNumber: { type: string }
+            currencyCode: { type: string }
+        cashBox:
+          nullable: true
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            nameEn: { type: string }
+            nameAr: { type: string }
+            code: { type: string }
+            currencyCode: { type: string }
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - organizationId
+        - number
+        - receiptDate
+        - paymentMethod
+        - status
+        - currencyCode
+        - exchangeRate
+        - amount
+        - amountBase
+        - createdAt
+        - updatedAt
+
+    ReceiptCreate:
+      type: object
+      properties:
+        receiptDate:
+          type: string
+          format: date
+        paymentMethod:
+          $ref: "#/components/schemas/PaymentMethod"
+        currencyCode:
+          type: string
+          default: SAR
+        exchangeRate:
+          type: number
+          minimum: 0
+          default: 1
+        amount:
+          type: number
+          minimum: 0
+        bankAccountId:
+          type: string
+          format: uuid
+          description: Required when paymentMethod ≠ CASH
+        cashBoxId:
+          type: string
+          format: uuid
+          description: Required when paymentMethod = CASH
+        branchId:
+          type: string
+          format: uuid
+        payerName:
+          type: string
+        payerNameAr:
+          type: string
+        payerType:
+          type: string
+        payerId:
+          type: string
+          format: uuid
+        chequeNumber:
+          type: string
+          description: Required when paymentMethod = CHEQUE
+        chequeDate:
+          type: string
+          format: date
+        chequeBankName:
+          type: string
+        descriptionEn:
+          type: string
+        descriptionAr:
+          type: string
+        reference:
+          type: string
+      required:
+        - receiptDate
+        - paymentMethod
+        - amount
+
+    ReceiptUpdate:
+      type: object
+      description: Partial update. Only allowed while status is DRAFT.
+      properties:
+        receiptDate:
+          type: string
+          format: date
+        paymentMethod:
+          $ref: "#/components/schemas/PaymentMethod"
+        currencyCode:
+          type: string
+        exchangeRate:
+          type: number
+          minimum: 0
+        amount:
+          type: number
+          minimum: 0
+        bankAccountId:
+          type: ["string", "null"]
+          format: uuid
+        cashBoxId:
+          type: ["string", "null"]
+          format: uuid
+        branchId:
+          type: ["string", "null"]
+          format: uuid
+        payerName:
+          type: ["string", "null"]
+        payerNameAr:
+          type: ["string", "null"]
+        payerType:
+          type: ["string", "null"]
+        payerId:
+          type: ["string", "null"]
+          format: uuid
+        chequeNumber:
+          type: ["string", "null"]
+        chequeDate:
+          type: ["string", "null"]
+          format: date
+        chequeBankName:
+          type: ["string", "null"]
+        descriptionEn:
+          type: ["string", "null"]
+        descriptionAr:
+          type: ["string", "null"]
+        reference:
+          type: ["string", "null"]
+
+    # ─── Payments ─────────────────────────────────────────────────────────────────
+
+    Payment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        organizationId:
+          type: string
+          format: uuid
+        branchId:
+          type: ["string", "null"]
+          format: uuid
+        number:
+          type: string
+          description: Auto-generated payment number (e.g. PMT-2026-0001)
+        paymentDate:
+          type: string
+          format: date
+        paymentMethod:
+          $ref: "#/components/schemas/PaymentMethod"
+        status:
+          $ref: "#/components/schemas/TransactionStatus"
+        currencyCode:
+          type: string
+        exchangeRate:
+          type: number
+        amount:
+          type: number
+        amountBase:
+          type: number
+          description: amount × exchangeRate in base currency
+        bankAccountId:
+          type: ["string", "null"]
+          format: uuid
+        cashBoxId:
+          type: ["string", "null"]
+          format: uuid
+        payeeName:
+          type: ["string", "null"]
+        payeeNameAr:
+          type: ["string", "null"]
+        payeeType:
+          type: ["string", "null"]
+        payeeId:
+          type: ["string", "null"]
+          format: uuid
+        chequeNumber:
+          type: ["string", "null"]
+        chequeDate:
+          type: ["string", "null"]
+          format: date
+        chequeBankName:
+          type: ["string", "null"]
+        descriptionEn:
+          type: ["string", "null"]
+        descriptionAr:
+          type: ["string", "null"]
+        reference:
+          type: ["string", "null"]
+        journalEntryId:
+          type: ["string", "null"]
+          format: uuid
+          description: Set externally when a journal entry is created for this payment
+        confirmedAt:
+          type: ["string", "null"]
+          format: date-time
+        voidedAt:
+          type: ["string", "null"]
+          format: date-time
+        voidReason:
+          type: ["string", "null"]
+        bankAccount:
+          nullable: true
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            accountNameEn: { type: string }
+            accountNameAr: { type: string }
+            accountNumber: { type: string }
+            currencyCode: { type: string }
+        cashBox:
+          nullable: true
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            nameEn: { type: string }
+            nameAr: { type: string }
+            code: { type: string }
+            currencyCode: { type: string }
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - organizationId
+        - number
+        - paymentDate
+        - paymentMethod
+        - status
+        - currencyCode
+        - exchangeRate
+        - amount
+        - amountBase
+        - createdAt
+        - updatedAt
+
+    PaymentCreate:
+      type: object
+      properties:
+        paymentDate:
+          type: string
+          format: date
+        paymentMethod:
+          $ref: "#/components/schemas/PaymentMethod"
+        currencyCode:
+          type: string
+          default: SAR
+        exchangeRate:
+          type: number
+          minimum: 0
+          default: 1
+        amount:
+          type: number
+          minimum: 0
+        bankAccountId:
+          type: string
+          format: uuid
+          description: Required when paymentMethod ≠ CASH
+        cashBoxId:
+          type: string
+          format: uuid
+          description: Required when paymentMethod = CASH
+        branchId:
+          type: string
+          format: uuid
+        payeeName:
+          type: string
+        payeeNameAr:
+          type: string
+        payeeType:
+          type: string
+        payeeId:
+          type: string
+          format: uuid
+        chequeNumber:
+          type: string
+          description: Required when paymentMethod = CHEQUE
+        chequeDate:
+          type: string
+          format: date
+        chequeBankName:
+          type: string
+        descriptionEn:
+          type: string
+        descriptionAr:
+          type: string
+        reference:
+          type: string
+      required:
+        - paymentDate
+        - paymentMethod
+        - amount
+
+    PaymentUpdate:
+      type: object
+      description: Partial update. Only allowed while status is DRAFT.
+      properties:
+        paymentDate:
+          type: string
+          format: date
+        paymentMethod:
+          $ref: "#/components/schemas/PaymentMethod"
+        currencyCode:
+          type: string
+        exchangeRate:
+          type: number
+          minimum: 0
+        amount:
+          type: number
+          minimum: 0
+        bankAccountId:
+          type: ["string", "null"]
+          format: uuid
+        cashBoxId:
+          type: ["string", "null"]
+          format: uuid
+        branchId:
+          type: ["string", "null"]
+          format: uuid
+        payeeName:
+          type: ["string", "null"]
+        payeeNameAr:
+          type: ["string", "null"]
+        payeeType:
+          type: ["string", "null"]
+        payeeId:
+          type: ["string", "null"]
+          format: uuid
+        chequeNumber:
+          type: ["string", "null"]
+        chequeDate:
+          type: ["string", "null"]
+          format: date
+        chequeBankName:
+          type: ["string", "null"]
+        descriptionEn:
+          type: ["string", "null"]
+        descriptionAr:
+          type: ["string", "null"]
+        reference:
+          type: ["string", "null"]
+
+    # ─── Petty Cash ───────────────────────────────────────────────────────────────
+
+    PettyCash:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        cashBoxId:
+          type: string
+          format: uuid
+        type:
+          $ref: "#/components/schemas/PettyCashType"
+        transactionDate:
+          type: string
+          format: date
+        amount:
+          type: number
+        descriptionEn:
+          type: string
+        descriptionAr:
+          type: string
+        reference:
+          type: ["string", "null"]
+        receiptNumber:
+          type: ["string", "null"]
+        categoryId:
+          type: ["string", "null"]
+          format: uuid
+        glAccountId:
+          type: ["string", "null"]
+          format: uuid
+        costCenterId:
+          type: ["string", "null"]
+          format: uuid
+        journalEntryId:
+          type: ["string", "null"]
+          format: uuid
+        approvedByUserId:
+          type: ["string", "null"]
+          format: uuid
+        approvedAt:
+          type: ["string", "null"]
+          format: date-time
+        cashBox:
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            nameEn: { type: string }
+            nameAr: { type: string }
+            code: { type: string }
+            currencyCode: { type: string }
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - cashBoxId
+        - type
+        - transactionDate
+        - amount
+        - descriptionEn
+        - descriptionAr
+        - createdAt
+        - updatedAt
+
+    PettyCashCreate:
+      type: object
+      properties:
+        cashBoxId:
+          type: string
+          format: uuid
+        type:
+          $ref: "#/components/schemas/PettyCashType"
+        transactionDate:
+          type: string
+          format: date
+        amount:
+          type: number
+          minimum: 0
+        descriptionEn:
+          type: string
+          minLength: 1
+        descriptionAr:
+          type: string
+          minLength: 1
+        reference:
+          type: string
+        receiptNumber:
+          type: string
+        categoryId:
+          type: string
+          format: uuid
+        glAccountId:
+          type: string
+          format: uuid
+        costCenterId:
+          type: string
+          format: uuid
+      required:
+        - cashBoxId
+        - type
+        - transactionDate
+        - amount
+        - descriptionEn
+        - descriptionAr
+
+    # ─── Shared transaction schemas ───────────────────────────────────────────────
+
+    VoidRequest:
+      type: object
+      properties:
+        voidReason:
+          type: string
+          minLength: 1
+      required:
+        - voidReason
 
     OkResponse:
       type: object

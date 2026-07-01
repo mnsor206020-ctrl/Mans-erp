@@ -1,7 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { useLanguage } from "@/lib/language-provider";
 import { useTheme } from "@/components/theme-provider";
-import { LayoutDashboard, Building2, Settings, Bell, Sun, Moon, LogOut, Menu, BookOpen, FileText, Landmark, Wallet } from "lucide-react";
+import { LayoutDashboard, Building2, Settings, Bell, Sun, Moon, LogOut, Menu, BookOpen, FileText, Landmark, Wallet, Receipt, CreditCard, Wallet2 } from "lucide-react";
 import { useUser, useClerk } from "@clerk/react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -26,6 +26,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     { name: t('nav.journalEntries'), href: '/journal-entries', icon: FileText },
     { name: t('nav.bankAccounts'), href: '/bank-accounts', icon: Landmark },
     { name: t('nav.cashBoxes'), href: '/cash-boxes', icon: Wallet },
+    { name: t('nav.receipts'), href: '/receipts', icon: Receipt },
+    { name: t('nav.payments'), href: '/payments', icon: CreditCard },
+    { name: t('nav.pettyCash'), href: '/petty-cash', icon: Wallet2 },
     { name: t('nav.settings'), href: '/settings', icon: Settings },
   ];
 
