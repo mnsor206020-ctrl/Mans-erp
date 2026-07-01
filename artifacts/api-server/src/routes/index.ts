@@ -9,6 +9,9 @@ import journalEntryTemplatesRouter from "./journal-entry-templates";
 import fiscalYearsRouter from "./fiscal-years";
 import costCentersRouter from "./cost-centers";
 import notificationsRouter from "./notifications";
+import banksRouter from "./banks";
+import currenciesRouter from "./currencies";
+import branchesRouter from "./branches";
 
 const router: IRouter = Router();
 
@@ -22,5 +25,8 @@ router.use("/journal-entry-templates", journalEntryTemplatesRouter);
 router.use("/fiscal-years", fiscalYearsRouter);
 router.use("/cost-centers", costCentersRouter);
 router.use("/notifications", notificationsRouter);
+router.use("/banks", banksRouter);
+router.use("/currencies", currenciesRouter);
+router.use("/branches", branchesRouter);
 
 export default router;
