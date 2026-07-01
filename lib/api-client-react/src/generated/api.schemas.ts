@@ -371,6 +371,19 @@ export interface JournalEntryLine {
   costCenter?: JournalEntryLineCostCenter;
 }
 
+export type JournalEntryApprovalRecordAction = typeof JournalEntryApprovalRecordAction[keyof typeof JournalEntryApprovalRecordAction];
+
+
+export const JournalEntryApprovalRecordAction = {
+  SUBMIT: 'SUBMIT',
+  APPROVE: 'APPROVE',
+  REJECT: 'REJECT',
+  POST: 'POST',
+  LOCK: 'LOCK',
+  REVERSE: 'REVERSE',
+  VOID: 'VOID',
+} as const;
+
 export type JournalEntryApprovalRecordUser = {
   id?: string;
   /** @nullable */
@@ -384,13 +397,28 @@ export interface JournalEntryApprovalRecord {
   id: string;
   journalEntryId: string;
   userId: string;
-  action: string;
+  action: JournalEntryApprovalRecordAction;
   /** @nullable */
   comment?: string | null;
   /** @nullable */
   fromStatus?: string | null;
   /** @nullable */
   toStatus?: string | null;
+  /**
+     * Seconds elapsed since the previous approval action on this entry
+     * @nullable
+     */
+  durationSeconds?: number | null;
+  /**
+     * IP address of the actor at the time of the action
+     * @nullable
+     */
+  ipAddress?: string | null;
+  /**
+     * User-Agent header of the actor at the time of the action
+     * @nullable
+     */
+  userAgent?: string | null;
   createdAt: string;
   user?: JournalEntryApprovalRecordUser;
 }
@@ -750,7 +778,11 @@ export type ApproveJournalEntryBody = {
 };
 
 export type RejectJournalEntryBody = {
-  comment?: string;
+  /**
+     * Mandatory rejection reason (min 10 characters)
+     * @minLength 10
+     */
+  comment: string;
 };
 
 export type ReverseJournalEntryBody = {

@@ -5,19 +5,35 @@
  * Mans ERP API - Cloud ERP for nonprofit organizations in Saudi Arabia
  * OpenAPI spec version: 0.1.0
  */
+import type { JournalEntryApprovalRecordAction } from './journalEntryApprovalRecordAction';
 import type { JournalEntryApprovalRecordUser } from './journalEntryApprovalRecordUser';
 
 export interface JournalEntryApprovalRecord {
   id: string;
   journalEntryId: string;
   userId: string;
-  action: string;
+  action: JournalEntryApprovalRecordAction;
   /** @nullable */
   comment?: string | null;
   /** @nullable */
   fromStatus?: string | null;
   /** @nullable */
   toStatus?: string | null;
+  /**
+     * Seconds elapsed since the previous approval action on this entry
+     * @nullable
+     */
+  durationSeconds?: number | null;
+  /**
+     * IP address of the actor at the time of the action
+     * @nullable
+     */
+  ipAddress?: string | null;
+  /**
+     * User-Agent header of the actor at the time of the action
+     * @nullable
+     */
+  userAgent?: string | null;
   createdAt: Date;
   user?: JournalEntryApprovalRecordUser;
 }

@@ -7,5 +7,9 @@
  */
 
 export type RejectJournalEntryBody = {
-  comment?: string;
+  /**
+     * Mandatory rejection reason (min 10 characters)
+     * @minLength 10
+     */
+  comment: string;
 };

@@ -35,6 +35,7 @@ export * from './getChartOfAccountsTreeParams';
 export * from './healthStatus';
 export * from './journalEntry';
 export * from './journalEntryApprovalRecord';
+export * from './journalEntryApprovalRecordAction';
 export * from './journalEntryApprovalRecordUser';
 export * from './journalEntryCreatedBy';
 export * from './journalEntryDetail';

@@ -686,7 +686,7 @@ paths:
     post:
       operationId: rejectJournalEntry
       tags: [journal-entries]
-      summary: Reject back to DRAFT
+      summary: Reject back to DRAFT (UNDER_REVIEW or APPROVED → DRAFT)
       security:
         - bearerAuth: []
       parameters:
@@ -695,12 +695,17 @@ paths:
           required: true
           schema: { type: string, format: uuid }
       requestBody:
+        required: true
         content:
           application/json:
             schema:
               type: object
               properties:
-                comment: { type: string }
+                comment:
+                  type: string
+                  minLength: 10
+                  description: Mandatory rejection reason (min 10 characters)
+              required: [comment]
       responses:
         "200":
           description: Updated entry
@@ -708,6 +713,32 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/JournalEntry"
+        "400":
+          description: Validation error (missing or short comment, invalid status)
+
+  /journal-entries/{id}/approvals:
+    get:
+      operationId: listJournalEntryApprovals
+      tags: [journal-entries]
+      summary: List approval history for a journal entry (chronological)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Ordered list of approval records with actor details
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/JournalEntryApprovalRecord"
+        "404":
+          description: Journal entry not found
 
   /journal-entries/{id}/post:
     post:
@@ -1592,12 +1623,22 @@ components:
           format: uuid
         action:
           type: string
+          enum: [SUBMIT, APPROVE, REJECT, POST, LOCK, REVERSE, VOID]
         comment:
           type: ["string", "null"]
         fromStatus:
           type: ["string", "null"]
         toStatus:
           type: ["string", "null"]
+        durationSeconds:
+          type: ["integer", "null"]
+          description: Seconds elapsed since the previous approval action on this entry
+        ipAddress:
+          type: ["string", "null"]
+          description: IP address of the actor at the time of the action
+        userAgent:
+          type: ["string", "null"]
+          description: User-Agent header of the actor at the time of the action
         createdAt:
           type: string
           format: date-time

@@ -841,10 +841,13 @@ export const GetJournalEntryResponse = zod.object({
   "id": zod.string().uuid(),
   "journalEntryId": zod.string().uuid(),
   "userId": zod.string().uuid(),
-  "action": zod.string(),
+  "action": zod.enum(['SUBMIT', 'APPROVE', 'REJECT', 'POST', 'LOCK', 'REVERSE', 'VOID']),
   "comment": zod.string().nullish(),
   "fromStatus": zod.string().nullish(),
   "toStatus": zod.string().nullish(),
+  "durationSeconds": zod.number().nullish().describe('Seconds elapsed since the previous approval action on this entry'),
+  "ipAddress": zod.string().nullish().describe('IP address of the actor at the time of the action'),
+  "userAgent": zod.string().nullish().describe('User-Agent header of the actor at the time of the action'),
   "createdAt": zod.coerce.date(),
   "user": zod.object({
   "id": zod.string().optional(),
@@ -1164,14 +1167,18 @@ export const ApproveJournalEntryResponse = zod.object({
 
 
 /**
- * @summary Reject back to DRAFT
+ * @summary Reject back to DRAFT (UNDER_REVIEW or APPROVED → DRAFT)
  */
 export const RejectJournalEntryParams = zod.object({
   "id": zod.coerce.string().uuid()
 })
 
+export const rejectJournalEntryBodyCommentMin = 10;
+
+
+
 export const RejectJournalEntryBody = zod.object({
-  "comment": zod.string().optional()
+  "comment": zod.string().min(rejectJournalEntryBodyCommentMin).describe('Mandatory rejection reason (min 10 characters)')
 })
 
 export const RejectJournalEntryResponse = zod.object({
@@ -1241,6 +1248,35 @@ export const RejectJournalEntryResponse = zod.object({
   "lines": zod.number().optional()
 }).nullish()
 })
+
+
+/**
+ * @summary List approval history for a journal entry (chronological)
+ */
+export const ListJournalEntryApprovalsParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const ListJournalEntryApprovalsResponseItem = zod.object({
+  "id": zod.string().uuid(),
+  "journalEntryId": zod.string().uuid(),
+  "userId": zod.string().uuid(),
+  "action": zod.enum(['SUBMIT', 'APPROVE', 'REJECT', 'POST', 'LOCK', 'REVERSE', 'VOID']),
+  "comment": zod.string().nullish(),
+  "fromStatus": zod.string().nullish(),
+  "toStatus": zod.string().nullish(),
+  "durationSeconds": zod.number().nullish().describe('Seconds elapsed since the previous approval action on this entry'),
+  "ipAddress": zod.string().nullish().describe('IP address of the actor at the time of the action'),
+  "userAgent": zod.string().nullish().describe('User-Agent header of the actor at the time of the action'),
+  "createdAt": zod.coerce.date(),
+  "user": zod.object({
+  "id": zod.string().optional(),
+  "firstNameEn": zod.string().nullish(),
+  "lastNameEn": zod.string().nullish(),
+  "email": zod.string().optional()
+}).nullish()
+})
+export const ListJournalEntryApprovalsResponse = zod.array(ListJournalEntryApprovalsResponseItem)
 
 
 /**

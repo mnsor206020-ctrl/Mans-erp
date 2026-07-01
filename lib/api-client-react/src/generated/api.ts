@@ -39,6 +39,7 @@ import type {
   GetChartOfAccountsTreeParams,
   HealthStatus,
   JournalEntry,
+  JournalEntryApprovalRecord,
   JournalEntryDetail,
   JournalEntryTemplate,
   ListChartOfAccountsParams,
@@ -2131,10 +2132,10 @@ export const getRejectJournalEntryUrl = (id: string,) => {
 }
 
 /**
- * @summary Reject back to DRAFT
+ * @summary Reject back to DRAFT (UNDER_REVIEW or APPROVED → DRAFT)
  */
 export const rejectJournalEntry = async (id: string,
-    rejectJournalEntryBody?: RejectJournalEntryBody, options?: RequestInit): Promise<JournalEntry> => {
+    rejectJournalEntryBody: RejectJournalEntryBody, options?: RequestInit): Promise<JournalEntry> => {
 
   return customFetch<JournalEntry>(getRejectJournalEntryUrl(id),
   {
@@ -2148,9 +2149,9 @@ export const rejectJournalEntry = async (id: string,
 
 
 
-export const getRejectJournalEntryMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rejectJournalEntry>>, TError,{id: string;data?: BodyType<RejectJournalEntryBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof rejectJournalEntry>>, TError,{id: string;data?: BodyType<RejectJournalEntryBody>}, TContext> => {
+export const getRejectJournalEntryMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rejectJournalEntry>>, TError,{id: string;data: BodyType<RejectJournalEntryBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof rejectJournalEntry>>, TError,{id: string;data: BodyType<RejectJournalEntryBody>}, TContext> => {
 
 const mutationKey = ['rejectJournalEntry'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -2162,7 +2163,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof rejectJournalEntry>>, {id: string;data?: BodyType<RejectJournalEntryBody>}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof rejectJournalEntry>>, {id: string;data: BodyType<RejectJournalEntryBody>}> = (props) => {
           const {id,data} = props ?? {};
 
           return  rejectJournalEntry(id,data,requestOptions)
@@ -2176,22 +2177,99 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type RejectJournalEntryMutationResult = NonNullable<Awaited<ReturnType<typeof rejectJournalEntry>>>
-    export type RejectJournalEntryMutationBody = BodyType<RejectJournalEntryBody> | undefined
-    export type RejectJournalEntryMutationError = ErrorType<unknown>
+    export type RejectJournalEntryMutationBody = BodyType<RejectJournalEntryBody>
+    export type RejectJournalEntryMutationError = ErrorType<void>
 
     /**
- * @summary Reject back to DRAFT
+ * @summary Reject back to DRAFT (UNDER_REVIEW or APPROVED → DRAFT)
  */
-export const useRejectJournalEntry = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rejectJournalEntry>>, TError,{id: string;data?: BodyType<RejectJournalEntryBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+export const useRejectJournalEntry = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rejectJournalEntry>>, TError,{id: string;data: BodyType<RejectJournalEntryBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof rejectJournalEntry>>,
         TError,
-        {id: string;data?: BodyType<RejectJournalEntryBody>},
+        {id: string;data: BodyType<RejectJournalEntryBody>},
         TContext
       > => {
       return useMutation(getRejectJournalEntryMutationOptions(options));
     }
+
+export const getListJournalEntryApprovalsUrl = (id: string,) => {
+
+
+
+
+  return `/api/journal-entries/${id}/approvals`
+}
+
+/**
+ * @summary List approval history for a journal entry (chronological)
+ */
+export const listJournalEntryApprovals = async (id: string, options?: RequestInit): Promise<JournalEntryApprovalRecord[]> => {
+
+  return customFetch<JournalEntryApprovalRecord[]>(getListJournalEntryApprovalsUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListJournalEntryApprovalsQueryKey = (id: string,) => {
+    return [
+    `/api/journal-entries/${id}/approvals`
+    ] as const;
+    }
+
+
+export const getListJournalEntryApprovalsQueryOptions = <TData = Awaited<ReturnType<typeof listJournalEntryApprovals>>, TError = ErrorType<void>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listJournalEntryApprovals>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListJournalEntryApprovalsQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listJournalEntryApprovals>>> = ({ signal }) => listJournalEntryApprovals(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listJournalEntryApprovals>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListJournalEntryApprovalsQueryResult = NonNullable<Awaited<ReturnType<typeof listJournalEntryApprovals>>>
+export type ListJournalEntryApprovalsQueryError = ErrorType<void>
+
+
+/**
+ * @summary List approval history for a journal entry (chronological)
+ */
+
+export function useListJournalEntryApprovals<TData = Awaited<ReturnType<typeof listJournalEntryApprovals>>, TError = ErrorType<void>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listJournalEntryApprovals>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListJournalEntryApprovalsQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getPostJournalEntryUrl = (id: string,) => {
 
