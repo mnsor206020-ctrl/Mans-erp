@@ -648,20 +648,24 @@ model JournalEntryLine {
 }
 
 model JournalEntryApproval {
-  id             String   @id @default(uuid()) @db.Uuid
-  journalEntryId String   @map("journal_entry_id") @db.Uuid
-  userId         String   @map("user_id") @db.Uuid
-  action         String
-  comment        String?
-  fromStatus     String?  @map("from_status")
-  toStatus       String?  @map("to_status")
-  createdAt      DateTime @default(now()) @map("created_at")
+  id              String   @id @default(uuid()) @db.Uuid
+  journalEntryId  String   @map("journal_entry_id") @db.Uuid
+  userId          String   @map("user_id") @db.Uuid
+  action          String
+  comment         String?
+  fromStatus      String?  @map("from_status")
+  toStatus        String?  @map("to_status")
+  durationSeconds Int?     @map("duration_seconds")
+  ipAddress       String?  @map("ip_address")
+  userAgent       String?  @map("user_agent")
+  createdAt       DateTime @default(now()) @map("created_at")
 
   journalEntry JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
   user         User         @relation("JEApprovalUser", fields: [userId], references: [id])
 
   @@index([journalEntryId])
   @@index([userId])
+  @@index([createdAt])
   @@map("journal_entry_approvals")
 }
 
