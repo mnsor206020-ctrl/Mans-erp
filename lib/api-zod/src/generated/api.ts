@@ -574,6 +574,9 @@ export const ListJournalEntriesResponse = zod.object({
   "submittedAt": zod.coerce.date().nullish(),
   "approvedAt": zod.coerce.date().nullish(),
   "voidedAt": zod.coerce.date().nullish(),
+  "integrityHash": zod.string().nullish().describe('SHA-256 hex digest computed at post time'),
+  "hashAlgorithm": zod.string().nullish().describe('Algorithm used (e.g. SHA-256)'),
+  "hashedAt": zod.coerce.date().nullish().describe('Timestamp when the integrity hash was computed'),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
   "createdBy": zod.object({
@@ -688,6 +691,9 @@ export const CreateJournalEntryResponse = zod.object({
   "submittedAt": zod.coerce.date().nullish(),
   "approvedAt": zod.coerce.date().nullish(),
   "voidedAt": zod.coerce.date().nullish(),
+  "integrityHash": zod.string().nullish().describe('SHA-256 hex digest computed at post time'),
+  "hashAlgorithm": zod.string().nullish().describe('Algorithm used (e.g. SHA-256)'),
+  "hashedAt": zod.coerce.date().nullish().describe('Timestamp when the integrity hash was computed'),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
   "createdBy": zod.object({
@@ -764,6 +770,9 @@ export const GetJournalEntryResponse = zod.object({
   "submittedAt": zod.coerce.date().nullish(),
   "approvedAt": zod.coerce.date().nullish(),
   "voidedAt": zod.coerce.date().nullish(),
+  "integrityHash": zod.string().nullish().describe('SHA-256 hex digest computed at post time'),
+  "hashAlgorithm": zod.string().nullish().describe('Algorithm used (e.g. SHA-256)'),
+  "hashedAt": zod.coerce.date().nullish().describe('Timestamp when the integrity hash was computed'),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
   "createdBy": zod.object({
@@ -947,6 +956,9 @@ export const UpdateJournalEntryResponse = zod.object({
   "submittedAt": zod.coerce.date().nullish(),
   "approvedAt": zod.coerce.date().nullish(),
   "voidedAt": zod.coerce.date().nullish(),
+  "integrityHash": zod.string().nullish().describe('SHA-256 hex digest computed at post time'),
+  "hashAlgorithm": zod.string().nullish().describe('Algorithm used (e.g. SHA-256)'),
+  "hashedAt": zod.coerce.date().nullish().describe('Timestamp when the integrity hash was computed'),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
   "createdBy": zod.object({
@@ -1039,6 +1051,9 @@ export const SubmitJournalEntryResponse = zod.object({
   "submittedAt": zod.coerce.date().nullish(),
   "approvedAt": zod.coerce.date().nullish(),
   "voidedAt": zod.coerce.date().nullish(),
+  "integrityHash": zod.string().nullish().describe('SHA-256 hex digest computed at post time'),
+  "hashAlgorithm": zod.string().nullish().describe('Algorithm used (e.g. SHA-256)'),
+  "hashedAt": zod.coerce.date().nullish().describe('Timestamp when the integrity hash was computed'),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
   "createdBy": zod.object({
@@ -1119,6 +1134,9 @@ export const ApproveJournalEntryResponse = zod.object({
   "submittedAt": zod.coerce.date().nullish(),
   "approvedAt": zod.coerce.date().nullish(),
   "voidedAt": zod.coerce.date().nullish(),
+  "integrityHash": zod.string().nullish().describe('SHA-256 hex digest computed at post time'),
+  "hashAlgorithm": zod.string().nullish().describe('Algorithm used (e.g. SHA-256)'),
+  "hashedAt": zod.coerce.date().nullish().describe('Timestamp when the integrity hash was computed'),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
   "createdBy": zod.object({
@@ -1203,6 +1221,9 @@ export const RejectJournalEntryResponse = zod.object({
   "submittedAt": zod.coerce.date().nullish(),
   "approvedAt": zod.coerce.date().nullish(),
   "voidedAt": zod.coerce.date().nullish(),
+  "integrityHash": zod.string().nullish().describe('SHA-256 hex digest computed at post time'),
+  "hashAlgorithm": zod.string().nullish().describe('Algorithm used (e.g. SHA-256)'),
+  "hashedAt": zod.coerce.date().nullish().describe('Timestamp when the integrity hash was computed'),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
   "createdBy": zod.object({
@@ -1308,6 +1329,9 @@ export const PostJournalEntryResponse = zod.object({
   "submittedAt": zod.coerce.date().nullish(),
   "approvedAt": zod.coerce.date().nullish(),
   "voidedAt": zod.coerce.date().nullish(),
+  "integrityHash": zod.string().nullish().describe('SHA-256 hex digest computed at post time'),
+  "hashAlgorithm": zod.string().nullish().describe('Algorithm used (e.g. SHA-256)'),
+  "hashedAt": zod.coerce.date().nullish().describe('Timestamp when the integrity hash was computed'),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
   "createdBy": zod.object({
@@ -1384,6 +1408,9 @@ export const LockJournalEntryResponse = zod.object({
   "submittedAt": zod.coerce.date().nullish(),
   "approvedAt": zod.coerce.date().nullish(),
   "voidedAt": zod.coerce.date().nullish(),
+  "integrityHash": zod.string().nullish().describe('SHA-256 hex digest computed at post time'),
+  "hashAlgorithm": zod.string().nullish().describe('Algorithm used (e.g. SHA-256)'),
+  "hashedAt": zod.coerce.date().nullish().describe('Timestamp when the integrity hash was computed'),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
   "createdBy": zod.object({
@@ -1465,6 +1492,9 @@ export const ReverseJournalEntryResponse = zod.object({
   "submittedAt": zod.coerce.date().nullish(),
   "approvedAt": zod.coerce.date().nullish(),
   "voidedAt": zod.coerce.date().nullish(),
+  "integrityHash": zod.string().nullish().describe('SHA-256 hex digest computed at post time'),
+  "hashAlgorithm": zod.string().nullish().describe('Algorithm used (e.g. SHA-256)'),
+  "hashedAt": zod.coerce.date().nullish().describe('Timestamp when the integrity hash was computed'),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
   "createdBy": zod.object({
@@ -1545,6 +1575,9 @@ export const CopyJournalEntryResponse = zod.object({
   "submittedAt": zod.coerce.date().nullish(),
   "approvedAt": zod.coerce.date().nullish(),
   "voidedAt": zod.coerce.date().nullish(),
+  "integrityHash": zod.string().nullish().describe('SHA-256 hex digest computed at post time'),
+  "hashAlgorithm": zod.string().nullish().describe('Algorithm used (e.g. SHA-256)'),
+  "hashedAt": zod.coerce.date().nullish().describe('Timestamp when the integrity hash was computed'),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
   "createdBy": zod.object({
@@ -1625,6 +1658,9 @@ export const VoidJournalEntryResponse = zod.object({
   "submittedAt": zod.coerce.date().nullish(),
   "approvedAt": zod.coerce.date().nullish(),
   "voidedAt": zod.coerce.date().nullish(),
+  "integrityHash": zod.string().nullish().describe('SHA-256 hex digest computed at post time'),
+  "hashAlgorithm": zod.string().nullish().describe('Algorithm used (e.g. SHA-256)'),
+  "hashedAt": zod.coerce.date().nullish().describe('Timestamp when the integrity hash was computed'),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
   "createdBy": zod.object({
@@ -1916,6 +1952,9 @@ export const UseJournalEntryTemplateResponse = zod.object({
   "submittedAt": zod.coerce.date().nullish(),
   "approvedAt": zod.coerce.date().nullish(),
   "voidedAt": zod.coerce.date().nullish(),
+  "integrityHash": zod.string().nullish().describe('SHA-256 hex digest computed at post time'),
+  "hashAlgorithm": zod.string().nullish().describe('Algorithm used (e.g. SHA-256)'),
+  "hashedAt": zod.coerce.date().nullish().describe('Timestamp when the integrity hash was computed'),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
   "createdBy": zod.object({

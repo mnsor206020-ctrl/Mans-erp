@@ -502,7 +502,7 @@ export default function JournalEntryDetail({ params }: Props) {
       </Card>
 
       {/* Integrity Hash */}
-      {(e as any).integrityHash && (
+      {e.integrityHash && (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base">{t("je.hash.title")}</CardTitle>
@@ -510,9 +510,9 @@ export default function JournalEntryDetail({ params }: Props) {
           <CardContent>
             <IntegrityBadge
               entryId={e.id}
-              integrityHash={(e as any).integrityHash}
-              hashAlgorithm={(e as any).hashAlgorithm}
-              hashedAt={(e as any).hashedAt}
+              integrityHash={e.integrityHash}
+              hashAlgorithm={e.hashAlgorithm}
+              hashedAt={e.hashedAt}
             />
           </CardContent>
         </Card>

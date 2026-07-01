@@ -43,6 +43,21 @@ export interface JournalEntry {
   approvedAt?: Date | null;
   /** @nullable */
   voidedAt?: Date | null;
+  /**
+     * SHA-256 hex digest computed at post time
+     * @nullable
+     */
+  integrityHash?: string | null;
+  /**
+     * Algorithm used (e.g. SHA-256)
+     * @nullable
+     */
+  hashAlgorithm?: string | null;
+  /**
+     * Timestamp when the integrity hash was computed
+     * @nullable
+     */
+  hashedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
   createdBy?: JournalEntryCreatedBy;

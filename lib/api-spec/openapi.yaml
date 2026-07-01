@@ -1714,6 +1714,16 @@ components:
         voidedAt:
           type: ["string", "null"]
           format: date-time
+        integrityHash:
+          type: ["string", "null"]
+          description: SHA-256 hex digest computed at post time
+        hashAlgorithm:
+          type: ["string", "null"]
+          description: Algorithm used (e.g. SHA-256)
+        hashedAt:
+          type: ["string", "null"]
+          format: date-time
+          description: Timestamp when the integrity hash was computed
         createdAt:
           type: string
           format: date-time
