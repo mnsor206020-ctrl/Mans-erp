@@ -59,6 +59,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import ApprovalTimeline from "@/components/journal-entries/ApprovalTimeline";
+import IntegrityBadge from "@/components/journal-entries/IntegrityBadge";
 
 const STATUS_COLORS: Record<string, string> = {
   DRAFT: "bg-slate-100 text-slate-700 border-slate-200",
@@ -499,6 +500,23 @@ export default function JournalEntryDetail({ params }: Props) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Integrity Hash */}
+      {(e as any).integrityHash && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">{t("je.hash.title")}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <IntegrityBadge
+              entryId={e.id}
+              integrityHash={(e as any).integrityHash}
+              hashAlgorithm={(e as any).hashAlgorithm}
+              hashedAt={(e as any).hashedAt}
+            />
+          </CardContent>
+        </Card>
+      )}
 
       {/* Approval History */}
       <Card>
