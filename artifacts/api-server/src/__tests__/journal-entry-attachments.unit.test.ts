@@ -19,10 +19,16 @@ vi.mock("@workspace/prisma", () => ({
       findFirst: vi.fn(),
     },
     journalEntryAttachment: {
-      count:     vi.fn(),
-      create:    vi.fn(),
-      findFirst: vi.fn(),
+      count:      vi.fn(),
+      create:     vi.fn(),
+      findFirst:  vi.fn(),
+      findMany:   vi.fn(),
+      update:     vi.fn(),
+      updateMany: vi.fn(),
     },
+    $transaction: vi.fn().mockImplementation(async (ops: any[]) => {
+      return Promise.all(ops);
+    }),
   },
 }));
 
@@ -72,6 +78,7 @@ const ATTACHMENT_RECORD = {
 // ── App factory ───────────────────────────────────────────────────────────────
 function makeApp() {
   const app = express();
+  app.use(express.json());
   // Mount with :id param so mergeParams works
   app.use("/journal-entries/:id/attachments", attachmentsRouter);
   return app;
@@ -336,5 +343,224 @@ describe("GET /journal-entries/:id/attachments/:attachmentId/download", () => {
 
     expect(res.status).toBe(401);
     expect(mockSignDownload).not.toHaveBeenCalled();
+  });
+});
+
+// ── List tests ────────────────────────────────────────────────────────────────
+
+describe("GET /journal-entries/:id/attachments", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (prisma.user.findFirst as any).mockResolvedValue(mockUser);
+    (prisma.journalEntry.findFirst as any).mockResolvedValue(mockEntry);
+  });
+
+  it("returns 200 with an array of non-deleted attachments", async () => {
+    const rows = [
+      { ...ATTACHMENT_RECORD, id: "aa000001-0000-0000-0000-000000000001" },
+      { ...ATTACHMENT_RECORD, id: "aa000001-0000-0000-0000-000000000002" },
+    ];
+    (prisma.journalEntryAttachment as any).findMany.mockResolvedValue(rows);
+    const app = makeApp();
+
+    const res = await request(app).get(`/journal-entries/${ENTRY_ID}/attachments`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toHaveLength(2);
+    // Prisma WHERE must exclude soft-deleted records
+    const findManyCall = (prisma.journalEntryAttachment as any).findMany.mock.calls[0][0];
+    expect(findManyCall.where.deletedAt).toBe(null);
+  });
+
+  it("returns 200 with an empty array when no attachments exist", async () => {
+    (prisma.journalEntryAttachment as any).findMany.mockResolvedValue([]);
+    const app = makeApp();
+
+    const res = await request(app).get(`/journal-entries/${ENTRY_ID}/attachments`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toHaveLength(0);
+  });
+
+  it("returns 404 when the journal entry does not exist", async () => {
+    (prisma.journalEntry.findFirst as any).mockResolvedValue(null);
+    const app = makeApp();
+
+    const res = await request(app).get(`/journal-entries/${ENTRY_ID}/attachments`);
+
+    expect(res.status).toBe(404);
+    expect((prisma.journalEntryAttachment as any).findMany).not.toHaveBeenCalled();
+  });
+});
+
+// ── Soft-delete tests ─────────────────────────────────────────────────────────
+
+describe("DELETE /journal-entries/:id/attachments/:attachmentId", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (prisma.user.findFirst as any).mockResolvedValue(mockUser);
+    (prisma.journalEntry.findFirst as any).mockResolvedValue(mockEntry);
+    (prisma.journalEntryAttachment as any).findFirst.mockResolvedValue({ id: ATTACH_ID });
+    (prisma.journalEntryAttachment as any).update.mockResolvedValue({ id: ATTACH_ID, deletedAt: new Date() });
+  });
+
+  it("returns 200 { success: true } and sets deletedAt", async () => {
+    const app = makeApp();
+
+    const res = await request(app)
+      .delete(`/journal-entries/${ENTRY_ID}/attachments/${ATTACH_ID}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+
+    const updateCall = (prisma.journalEntryAttachment as any).update.mock.calls[0][0];
+    expect(updateCall.where.id).toBe(ATTACH_ID);
+    expect(updateCall.data.deletedAt).toBeInstanceOf(Date);
+  });
+
+  it("returns 404 when the attachment does not exist", async () => {
+    (prisma.journalEntryAttachment as any).findFirst.mockResolvedValue(null);
+    const app = makeApp();
+
+    const res = await request(app)
+      .delete(`/journal-entries/${ENTRY_ID}/attachments/${ATTACH_ID}`);
+
+    expect(res.status).toBe(404);
+    expect(res.body.error).toMatch(/attachment not found/i);
+    expect((prisma.journalEntryAttachment as any).update).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 when soft-deleted attachment is requested (findFirst returns null)", async () => {
+    (prisma.journalEntryAttachment as any).findFirst.mockResolvedValue(null);
+    const app = makeApp();
+
+    const res = await request(app)
+      .delete(`/journal-entries/${ENTRY_ID}/attachments/${ATTACH_ID}`);
+
+    expect(res.status).toBe(404);
+    expect((prisma.journalEntryAttachment as any).update).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 when the journal entry does not exist", async () => {
+    (prisma.journalEntry.findFirst as any).mockResolvedValue(null);
+    const app = makeApp();
+
+    const res = await request(app)
+      .delete(`/journal-entries/${ENTRY_ID}/attachments/${ATTACH_ID}`);
+
+    expect(res.status).toBe(404);
+    expect(res.body.error).toMatch(/journal entry not found/i);
+    expect((prisma.journalEntryAttachment as any).update).not.toHaveBeenCalled();
+  });
+});
+
+// ── PATCH isPrimary tests ─────────────────────────────────────────────────────
+
+const UPDATED_ATTACHMENT = { ...ATTACHMENT_RECORD, id: ATTACH_ID, isPrimary: true };
+
+describe("PATCH /journal-entries/:id/attachments/:attachmentId", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (prisma.user.findFirst as any).mockResolvedValue(mockUser);
+    (prisma.journalEntry.findFirst as any).mockResolvedValue(mockEntry);
+    (prisma.journalEntryAttachment as any).findFirst.mockResolvedValue({ id: ATTACH_ID });
+    (prisma.journalEntryAttachment as any).update.mockResolvedValue(UPDATED_ATTACHMENT);
+    (prisma.journalEntryAttachment as any).updateMany.mockResolvedValue({ count: 1 });
+    (prisma.$transaction as any).mockImplementation(async (ops: any[]) => Promise.all(ops));
+  });
+
+  it("sets isPrimary=true inside a transaction that clears the previous primary", async () => {
+    const app = makeApp();
+
+    const res = await request(app)
+      .patch(`/journal-entries/${ENTRY_ID}/attachments/${ATTACH_ID}`)
+      .send({ isPrimary: true });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.isPrimary).toBe(true);
+
+    // $transaction must have been called
+    expect((prisma.$transaction as any)).toHaveBeenCalledTimes(1);
+
+    // updateMany must clear all existing primaries for this entry
+    const updateManyCall = (prisma.journalEntryAttachment as any).updateMany.mock.calls[0][0];
+    expect(updateManyCall.where.journalEntryId).toBe(ENTRY_ID);
+    expect(updateManyCall.where.isPrimary).toBe(true);
+    expect(updateManyCall.data.isPrimary).toBe(false);
+
+    // update must set the target attachment to isPrimary=true
+    const updateCall = (prisma.journalEntryAttachment as any).update.mock.calls[0][0];
+    expect(updateCall.where.id).toBe(ATTACH_ID);
+    expect(updateCall.data.isPrimary).toBe(true);
+  });
+
+  it("sets isPrimary=false without using a transaction", async () => {
+    (prisma.journalEntryAttachment as any).update.mockResolvedValue({
+      ...UPDATED_ATTACHMENT, isPrimary: false,
+    });
+    const app = makeApp();
+
+    const res = await request(app)
+      .patch(`/journal-entries/${ENTRY_ID}/attachments/${ATTACH_ID}`)
+      .send({ isPrimary: false });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.isPrimary).toBe(false);
+
+    // No transaction, no updateMany
+    expect((prisma.$transaction as any)).not.toHaveBeenCalled();
+    expect((prisma.journalEntryAttachment as any).updateMany).not.toHaveBeenCalled();
+
+    const updateCall = (prisma.journalEntryAttachment as any).update.mock.calls[0][0];
+    expect(updateCall.data.isPrimary).toBe(false);
+  });
+
+  it("returns 400 when isPrimary is missing from the body", async () => {
+    const app = makeApp();
+
+    const res = await request(app)
+      .patch(`/journal-entries/${ENTRY_ID}/attachments/${ATTACH_ID}`)
+      .send({});
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/isPrimary is required/i);
+    expect((prisma.journalEntryAttachment as any).update).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 when isPrimary is not a boolean", async () => {
+    const app = makeApp();
+
+    const res = await request(app)
+      .patch(`/journal-entries/${ENTRY_ID}/attachments/${ATTACH_ID}`)
+      .send({ isPrimary: "yes" });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/must be a boolean/i);
+  });
+
+  it("returns 404 when the attachment does not exist", async () => {
+    (prisma.journalEntryAttachment as any).findFirst.mockResolvedValue(null);
+    const app = makeApp();
+
+    const res = await request(app)
+      .patch(`/journal-entries/${ENTRY_ID}/attachments/${ATTACH_ID}`)
+      .send({ isPrimary: true });
+
+    expect(res.status).toBe(404);
+    expect(res.body.error).toMatch(/attachment not found/i);
+    expect((prisma.$transaction as any)).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 when the journal entry does not exist", async () => {
+    (prisma.journalEntry.findFirst as any).mockResolvedValue(null);
+    const app = makeApp();
+
+    const res = await request(app)
+      .patch(`/journal-entries/${ENTRY_ID}/attachments/${ATTACH_ID}`)
+      .send({ isPrimary: true });
+
+    expect(res.status).toBe(404);
+    expect(res.body.error).toMatch(/journal entry not found/i);
+    expect((prisma.$transaction as any)).not.toHaveBeenCalled();
   });
 });

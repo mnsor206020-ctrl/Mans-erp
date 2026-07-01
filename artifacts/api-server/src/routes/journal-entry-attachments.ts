@@ -175,6 +175,154 @@ router.post("/", requireAuth(), async (req, res) => {
   }
 });
 
+// ── GET /api/journal-entries/:id/attachments ──────────────────────────────────
+
+router.get("/", requireAuth(), async (req, res) => {
+  try {
+    const { userId } = getAuth(req);
+    const user = await getUser(userId!);
+    if (!user) {
+      res.status(401).json({ error: "User not found" });
+      return;
+    }
+
+    const entryId = req.params.id as string;
+    const entry = await prisma.journalEntry.findFirst({
+      where: { id: entryId, organizationId: user.organizationId ?? undefined, deletedAt: null },
+      select: { id: true },
+    });
+    if (!entry) {
+      res.status(404).json({ error: "Journal entry not found" });
+      return;
+    }
+
+    const attachments = await (prisma.journalEntryAttachment as any).findMany({
+      where: { journalEntryId: entryId, deletedAt: null },
+      orderBy: { createdAt: "asc" },
+    });
+
+    res.json({ data: attachments });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to list attachments" });
+  }
+});
+
+// ── DELETE /api/journal-entries/:id/attachments/:attachmentId ─────────────────
+
+router.delete("/:attachmentId", requireAuth(), async (req, res) => {
+  try {
+    const { userId } = getAuth(req);
+    const user = await getUser(userId!);
+    if (!user) {
+      res.status(401).json({ error: "User not found" });
+      return;
+    }
+
+    const entryId      = req.params.id as string;
+    const attachmentId = req.params.attachmentId as string;
+
+    const entry = await prisma.journalEntry.findFirst({
+      where: { id: entryId, organizationId: user.organizationId ?? undefined, deletedAt: null },
+      select: { id: true },
+    });
+    if (!entry) {
+      res.status(404).json({ error: "Journal entry not found" });
+      return;
+    }
+
+    const attachment = await (prisma.journalEntryAttachment as any).findFirst({
+      where: { id: attachmentId, journalEntryId: entryId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!attachment) {
+      res.status(404).json({ error: "Attachment not found" });
+      return;
+    }
+
+    await (prisma.journalEntryAttachment as any).update({
+      where: { id: attachmentId },
+      data:  { deletedAt: new Date() },
+    });
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to delete attachment" });
+  }
+});
+
+// ── PATCH /api/journal-entries/:id/attachments/:attachmentId ──────────────────
+
+router.patch("/:attachmentId", requireAuth(), async (req, res) => {
+  try {
+    const { userId } = getAuth(req);
+    const user = await getUser(userId!);
+    if (!user) {
+      res.status(401).json({ error: "User not found" });
+      return;
+    }
+
+    const entryId      = req.params.id as string;
+    const attachmentId = req.params.attachmentId as string;
+
+    const { isPrimary } = req.body as { isPrimary?: boolean };
+    if (isPrimary === undefined) {
+      res.status(400).json({ error: "isPrimary is required" });
+      return;
+    }
+    if (typeof isPrimary !== "boolean") {
+      res.status(400).json({ error: "isPrimary must be a boolean" });
+      return;
+    }
+
+    const entry = await prisma.journalEntry.findFirst({
+      where: { id: entryId, organizationId: user.organizationId ?? undefined, deletedAt: null },
+      select: { id: true },
+    });
+    if (!entry) {
+      res.status(404).json({ error: "Journal entry not found" });
+      return;
+    }
+
+    const attachment = await (prisma.journalEntryAttachment as any).findFirst({
+      where: { id: attachmentId, journalEntryId: entryId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!attachment) {
+      res.status(404).json({ error: "Attachment not found" });
+      return;
+    }
+
+    let updated: object;
+
+    if (isPrimary) {
+      // Clear any existing primary then set the new one — atomically
+      const result = await (prisma.$transaction as any)([
+        (prisma.journalEntryAttachment as any).updateMany({
+          where: { journalEntryId: entryId, isPrimary: true, deletedAt: null },
+          data:  { isPrimary: false },
+        }),
+        (prisma.journalEntryAttachment as any).update({
+          where: { id: attachmentId },
+          data:  { isPrimary: true },
+        }),
+      ]);
+      updated = result[1];
+    } else {
+      updated = await (prisma.journalEntryAttachment as any).update({
+        where: { id: attachmentId },
+        data:  { isPrimary: false },
+      });
+    }
+
+    res.json({ data: updated });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to update attachment" });
+  }
+});
+
 // ── GET /api/journal-entries/:id/attachments/:attachmentId/download ─────────────
 
 const DOWNLOAD_TTL_SEC = 900; // 15 minutes
