@@ -12,6 +12,7 @@ import {
   rejectCommentSchema,
 } from "../lib/journal-entry-utils";
 import attachmentsRouter from "./journal-entry-attachments";
+import { notificationService } from "../services/notification";
 
 const router = Router();
 
@@ -83,6 +84,33 @@ async function generateJournalNumber(orgId: string, year: number): Promise<strin
     if (!isNaN(num) && num > maxNum) maxNum = num;
   }
   return formatJENumber(year, maxNum + 1);
+}
+
+// ── Notification helpers ───────────────────────────────────────────────────────
+
+async function getOrgUserIds(orgId: string): Promise<string[]> {
+  const users = await (prisma.user as any).findMany({
+    where: { organizationId: orgId, deletedAt: null },
+    select: { id: true },
+  });
+  return users.map((u: { id: string }) => u.id);
+}
+
+async function emitNotification(params: {
+  organizationId: string;
+  event: string;
+  entityId: string;
+  titleEn: string;
+  titleAr: string;
+  bodyEn: string;
+  bodyAr: string;
+}): Promise<void> {
+  try {
+    const userIds = await getOrgUserIds(params.organizationId);
+    await notificationService.emit({ ...params, entityType: "JournalEntry", userIds });
+  } catch (err) {
+    console.error("Notification emit failed:", err);
+  }
 }
 
 // ── LIST ──────────────────────────────────────────────────────────────────────
@@ -426,6 +454,16 @@ router.post("/:id/submit", requireAuth(), async (req, res) => {
       description: `Submitted ${entry.number} for review`,
     });
 
+    await emitNotification({
+      organizationId: entry.organizationId,
+      event:          "journal_entry.submitted",
+      entityId:       entry.id,
+      titleEn:        "Entry submitted for review",
+      titleAr:        "تم تقديم القيد للمراجعة",
+      bodyEn:         `${entry.number} has been submitted for review.`,
+      bodyAr:         `تم تقديم القيد ${entry.number} للمراجعة.`,
+    });
+
     res.json(updated);
   } catch (err) {
     console.error(err);
@@ -465,6 +503,16 @@ router.post("/:id/approve", requireAuth(), async (req, res) => {
       entityType: "journal_entry",
       entityId:   req.params.id,
       description: `Approved ${entry.number}`,
+    });
+
+    await emitNotification({
+      organizationId: entry.organizationId,
+      event:          "journal_entry.approved",
+      entityId:       entry.id,
+      titleEn:        "Entry approved",
+      titleAr:        "تمت الموافقة على القيد",
+      bodyEn:         `${entry.number} has been approved.`,
+      bodyAr:         `تمت الموافقة على القيد ${entry.number}.`,
     });
 
     res.json(updated);
@@ -521,6 +569,16 @@ router.post("/:id/reject", requireAuth(), async (req, res) => {
       entityType: "journal_entry",
       entityId:   req.params.id,
       description: `Rejected ${entry.number}: ${rejectComment}`,
+    });
+
+    await emitNotification({
+      organizationId: entry.organizationId,
+      event:          "journal_entry.rejected",
+      entityId:       entry.id,
+      titleEn:        "Entry rejected",
+      titleAr:        "تم رفض القيد",
+      bodyEn:         `${entry.number} has been rejected: ${rejectComment}`,
+      bodyAr:         `تم رفض القيد ${entry.number}: ${rejectComment}`,
     });
 
     res.json(updated);
@@ -613,6 +671,16 @@ router.post("/:id/post", requireAuth(), async (req, res) => {
       description: `Posted ${entry.number}`,
     });
 
+    await emitNotification({
+      organizationId: entry.organizationId,
+      event:          "journal_entry.posted",
+      entityId:       entry.id,
+      titleEn:        "Entry posted",
+      titleAr:        "تم ترحيل القيد",
+      bodyEn:         `${entry.number} has been posted to the general ledger.`,
+      bodyAr:         `تم ترحيل القيد ${entry.number} إلى دفتر الأستاذ.`,
+    });
+
     res.json(updated);
   } catch (err) {
     console.error(err);
@@ -643,6 +711,16 @@ router.post("/:id/lock", requireAuth(), async (req, res) => {
       toStatus: "LOCKED",
       ipAddress: req.ip ?? undefined,
       userAgent: req.headers["user-agent"] ?? undefined,
+    });
+
+    await emitNotification({
+      organizationId: entry.organizationId,
+      event:          "journal_entry.locked",
+      entityId:       entry.id,
+      titleEn:        "Entry locked",
+      titleAr:        "تم قفل القيد",
+      bodyEn:         `${entry.number} has been locked.`,
+      bodyAr:         `تم قفل القيد ${entry.number}.`,
     });
 
     res.json(updated);
@@ -734,6 +812,16 @@ router.post("/:id/reverse", requireAuth(), async (req, res) => {
       entityType: "journal_entry",
       entityId:   req.params.id,
       description: `Reversed ${entry.number} → ${reversalNumber}`,
+    });
+
+    await emitNotification({
+      organizationId: entry.organizationId,
+      event:          "journal_entry.reversed",
+      entityId:       entry.id,
+      titleEn:        "Entry reversed",
+      titleAr:        "تم عكس القيد",
+      bodyEn:         `${entry.number} has been reversed. Reversal entry: ${reversalNumber}`,
+      bodyAr:         `تم عكس القيد ${entry.number}. رقم قيد العكس: ${reversalNumber}`,
     });
 
     res.json(reversal);
@@ -835,6 +923,16 @@ router.post("/:id/void", requireAuth(), async (req, res) => {
       entityType: "journal_entry",
       entityId:   req.params.id,
       description: `Voided ${entry.number}: ${reason}`,
+    });
+
+    await emitNotification({
+      organizationId: entry.organizationId,
+      event:          "journal_entry.voided",
+      entityId:       entry.id,
+      titleEn:        "Entry voided",
+      titleAr:        "تم إلغاء القيد",
+      bodyEn:         `${entry.number} has been voided: ${reason}`,
+      bodyAr:         `تم إلغاء القيد ${entry.number}: ${reason}`,
     });
 
     res.json(updated);
