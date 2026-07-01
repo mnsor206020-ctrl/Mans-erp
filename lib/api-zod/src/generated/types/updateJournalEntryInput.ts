@@ -21,6 +21,26 @@ export interface UpdateJournalEntryInput {
   /** @nullable */
   reference?: string | null;
   /**
+     * Source module type (e.g. Donor, Project, Fund, Payroll)
+     * @nullable
+     */
+  sourceType?: string | null;
+  /**
+     * ID of the source record; must be paired with sourceType
+     * @nullable
+     */
+  sourceId?: string | null;
+  /**
+     * Human-readable reference from the source
+     * @nullable
+     */
+  sourceReference?: string | null;
+  /**
+     * Relative path to source record in the UI (must start with /)
+     * @nullable
+     */
+  sourceModuleUrl?: string | null;
+  /**
      * When provided, atomically replaces all existing lines on the entry (deleteMany + createMany in a single database transaction). Minimum 2 lines required. Balance and account eligibility are re-validated. Omit this field to update header fields only without touching lines.
      * @minItems 2
      */

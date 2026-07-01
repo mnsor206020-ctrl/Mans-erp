@@ -60,6 +60,26 @@ export interface JournalEntry {
   hashedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  /**
+     * Source module type (e.g. Donor, Project, Fund, Payroll)
+     * @nullable
+     */
+  sourceType?: string | null;
+  /**
+     * ID of the source record in the originating module
+     * @nullable
+     */
+  sourceId?: string | null;
+  /**
+     * Human-readable reference from the source (e.g. donation number, invoice number)
+     * @nullable
+     */
+  sourceReference?: string | null;
+  /**
+     * Relative path to the source record in the UI (must start with /)
+     * @nullable
+     */
+  sourceModuleUrl?: string | null;
   createdBy?: JournalEntryCreatedBy;
   fiscalYear?: JournalEntryFiscalYear;
   /** Included when the entry is returned from POST (create) or PATCH (update). Full line objects with account and costCenter sub-objects are included in GET /journal-entries/{id} (see JournalEntryDetail). */

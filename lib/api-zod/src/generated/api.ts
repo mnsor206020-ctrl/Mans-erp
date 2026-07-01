@@ -579,6 +579,10 @@ export const ListJournalEntriesResponse = zod.object({
   "hashedAt": zod.coerce.date().nullish().describe('Timestamp when the integrity hash was computed'),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
+  "sourceType": zod.string().nullish().describe('Source module type (e.g. Donor, Project, Fund, Payroll)'),
+  "sourceId": zod.string().uuid().nullish().describe('ID of the source record in the originating module'),
+  "sourceReference": zod.string().nullish().describe('Human-readable reference from the source (e.g. donation number, invoice number)'),
+  "sourceModuleUrl": zod.string().nullish().describe('Relative path to the source record in the UI (must start with \/)'),
   "createdBy": zod.object({
   "id": zod.string().optional(),
   "firstNameEn": zod.string().nullish(),
@@ -657,6 +661,10 @@ export const CreateJournalEntryBody = zod.object({
   "descriptionEn": zod.string().nullish(),
   "descriptionAr": zod.string().nullish(),
   "reference": zod.string().nullish(),
+  "sourceType": zod.string().nullish().describe('Source module type (e.g. Donor, Project, Fund, Payroll)'),
+  "sourceId": zod.string().uuid().nullish().describe('ID of the source record; must be paired with sourceType'),
+  "sourceReference": zod.string().nullish().describe('Human-readable reference from the source'),
+  "sourceModuleUrl": zod.string().nullish().describe('Relative path to source record in the UI (must start with \/)'),
   "lines": zod.array(zod.object({
   "accountId": zod.string().uuid(),
   "costCenterId": zod.string().uuid().nullish(),
@@ -696,6 +704,10 @@ export const CreateJournalEntryResponse = zod.object({
   "hashedAt": zod.coerce.date().nullish().describe('Timestamp when the integrity hash was computed'),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
+  "sourceType": zod.string().nullish().describe('Source module type (e.g. Donor, Project, Fund, Payroll)'),
+  "sourceId": zod.string().uuid().nullish().describe('ID of the source record in the originating module'),
+  "sourceReference": zod.string().nullish().describe('Human-readable reference from the source (e.g. donation number, invoice number)'),
+  "sourceModuleUrl": zod.string().nullish().describe('Relative path to the source record in the UI (must start with \/)'),
   "createdBy": zod.object({
   "id": zod.string().optional(),
   "firstNameEn": zod.string().nullish(),
@@ -775,6 +787,10 @@ export const GetJournalEntryResponse = zod.object({
   "hashedAt": zod.coerce.date().nullish().describe('Timestamp when the integrity hash was computed'),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
+  "sourceType": zod.string().nullish().describe('Source module type (e.g. Donor, Project, Fund, Payroll)'),
+  "sourceId": zod.string().uuid().nullish().describe('ID of the source record in the originating module'),
+  "sourceReference": zod.string().nullish().describe('Human-readable reference from the source (e.g. donation number, invoice number)'),
+  "sourceModuleUrl": zod.string().nullish().describe('Relative path to the source record in the UI (must start with \/)'),
   "createdBy": zod.object({
   "id": zod.string().optional(),
   "firstNameEn": zod.string().nullish(),
@@ -922,6 +938,10 @@ export const UpdateJournalEntryBody = zod.object({
   "descriptionEn": zod.string().nullish(),
   "descriptionAr": zod.string().nullish(),
   "reference": zod.string().nullish(),
+  "sourceType": zod.string().nullish().describe('Source module type (e.g. Donor, Project, Fund, Payroll)'),
+  "sourceId": zod.string().uuid().nullish().describe('ID of the source record; must be paired with sourceType'),
+  "sourceReference": zod.string().nullish().describe('Human-readable reference from the source'),
+  "sourceModuleUrl": zod.string().nullish().describe('Relative path to source record in the UI (must start with \/)'),
   "lines": zod.array(zod.object({
   "accountId": zod.string().uuid(),
   "costCenterId": zod.string().uuid().nullish(),
@@ -961,6 +981,10 @@ export const UpdateJournalEntryResponse = zod.object({
   "hashedAt": zod.coerce.date().nullish().describe('Timestamp when the integrity hash was computed'),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
+  "sourceType": zod.string().nullish().describe('Source module type (e.g. Donor, Project, Fund, Payroll)'),
+  "sourceId": zod.string().uuid().nullish().describe('ID of the source record in the originating module'),
+  "sourceReference": zod.string().nullish().describe('Human-readable reference from the source (e.g. donation number, invoice number)'),
+  "sourceModuleUrl": zod.string().nullish().describe('Relative path to the source record in the UI (must start with \/)'),
   "createdBy": zod.object({
   "id": zod.string().optional(),
   "firstNameEn": zod.string().nullish(),
@@ -1056,6 +1080,10 @@ export const SubmitJournalEntryResponse = zod.object({
   "hashedAt": zod.coerce.date().nullish().describe('Timestamp when the integrity hash was computed'),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
+  "sourceType": zod.string().nullish().describe('Source module type (e.g. Donor, Project, Fund, Payroll)'),
+  "sourceId": zod.string().uuid().nullish().describe('ID of the source record in the originating module'),
+  "sourceReference": zod.string().nullish().describe('Human-readable reference from the source (e.g. donation number, invoice number)'),
+  "sourceModuleUrl": zod.string().nullish().describe('Relative path to the source record in the UI (must start with \/)'),
   "createdBy": zod.object({
   "id": zod.string().optional(),
   "firstNameEn": zod.string().nullish(),
@@ -1139,6 +1167,10 @@ export const ApproveJournalEntryResponse = zod.object({
   "hashedAt": zod.coerce.date().nullish().describe('Timestamp when the integrity hash was computed'),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
+  "sourceType": zod.string().nullish().describe('Source module type (e.g. Donor, Project, Fund, Payroll)'),
+  "sourceId": zod.string().uuid().nullish().describe('ID of the source record in the originating module'),
+  "sourceReference": zod.string().nullish().describe('Human-readable reference from the source (e.g. donation number, invoice number)'),
+  "sourceModuleUrl": zod.string().nullish().describe('Relative path to the source record in the UI (must start with \/)'),
   "createdBy": zod.object({
   "id": zod.string().optional(),
   "firstNameEn": zod.string().nullish(),
@@ -1226,6 +1258,10 @@ export const RejectJournalEntryResponse = zod.object({
   "hashedAt": zod.coerce.date().nullish().describe('Timestamp when the integrity hash was computed'),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
+  "sourceType": zod.string().nullish().describe('Source module type (e.g. Donor, Project, Fund, Payroll)'),
+  "sourceId": zod.string().uuid().nullish().describe('ID of the source record in the originating module'),
+  "sourceReference": zod.string().nullish().describe('Human-readable reference from the source (e.g. donation number, invoice number)'),
+  "sourceModuleUrl": zod.string().nullish().describe('Relative path to the source record in the UI (must start with \/)'),
   "createdBy": zod.object({
   "id": zod.string().optional(),
   "firstNameEn": zod.string().nullish(),
@@ -1334,6 +1370,10 @@ export const PostJournalEntryResponse = zod.object({
   "hashedAt": zod.coerce.date().nullish().describe('Timestamp when the integrity hash was computed'),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
+  "sourceType": zod.string().nullish().describe('Source module type (e.g. Donor, Project, Fund, Payroll)'),
+  "sourceId": zod.string().uuid().nullish().describe('ID of the source record in the originating module'),
+  "sourceReference": zod.string().nullish().describe('Human-readable reference from the source (e.g. donation number, invoice number)'),
+  "sourceModuleUrl": zod.string().nullish().describe('Relative path to the source record in the UI (must start with \/)'),
   "createdBy": zod.object({
   "id": zod.string().optional(),
   "firstNameEn": zod.string().nullish(),
@@ -1413,6 +1453,10 @@ export const LockJournalEntryResponse = zod.object({
   "hashedAt": zod.coerce.date().nullish().describe('Timestamp when the integrity hash was computed'),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
+  "sourceType": zod.string().nullish().describe('Source module type (e.g. Donor, Project, Fund, Payroll)'),
+  "sourceId": zod.string().uuid().nullish().describe('ID of the source record in the originating module'),
+  "sourceReference": zod.string().nullish().describe('Human-readable reference from the source (e.g. donation number, invoice number)'),
+  "sourceModuleUrl": zod.string().nullish().describe('Relative path to the source record in the UI (must start with \/)'),
   "createdBy": zod.object({
   "id": zod.string().optional(),
   "firstNameEn": zod.string().nullish(),
@@ -1497,6 +1541,10 @@ export const ReverseJournalEntryResponse = zod.object({
   "hashedAt": zod.coerce.date().nullish().describe('Timestamp when the integrity hash was computed'),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
+  "sourceType": zod.string().nullish().describe('Source module type (e.g. Donor, Project, Fund, Payroll)'),
+  "sourceId": zod.string().uuid().nullish().describe('ID of the source record in the originating module'),
+  "sourceReference": zod.string().nullish().describe('Human-readable reference from the source (e.g. donation number, invoice number)'),
+  "sourceModuleUrl": zod.string().nullish().describe('Relative path to the source record in the UI (must start with \/)'),
   "createdBy": zod.object({
   "id": zod.string().optional(),
   "firstNameEn": zod.string().nullish(),
@@ -1580,6 +1628,10 @@ export const CopyJournalEntryResponse = zod.object({
   "hashedAt": zod.coerce.date().nullish().describe('Timestamp when the integrity hash was computed'),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
+  "sourceType": zod.string().nullish().describe('Source module type (e.g. Donor, Project, Fund, Payroll)'),
+  "sourceId": zod.string().uuid().nullish().describe('ID of the source record in the originating module'),
+  "sourceReference": zod.string().nullish().describe('Human-readable reference from the source (e.g. donation number, invoice number)'),
+  "sourceModuleUrl": zod.string().nullish().describe('Relative path to the source record in the UI (must start with \/)'),
   "createdBy": zod.object({
   "id": zod.string().optional(),
   "firstNameEn": zod.string().nullish(),
@@ -1663,6 +1715,10 @@ export const VoidJournalEntryResponse = zod.object({
   "hashedAt": zod.coerce.date().nullish().describe('Timestamp when the integrity hash was computed'),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
+  "sourceType": zod.string().nullish().describe('Source module type (e.g. Donor, Project, Fund, Payroll)'),
+  "sourceId": zod.string().uuid().nullish().describe('ID of the source record in the originating module'),
+  "sourceReference": zod.string().nullish().describe('Human-readable reference from the source (e.g. donation number, invoice number)'),
+  "sourceModuleUrl": zod.string().nullish().describe('Relative path to the source record in the UI (must start with \/)'),
   "createdBy": zod.object({
   "id": zod.string().optional(),
   "firstNameEn": zod.string().nullish(),
@@ -1705,6 +1761,160 @@ export const VoidJournalEntryResponse = zod.object({
   "_count": zod.object({
   "lines": zod.number().optional()
 }).nullish()
+})
+
+
+/**
+ * @summary List attachments for a journal entry
+ */
+export const ListJournalEntryAttachmentsParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const ListJournalEntryAttachmentsResponse = zod.object({
+  "data": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "journalEntryId": zod.string().uuid(),
+  "uploadedByUserId": zod.string().uuid(),
+  "fileName": zod.string(),
+  "fileSizeBytes": zod.number(),
+  "mimeType": zod.string(),
+  "storageKey": zod.string(),
+  "storageBucket": zod.string(),
+  "checksumSha256": zod.string().nullish(),
+  "isPrimary": zod.boolean(),
+  "deletedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary Upload one or more files to a journal entry (max 10 total, 20 MB each)
+ */
+export const UploadJournalEntryAttachmentsParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const UploadJournalEntryAttachmentsBody = zod.object({
+  "files": zod.array(zod.instanceof(File))
+})
+
+export const UploadJournalEntryAttachmentsResponse = zod.object({
+  "data": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "journalEntryId": zod.string().uuid(),
+  "uploadedByUserId": zod.string().uuid(),
+  "fileName": zod.string(),
+  "fileSizeBytes": zod.number(),
+  "mimeType": zod.string(),
+  "storageKey": zod.string(),
+  "storageBucket": zod.string(),
+  "checksumSha256": zod.string().nullish(),
+  "isPrimary": zod.boolean(),
+  "deletedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary Soft-delete an attachment
+ */
+export const DeleteJournalEntryAttachmentParams = zod.object({
+  "id": zod.coerce.string().uuid(),
+  "attachmentId": zod.coerce.string().uuid()
+})
+
+export const DeleteJournalEntryAttachmentResponse = zod.object({
+  "success": zod.boolean()
+})
+
+
+/**
+ * @summary Set or clear isPrimary flag (at most one primary per entry)
+ */
+export const UpdateJournalEntryAttachmentParams = zod.object({
+  "id": zod.coerce.string().uuid(),
+  "attachmentId": zod.coerce.string().uuid()
+})
+
+export const UpdateJournalEntryAttachmentBody = zod.object({
+  "isPrimary": zod.boolean()
+})
+
+export const UpdateJournalEntryAttachmentResponse = zod.object({
+  "id": zod.string().uuid(),
+  "journalEntryId": zod.string().uuid(),
+  "uploadedByUserId": zod.string().uuid(),
+  "fileName": zod.string(),
+  "fileSizeBytes": zod.number(),
+  "mimeType": zod.string(),
+  "storageKey": zod.string(),
+  "storageBucket": zod.string(),
+  "checksumSha256": zod.string().nullish(),
+  "isPrimary": zod.boolean(),
+  "deletedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Get a signed download URL for an attachment (valid 15 minutes)
+ */
+export const GetJournalEntryAttachmentDownloadUrlParams = zod.object({
+  "id": zod.coerce.string().uuid(),
+  "attachmentId": zod.coerce.string().uuid()
+})
+
+export const GetJournalEntryAttachmentDownloadUrlResponse = zod.object({
+  "url": zod.string().describe('Signed URL for downloading the file (valid 15 minutes)'),
+  "expiresAt": zod.coerce.date().describe('UTC timestamp when the signed URL expires')
+})
+
+
+/**
+ * @summary Get all unread notifications for the current user
+ */
+export const GetUnreadNotificationsResponse = zod.object({
+  "data": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "organizationId": zod.string().uuid(),
+  "userId": zod.string().uuid(),
+  "event": zod.string().describe('Event type identifier (e.g. journal_entry.submitted)'),
+  "entityType": zod.string().nullish().describe('The entity type this notification relates to (e.g. JournalEntry)'),
+  "entityId": zod.string().uuid().nullish().describe('ID of the related entity'),
+  "titleEn": zod.string(),
+  "titleAr": zod.string(),
+  "bodyEn": zod.string().nullish(),
+  "bodyAr": zod.string().nullish(),
+  "isRead": zod.boolean(),
+  "readAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary Mark all unread notifications as read for the current user
+ */
+export const MarkAllNotificationsReadResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+
+/**
+ * @summary Mark a single notification as read
+ */
+export const MarkNotificationReadParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const MarkNotificationReadResponse = zod.object({
+  "ok": zod.boolean()
 })
 
 
@@ -1957,6 +2167,10 @@ export const UseJournalEntryTemplateResponse = zod.object({
   "hashedAt": zod.coerce.date().nullish().describe('Timestamp when the integrity hash was computed'),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
+  "sourceType": zod.string().nullish().describe('Source module type (e.g. Donor, Project, Fund, Payroll)'),
+  "sourceId": zod.string().uuid().nullish().describe('ID of the source record in the originating module'),
+  "sourceReference": zod.string().nullish().describe('Human-readable reference from the source (e.g. donation number, invoice number)'),
+  "sourceModuleUrl": zod.string().nullish().describe('Relative path to the source record in the UI (must start with \/)'),
   "createdBy": zod.object({
   "id": zod.string().optional(),
   "firstNameEn": zod.string().nullish(),

@@ -22,6 +22,26 @@ export interface CreateJournalEntryInput {
   /** @nullable */
   reference?: string | null;
   /**
+     * Source module type (e.g. Donor, Project, Fund, Payroll)
+     * @nullable
+     */
+  sourceType?: string | null;
+  /**
+     * ID of the source record; must be paired with sourceType
+     * @nullable
+     */
+  sourceId?: string | null;
+  /**
+     * Human-readable reference from the source
+     * @nullable
+     */
+  sourceReference?: string | null;
+  /**
+     * Relative path to source record in the UI (must start with /)
+     * @nullable
+     */
+  sourceModuleUrl?: string | null;
+  /**
      * Required. Minimum 2 lines enforced. Every journal entry must be double-entry from creation — total debits must equal total credits (within 0.01 tolerance). Each line must reference an active, non-group account that allows direct entries. Base amounts (debitBase, creditBase) are computed server-side from the exchange rate.
      * @minItems 2
      */

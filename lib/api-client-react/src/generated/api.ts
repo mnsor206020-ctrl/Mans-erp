@@ -22,6 +22,7 @@ import type {
 import type {
   ActivityItem,
   ApproveJournalEntryBody,
+  AttachmentDownloadResponse,
   ChartOfAccount,
   ChartOfAccountDetail,
   ChartOfAccountNode,
@@ -34,19 +35,24 @@ import type {
   DashboardStats,
   DeleteChartOfAccount200,
   DeleteJournalEntry200,
+  DeleteJournalEntryAttachment200,
   DeleteJournalEntryTemplate200,
   FiscalYear,
   GetChartOfAccountsTreeParams,
+  GetUnreadNotifications200,
   HealthStatus,
   JournalEntry,
   JournalEntryApprovalRecord,
+  JournalEntryAttachment,
   JournalEntryDetail,
   JournalEntryTemplate,
   ListChartOfAccountsParams,
   ListCostCentersParams,
   ListFiscalYearsParams,
   ListJournalEntriesParams,
+  ListJournalEntryAttachments200,
   ListJournalEntryTemplatesParams,
+  OkResponse,
   Organization,
   OrganizationInput,
   OrganizationUpdate,
@@ -56,7 +62,10 @@ import type {
   ReverseJournalEntryBody,
   SubmitJournalEntryBody,
   UpdateChartOfAccountInput,
+  UpdateJournalEntryAttachmentBody,
   UpdateJournalEntryInput,
+  UploadJournalEntryAttachments201,
+  UploadJournalEntryAttachmentsBody,
   UseJournalEntryTemplateBody,
   UserProfile,
   UserProfileUpdate,
@@ -2622,6 +2631,600 @@ export const useVoidJournalEntry = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getVoidJournalEntryMutationOptions(options));
+    }
+
+export const getListJournalEntryAttachmentsUrl = (id: string,) => {
+
+
+
+
+  return `/api/journal-entries/${id}/attachments`
+}
+
+/**
+ * @summary List attachments for a journal entry
+ */
+export const listJournalEntryAttachments = async (id: string, options?: RequestInit): Promise<ListJournalEntryAttachments200> => {
+
+  return customFetch<ListJournalEntryAttachments200>(getListJournalEntryAttachmentsUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListJournalEntryAttachmentsQueryKey = (id: string,) => {
+    return [
+    `/api/journal-entries/${id}/attachments`
+    ] as const;
+    }
+
+
+export const getListJournalEntryAttachmentsQueryOptions = <TData = Awaited<ReturnType<typeof listJournalEntryAttachments>>, TError = ErrorType<void>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listJournalEntryAttachments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListJournalEntryAttachmentsQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listJournalEntryAttachments>>> = ({ signal }) => listJournalEntryAttachments(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listJournalEntryAttachments>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListJournalEntryAttachmentsQueryResult = NonNullable<Awaited<ReturnType<typeof listJournalEntryAttachments>>>
+export type ListJournalEntryAttachmentsQueryError = ErrorType<void>
+
+
+/**
+ * @summary List attachments for a journal entry
+ */
+
+export function useListJournalEntryAttachments<TData = Awaited<ReturnType<typeof listJournalEntryAttachments>>, TError = ErrorType<void>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listJournalEntryAttachments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListJournalEntryAttachmentsQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUploadJournalEntryAttachmentsUrl = (id: string,) => {
+
+
+
+
+  return `/api/journal-entries/${id}/attachments`
+}
+
+/**
+ * @summary Upload one or more files to a journal entry (max 10 total, 20 MB each)
+ */
+export const uploadJournalEntryAttachments = async (id: string,
+    uploadJournalEntryAttachmentsBody: UploadJournalEntryAttachmentsBody, options?: RequestInit): Promise<UploadJournalEntryAttachments201> => {
+    const formData = new FormData();
+uploadJournalEntryAttachmentsBody.files.forEach(value => formData.append(`files`, value));
+
+  return customFetch<UploadJournalEntryAttachments201>(getUploadJournalEntryAttachmentsUrl(id),
+  {
+    ...options,
+    method: 'POST'
+    ,
+    body: formData
+  }
+);}
+
+
+
+
+export const getUploadJournalEntryAttachmentsMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadJournalEntryAttachments>>, TError,{id: string;data: BodyType<UploadJournalEntryAttachmentsBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof uploadJournalEntryAttachments>>, TError,{id: string;data: BodyType<UploadJournalEntryAttachmentsBody>}, TContext> => {
+
+const mutationKey = ['uploadJournalEntryAttachments'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof uploadJournalEntryAttachments>>, {id: string;data: BodyType<UploadJournalEntryAttachmentsBody>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  uploadJournalEntryAttachments(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UploadJournalEntryAttachmentsMutationResult = NonNullable<Awaited<ReturnType<typeof uploadJournalEntryAttachments>>>
+    export type UploadJournalEntryAttachmentsMutationBody = BodyType<UploadJournalEntryAttachmentsBody>
+    export type UploadJournalEntryAttachmentsMutationError = ErrorType<void>
+
+    /**
+ * @summary Upload one or more files to a journal entry (max 10 total, 20 MB each)
+ */
+export const useUploadJournalEntryAttachments = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadJournalEntryAttachments>>, TError,{id: string;data: BodyType<UploadJournalEntryAttachmentsBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof uploadJournalEntryAttachments>>,
+        TError,
+        {id: string;data: BodyType<UploadJournalEntryAttachmentsBody>},
+        TContext
+      > => {
+      return useMutation(getUploadJournalEntryAttachmentsMutationOptions(options));
+    }
+
+export const getDeleteJournalEntryAttachmentUrl = (id: string,
+    attachmentId: string,) => {
+
+
+
+
+  return `/api/journal-entries/${id}/attachments/${attachmentId}`
+}
+
+/**
+ * @summary Soft-delete an attachment
+ */
+export const deleteJournalEntryAttachment = async (id: string,
+    attachmentId: string, options?: RequestInit): Promise<DeleteJournalEntryAttachment200> => {
+
+  return customFetch<DeleteJournalEntryAttachment200>(getDeleteJournalEntryAttachmentUrl(id,attachmentId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteJournalEntryAttachmentMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteJournalEntryAttachment>>, TError,{id: string;attachmentId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteJournalEntryAttachment>>, TError,{id: string;attachmentId: string}, TContext> => {
+
+const mutationKey = ['deleteJournalEntryAttachment'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteJournalEntryAttachment>>, {id: string;attachmentId: string}> = (props) => {
+          const {id,attachmentId} = props ?? {};
+
+          return  deleteJournalEntryAttachment(id,attachmentId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteJournalEntryAttachmentMutationResult = NonNullable<Awaited<ReturnType<typeof deleteJournalEntryAttachment>>>
+
+    export type DeleteJournalEntryAttachmentMutationError = ErrorType<void>
+
+    /**
+ * @summary Soft-delete an attachment
+ */
+export const useDeleteJournalEntryAttachment = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteJournalEntryAttachment>>, TError,{id: string;attachmentId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteJournalEntryAttachment>>,
+        TError,
+        {id: string;attachmentId: string},
+        TContext
+      > => {
+      return useMutation(getDeleteJournalEntryAttachmentMutationOptions(options));
+    }
+
+export const getUpdateJournalEntryAttachmentUrl = (id: string,
+    attachmentId: string,) => {
+
+
+
+
+  return `/api/journal-entries/${id}/attachments/${attachmentId}`
+}
+
+/**
+ * @summary Set or clear isPrimary flag (at most one primary per entry)
+ */
+export const updateJournalEntryAttachment = async (id: string,
+    attachmentId: string,
+    updateJournalEntryAttachmentBody: UpdateJournalEntryAttachmentBody, options?: RequestInit): Promise<JournalEntryAttachment> => {
+
+  return customFetch<JournalEntryAttachment>(getUpdateJournalEntryAttachmentUrl(id,attachmentId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateJournalEntryAttachmentBody)
+  }
+);}
+
+
+
+
+export const getUpdateJournalEntryAttachmentMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateJournalEntryAttachment>>, TError,{id: string;attachmentId: string;data: BodyType<UpdateJournalEntryAttachmentBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateJournalEntryAttachment>>, TError,{id: string;attachmentId: string;data: BodyType<UpdateJournalEntryAttachmentBody>}, TContext> => {
+
+const mutationKey = ['updateJournalEntryAttachment'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateJournalEntryAttachment>>, {id: string;attachmentId: string;data: BodyType<UpdateJournalEntryAttachmentBody>}> = (props) => {
+          const {id,attachmentId,data} = props ?? {};
+
+          return  updateJournalEntryAttachment(id,attachmentId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateJournalEntryAttachmentMutationResult = NonNullable<Awaited<ReturnType<typeof updateJournalEntryAttachment>>>
+    export type UpdateJournalEntryAttachmentMutationBody = BodyType<UpdateJournalEntryAttachmentBody>
+    export type UpdateJournalEntryAttachmentMutationError = ErrorType<void>
+
+    /**
+ * @summary Set or clear isPrimary flag (at most one primary per entry)
+ */
+export const useUpdateJournalEntryAttachment = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateJournalEntryAttachment>>, TError,{id: string;attachmentId: string;data: BodyType<UpdateJournalEntryAttachmentBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateJournalEntryAttachment>>,
+        TError,
+        {id: string;attachmentId: string;data: BodyType<UpdateJournalEntryAttachmentBody>},
+        TContext
+      > => {
+      return useMutation(getUpdateJournalEntryAttachmentMutationOptions(options));
+    }
+
+export const getGetJournalEntryAttachmentDownloadUrlUrl = (id: string,
+    attachmentId: string,) => {
+
+
+
+
+  return `/api/journal-entries/${id}/attachments/${attachmentId}/download`
+}
+
+/**
+ * @summary Get a signed download URL for an attachment (valid 15 minutes)
+ */
+export const getJournalEntryAttachmentDownloadUrl = async (id: string,
+    attachmentId: string, options?: RequestInit): Promise<AttachmentDownloadResponse> => {
+
+  return customFetch<AttachmentDownloadResponse>(getGetJournalEntryAttachmentDownloadUrlUrl(id,attachmentId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetJournalEntryAttachmentDownloadUrlQueryKey = (id: string,
+    attachmentId: string,) => {
+    return [
+    `/api/journal-entries/${id}/attachments/${attachmentId}/download`
+    ] as const;
+    }
+
+
+export const getGetJournalEntryAttachmentDownloadUrlQueryOptions = <TData = Awaited<ReturnType<typeof getJournalEntryAttachmentDownloadUrl>>, TError = ErrorType<void>>(id: string,
+    attachmentId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getJournalEntryAttachmentDownloadUrl>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetJournalEntryAttachmentDownloadUrlQueryKey(id,attachmentId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getJournalEntryAttachmentDownloadUrl>>> = ({ signal }) => getJournalEntryAttachmentDownloadUrl(id,attachmentId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined && attachmentId !== null && attachmentId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getJournalEntryAttachmentDownloadUrl>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetJournalEntryAttachmentDownloadUrlQueryResult = NonNullable<Awaited<ReturnType<typeof getJournalEntryAttachmentDownloadUrl>>>
+export type GetJournalEntryAttachmentDownloadUrlQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get a signed download URL for an attachment (valid 15 minutes)
+ */
+
+export function useGetJournalEntryAttachmentDownloadUrl<TData = Awaited<ReturnType<typeof getJournalEntryAttachmentDownloadUrl>>, TError = ErrorType<void>>(
+ id: string,
+    attachmentId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getJournalEntryAttachmentDownloadUrl>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetJournalEntryAttachmentDownloadUrlQueryOptions(id,attachmentId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetUnreadNotificationsUrl = () => {
+
+
+
+
+  return `/api/notifications/unread`
+}
+
+/**
+ * @summary Get all unread notifications for the current user
+ */
+export const getUnreadNotifications = async ( options?: RequestInit): Promise<GetUnreadNotifications200> => {
+
+  return customFetch<GetUnreadNotifications200>(getGetUnreadNotificationsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetUnreadNotificationsQueryKey = () => {
+    return [
+    `/api/notifications/unread`
+    ] as const;
+    }
+
+
+export const getGetUnreadNotificationsQueryOptions = <TData = Awaited<ReturnType<typeof getUnreadNotifications>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getUnreadNotifications>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetUnreadNotificationsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getUnreadNotifications>>> = ({ signal }) => getUnreadNotifications({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getUnreadNotifications>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetUnreadNotificationsQueryResult = NonNullable<Awaited<ReturnType<typeof getUnreadNotifications>>>
+export type GetUnreadNotificationsQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get all unread notifications for the current user
+ */
+
+export function useGetUnreadNotifications<TData = Awaited<ReturnType<typeof getUnreadNotifications>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getUnreadNotifications>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetUnreadNotificationsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getMarkAllNotificationsReadUrl = () => {
+
+
+
+
+  return `/api/notifications/read-all`
+}
+
+/**
+ * @summary Mark all unread notifications as read for the current user
+ */
+export const markAllNotificationsRead = async ( options?: RequestInit): Promise<OkResponse> => {
+
+  return customFetch<OkResponse>(getMarkAllNotificationsReadUrl(),
+  {
+    ...options,
+    method: 'PATCH'
+
+
+  }
+);}
+
+
+
+
+export const getMarkAllNotificationsReadMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markAllNotificationsRead>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof markAllNotificationsRead>>, TError,void, TContext> => {
+
+const mutationKey = ['markAllNotificationsRead'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof markAllNotificationsRead>>, void> = () => {
+
+
+          return  markAllNotificationsRead(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MarkAllNotificationsReadMutationResult = NonNullable<Awaited<ReturnType<typeof markAllNotificationsRead>>>
+
+    export type MarkAllNotificationsReadMutationError = ErrorType<void>
+
+    /**
+ * @summary Mark all unread notifications as read for the current user
+ */
+export const useMarkAllNotificationsRead = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markAllNotificationsRead>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof markAllNotificationsRead>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getMarkAllNotificationsReadMutationOptions(options));
+    }
+
+export const getMarkNotificationReadUrl = (id: string,) => {
+
+
+
+
+  return `/api/notifications/${id}/read`
+}
+
+/**
+ * @summary Mark a single notification as read
+ */
+export const markNotificationRead = async (id: string, options?: RequestInit): Promise<OkResponse> => {
+
+  return customFetch<OkResponse>(getMarkNotificationReadUrl(id),
+  {
+    ...options,
+    method: 'PATCH'
+
+
+  }
+);}
+
+
+
+
+export const getMarkNotificationReadMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markNotificationRead>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof markNotificationRead>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['markNotificationRead'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof markNotificationRead>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  markNotificationRead(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MarkNotificationReadMutationResult = NonNullable<Awaited<ReturnType<typeof markNotificationRead>>>
+
+    export type MarkNotificationReadMutationError = ErrorType<void>
+
+    /**
+ * @summary Mark a single notification as read
+ */
+export const useMarkNotificationRead = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markNotificationRead>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof markNotificationRead>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getMarkNotificationReadMutationOptions(options));
     }
 
 export const getListJournalEntryTemplatesUrl = (params?: ListJournalEntryTemplatesParams,) => {

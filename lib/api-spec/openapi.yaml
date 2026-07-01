@@ -17,6 +17,10 @@ tags:
     description: Organization management
   - name: users
     description: User management
+  - name: attachments
+    description: Journal entry file attachments
+  - name: notifications
+    description: In-app user notifications
 paths:
   /healthz:
     get:
@@ -863,6 +867,235 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/JournalEntry"
+
+  /journal-entries/{id}/attachments:
+    get:
+      operationId: listJournalEntryAttachments
+      tags: [attachments]
+      summary: List attachments for a journal entry
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: List of non-deleted attachments
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/JournalEntryAttachment"
+                required: [data]
+        "401":
+          description: Unauthorized
+        "404":
+          description: Journal entry not found
+    post:
+      operationId: uploadJournalEntryAttachments
+      tags: [attachments]
+      summary: Upload one or more files to a journal entry (max 10 total, 20 MB each)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                files:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+              required: [files]
+      responses:
+        "201":
+          description: Uploaded attachments
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/JournalEntryAttachment"
+                required: [data]
+        "400":
+          description: Validation error (MIME type not allowed, file too large, attachment cap exceeded)
+        "401":
+          description: Unauthorized
+        "404":
+          description: Journal entry not found
+
+  /journal-entries/{id}/attachments/{attachmentId}:
+    delete:
+      operationId: deleteJournalEntryAttachment
+      tags: [attachments]
+      summary: Soft-delete an attachment
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: attachmentId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                required: [success]
+        "401":
+          description: Unauthorized
+        "404":
+          description: Journal entry or attachment not found
+    patch:
+      operationId: updateJournalEntryAttachment
+      tags: [attachments]
+      summary: Set or clear isPrimary flag (at most one primary per entry)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: attachmentId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                isPrimary: { type: boolean }
+              required: [isPrimary]
+      responses:
+        "200":
+          description: Updated attachment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JournalEntryAttachment"
+        "401":
+          description: Unauthorized
+        "404":
+          description: Journal entry or attachment not found
+
+  /journal-entries/{id}/attachments/{attachmentId}/download:
+    get:
+      operationId: getJournalEntryAttachmentDownloadUrl
+      tags: [attachments]
+      summary: Get a signed download URL for an attachment (valid 15 minutes)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: attachmentId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Signed download URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttachmentDownloadResponse"
+        "401":
+          description: Unauthorized
+        "404":
+          description: Journal entry or attachment not found
+
+  /notifications/unread:
+    get:
+      operationId: getUnreadNotifications
+      tags: [notifications]
+      summary: Get all unread notifications for the current user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Unread notifications, newest first
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Notification"
+                required: [data]
+        "401":
+          description: Unauthorized
+
+  /notifications/read-all:
+    patch:
+      operationId: markAllNotificationsRead
+      tags: [notifications]
+      summary: Mark all unread notifications as read for the current user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: All notifications marked as read
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "401":
+          description: Unauthorized
+
+  /notifications/{id}/read:
+    patch:
+      operationId: markNotificationRead
+      tags: [notifications]
+      summary: Mark a single notification as read
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Notification marked as read
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "401":
+          description: Unauthorized
 
   /journal-entry-templates:
     get:
@@ -1730,6 +1963,19 @@ components:
         updatedAt:
           type: string
           format: date-time
+        sourceType:
+          type: ["string", "null"]
+          description: Source module type (e.g. Donor, Project, Fund, Payroll)
+        sourceId:
+          type: ["string", "null"]
+          format: uuid
+          description: ID of the source record in the originating module
+        sourceReference:
+          type: ["string", "null"]
+          description: Human-readable reference from the source (e.g. donation number, invoice number)
+        sourceModuleUrl:
+          type: ["string", "null"]
+          description: Relative path to the source record in the UI (must start with /)
         createdBy:
           type: object
           nullable: true
@@ -1903,6 +2149,19 @@ components:
           type: ["string", "null"]
         reference:
           type: ["string", "null"]
+        sourceType:
+          type: ["string", "null"]
+          description: Source module type (e.g. Donor, Project, Fund, Payroll)
+        sourceId:
+          type: ["string", "null"]
+          format: uuid
+          description: ID of the source record; must be paired with sourceType
+        sourceReference:
+          type: ["string", "null"]
+          description: Human-readable reference from the source
+        sourceModuleUrl:
+          type: ["string", "null"]
+          description: Relative path to source record in the UI (must start with /)
         lines:
           type: array
           description: >
@@ -1940,6 +2199,19 @@ components:
           type: ["string", "null"]
         reference:
           type: ["string", "null"]
+        sourceType:
+          type: ["string", "null"]
+          description: Source module type (e.g. Donor, Project, Fund, Payroll)
+        sourceId:
+          type: ["string", "null"]
+          format: uuid
+          description: ID of the source record; must be paired with sourceType
+        sourceReference:
+          type: ["string", "null"]
+          description: Human-readable reference from the source
+        sourceModuleUrl:
+          type: ["string", "null"]
+          description: Relative path to source record in the UI (must start with /)
         lines:
           type: array
           description: >
@@ -2033,3 +2305,121 @@ components:
       required:
         - nameEn
         - nameAr
+
+    JournalEntryAttachment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        journalEntryId:
+          type: string
+          format: uuid
+        uploadedByUserId:
+          type: string
+          format: uuid
+        fileName:
+          type: string
+        fileSizeBytes:
+          type: integer
+        mimeType:
+          type: string
+        storageKey:
+          type: string
+        storageBucket:
+          type: string
+        checksumSha256:
+          type: ["string", "null"]
+        isPrimary:
+          type: boolean
+        deletedAt:
+          type: ["string", "null"]
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - journalEntryId
+        - uploadedByUserId
+        - fileName
+        - fileSizeBytes
+        - mimeType
+        - storageKey
+        - storageBucket
+        - isPrimary
+        - createdAt
+        - updatedAt
+
+    AttachmentDownloadResponse:
+      type: object
+      properties:
+        url:
+          type: string
+          description: Signed URL for downloading the file (valid 15 minutes)
+        expiresAt:
+          type: string
+          format: date-time
+          description: UTC timestamp when the signed URL expires
+      required:
+        - url
+        - expiresAt
+
+    Notification:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        organizationId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        event:
+          type: string
+          description: Event type identifier (e.g. journal_entry.submitted)
+        entityType:
+          type: ["string", "null"]
+          description: The entity type this notification relates to (e.g. JournalEntry)
+        entityId:
+          type: ["string", "null"]
+          format: uuid
+          description: ID of the related entity
+        titleEn:
+          type: string
+        titleAr:
+          type: string
+        bodyEn:
+          type: ["string", "null"]
+        bodyAr:
+          type: ["string", "null"]
+        isRead:
+          type: boolean
+        readAt:
+          type: ["string", "null"]
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - organizationId
+        - userId
+        - event
+        - titleEn
+        - titleAr
+        - isRead
+        - createdAt
+
+    OkResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+      required:
+        - ok
