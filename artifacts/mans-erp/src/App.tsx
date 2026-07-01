@@ -22,6 +22,9 @@ import JournalEntryForm from "@/pages/JournalEntryForm";
 import BankAccounts from "@/pages/BankAccounts";
 import BankAccountForm from "@/pages/BankAccountForm";
 import BankAccountDetail from "@/pages/BankAccountDetail";
+import CashBoxes from "@/pages/CashBoxes";
+import CashBoxForm from "@/pages/CashBoxForm";
+import CashBoxDetail from "@/pages/CashBoxDetail";
 import NotFound from "@/pages/not-found";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 
@@ -212,7 +215,28 @@ function ClerkProviderWithRoutes() {
               </DashboardLayout>
             )}
           </Route>
-          
+
+          <Route path="/cash-boxes">
+            <ProtectedRoute component={CashBoxes} />
+          </Route>
+          <Route path="/cash-boxes/new">
+            <ProtectedRoute component={CashBoxForm} />
+          </Route>
+          <Route path="/cash-boxes/:id/edit">
+            {(params) => (
+              <DashboardLayout>
+                <CashBoxForm params={params as { id: string }} />
+              </DashboardLayout>
+            )}
+          </Route>
+          <Route path="/cash-boxes/:id">
+            {(params) => (
+              <DashboardLayout>
+                <CashBoxDetail params={params as { id: string }} />
+              </DashboardLayout>
+            )}
+          </Route>
+
           <Route component={NotFound} />
         </Switch>
       </QueryClientProvider>
