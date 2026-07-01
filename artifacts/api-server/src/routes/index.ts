@@ -13,6 +13,7 @@ import banksRouter from "./banks";
 import currenciesRouter from "./currencies";
 import branchesRouter from "./branches";
 import bankAccountsRouter from "./bank-accounts";
+import cashBoxesRouter from "./cash-boxes";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use("/banks", banksRouter);
 router.use("/currencies", currenciesRouter);
 router.use("/branches", branchesRouter);
 router.use("/bank-accounts", bankAccountsRouter);
+router.use("/cash-boxes", cashBoxesRouter);
 
 export default router;
