@@ -19,6 +19,9 @@ import ChartOfAccountDetail from "@/pages/ChartOfAccountDetail";
 import JournalEntries from "@/pages/JournalEntries";
 import JournalEntryDetail from "@/pages/JournalEntryDetail";
 import JournalEntryForm from "@/pages/JournalEntryForm";
+import BankAccounts from "@/pages/BankAccounts";
+import BankAccountForm from "@/pages/BankAccountForm";
+import BankAccountDetail from "@/pages/BankAccountDetail";
 import NotFound from "@/pages/not-found";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 
@@ -185,6 +188,27 @@ function ClerkProviderWithRoutes() {
             {(params) => (
               <DashboardLayout>
                 <JournalEntryDetail params={params as { id: string }} />
+              </DashboardLayout>
+            )}
+          </Route>
+
+          <Route path="/bank-accounts">
+            <ProtectedRoute component={BankAccounts} />
+          </Route>
+          <Route path="/bank-accounts/new">
+            <ProtectedRoute component={BankAccountForm} />
+          </Route>
+          <Route path="/bank-accounts/:id/edit">
+            {(params) => (
+              <DashboardLayout>
+                <BankAccountForm params={params as { id: string }} />
+              </DashboardLayout>
+            )}
+          </Route>
+          <Route path="/bank-accounts/:id">
+            {(params) => (
+              <DashboardLayout>
+                <BankAccountDetail params={params as { id: string }} />
               </DashboardLayout>
             )}
           </Route>
