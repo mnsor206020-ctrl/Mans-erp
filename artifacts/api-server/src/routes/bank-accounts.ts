@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { requireAuth, getAuth } from "@clerk/express";
 import { prisma } from "@workspace/prisma";
-import { z } from "zod";
+import { createSchema, updateSchema } from "../lib/bank-account-utils";
 
 const router = Router();
 
@@ -16,30 +16,6 @@ function parseBoolean(val: unknown): boolean | undefined {
   if (val === "false") return false;
   return undefined;
 }
-
-// ─── Validation schemas ───────────────────────────────────────────────────────
-
-const createSchema = z.object({
-  bankId: z.string().uuid(),
-  currencyCode: z.string().min(1),
-  accountNumber: z.string().min(1),
-  iban: z.string().optional(),
-  accountNameEn: z.string().min(1),
-  accountNameAr: z.string().min(1),
-  type: z.enum(["CURRENT", "SAVINGS", "FIXED_DEPOSIT", "PETTY_CASH"]).default("CURRENT"),
-  openingBalance: z.number().min(0).default(0),
-  glAccountId: z.string().uuid().optional(),
-  branchId: z.string().uuid().optional(),
-});
-
-const updateSchema = z.object({
-  iban: z.string().optional(),
-  accountNameEn: z.string().min(1).optional(),
-  accountNameAr: z.string().min(1).optional(),
-  type: z.enum(["CURRENT", "SAVINGS", "FIXED_DEPOSIT", "PETTY_CASH"]).optional(),
-  glAccountId: z.string().uuid().nullable().optional(),
-  branchId: z.string().uuid().nullable().optional(),
-});
 
 // ─── Reference validators ─────────────────────────────────────────────────────
 
