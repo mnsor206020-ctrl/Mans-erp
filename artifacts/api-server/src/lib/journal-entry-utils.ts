@@ -138,3 +138,29 @@ export const updateHeaderSchema = z.object({
 export type CreateHeaderInput = z.infer<typeof createHeaderSchema>;
 export type UpdateHeaderInput = z.infer<typeof updateHeaderSchema>;
 export type LineInput         = z.infer<typeof lineSchema>;
+
+/**
+ * Computes the number of whole seconds elapsed between the previous approval
+ * action and the current action timestamp.
+ *
+ * Returns null when there is no previous action (i.e. this is the first
+ * approval record on the entry).
+ */
+export function computeDuration(
+  prevCreatedAt: Date | null,
+  currentAt: Date
+): number | null {
+  if (prevCreatedAt === null) return null;
+  return Math.floor((currentAt.getTime() - prevCreatedAt.getTime()) / 1000);
+}
+
+/**
+ * Zod schema for the body of a reject workflow action.
+ * A comment is mandatory and must be at least 10 characters so the reviewer
+ * is forced to provide a meaningful reason.
+ */
+export const rejectCommentSchema = z.object({
+  comment: z
+    .string({ required_error: "A rejection comment is required" })
+    .min(10, "Rejection comment must be at least 10 characters"),
+});
