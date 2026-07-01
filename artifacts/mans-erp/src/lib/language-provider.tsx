@@ -243,7 +243,23 @@ const translations: Record<Language, Record<string, string>> = {
     "je.attachments.error": "Failed to load attachments",
     "je.attachments.uploadError": "Upload failed",
     "je.attachments.deleteError": "Delete failed",
-    "je.attachments.uploadedBy": "Uploaded by"
+    "je.attachments.uploadedBy": "Uploaded by",
+    "je.source.section": "Source Tracking",
+    "je.source.optional": "Optional",
+    "je.source.type": "Source Type",
+    "je.source.reference": "Source Reference",
+    "je.source.moduleUrl": "Module URL",
+    "je.source.type.placeholder": "Select source type…",
+    "je.source.reference.placeholder": "e.g. DON-2025-001",
+    "je.source.moduleUrl.placeholder": "e.g. /donors/123",
+    "je.source.moduleUrl.hint": "Must start with /",
+    "je.source.type.Donor": "Donor",
+    "je.source.type.Project": "Project",
+    "je.source.type.Fund": "Fund",
+    "je.source.type.Grant": "Grant",
+    "je.source.type.Payroll": "Payroll",
+    "je.source.type.Contract": "Contract",
+    "je.source.type.Budget": "Budget"
   },
   ar: {
     "app.name": "منظومة مانز",
@@ -475,7 +491,23 @@ const translations: Record<Language, Record<string, string>> = {
     "je.attachments.error": "فشل تحميل المرفقات",
     "je.attachments.uploadError": "فشل الرفع",
     "je.attachments.deleteError": "فشل الحذف",
-    "je.attachments.uploadedBy": "رفعه"
+    "je.attachments.uploadedBy": "رفعه",
+    "je.source.section": "تتبع المصدر",
+    "je.source.optional": "اختياري",
+    "je.source.type": "نوع المصدر",
+    "je.source.reference": "مرجع المصدر",
+    "je.source.moduleUrl": "رابط الوحدة",
+    "je.source.type.placeholder": "اختر نوع المصدر…",
+    "je.source.reference.placeholder": "مثال: DON-2025-001",
+    "je.source.moduleUrl.placeholder": "مثال: /donors/123",
+    "je.source.moduleUrl.hint": "يجب أن يبدأ بـ /",
+    "je.source.type.Donor": "متبرع",
+    "je.source.type.Project": "مشروع",
+    "je.source.type.Fund": "صندوق",
+    "je.source.type.Grant": "منحة",
+    "je.source.type.Payroll": "رواتب",
+    "je.source.type.Contract": "عقد",
+    "je.source.type.Budget": "الميزانية"
   }
 };
 
