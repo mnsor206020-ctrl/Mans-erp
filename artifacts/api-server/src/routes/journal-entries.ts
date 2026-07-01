@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { requireAuth, getAuth } from "@clerk/express";
 import { prisma } from "@workspace/prisma";
+import { computeIntegrityHash } from "../services/integrity-hash";
 import {
   formatJENumber,
   createHeaderSchema as createSchema,
@@ -561,9 +562,35 @@ router.post("/:id/post", requireAuth(), async (req, res) => {
       }
     }
 
+    const postedAt = new Date();
+    const hash = computeIntegrityHash(
+      {
+        id:             entry.id,
+        number:         entry.number,
+        organizationId: entry.organizationId,
+        fiscalYearId:   entry.fiscalYearId,
+        entryDate:      entry.entryDate,
+        type:           entry.type,
+        currencyCode:   entry.currencyCode,
+        exchangeRate:   entry.exchangeRate,
+        totalDebit:     entry.totalDebit,
+        totalCredit:    entry.totalCredit,
+        postedAt,
+        postedByUserId: user.id,
+      },
+      entry.lines,
+    );
+
     const updated = await prisma.journalEntry.update({
       where: { id: req.params.id },
-      data: { status: "POSTED", postedAt: new Date(), postedByUserId: user.id },
+      data: {
+        status:         "POSTED",
+        postedAt,
+        postedByUserId: user.id,
+        integrityHash:  hash,
+        hashAlgorithm:  "SHA-256",
+        hashedAt:       postedAt,
+      },
     });
     await writeApprovalRecord({
       journalEntryId: req.params.id,
@@ -815,6 +842,54 @@ router.post("/:id/void", requireAuth(), async (req, res) => {
 });
 
 // ── GET /:id/approvals — ordered approval history ─────────────────────────
+// ── VERIFY HASH ───────────────────────────────────────────────────────────────
+router.get("/:id/verify-hash", requireAuth(), async (req, res) => {
+  try {
+    const { userId } = getAuth(req);
+    const user = await getUser(userId!);
+    if (!user) return res.status(401).json({ error: "User not found" });
+
+    const entry = await prisma.journalEntry.findFirst({
+      where: { id: req.params.id, organizationId: user.organizationId, deletedAt: null },
+      include: { lines: true },
+    });
+    if (!entry) return res.status(404).json({ error: "Journal entry not found" });
+    if (!entry.integrityHash || !entry.postedAt || !entry.postedByUserId) {
+      return res.status(400).json({ error: "Entry has not been posted — no integrity hash stored" });
+    }
+
+    const computedHash = computeIntegrityHash(
+      {
+        id:             entry.id,
+        number:         entry.number,
+        organizationId: entry.organizationId,
+        fiscalYearId:   entry.fiscalYearId,
+        entryDate:      entry.entryDate,
+        type:           entry.type,
+        currencyCode:   entry.currencyCode,
+        exchangeRate:   entry.exchangeRate,
+        totalDebit:     entry.totalDebit,
+        totalCredit:    entry.totalCredit,
+        postedAt:       entry.postedAt,
+        postedByUserId: entry.postedByUserId,
+      },
+      entry.lines,
+    );
+
+    res.json({
+      entryId:      entry.id,
+      number:       entry.number,
+      storedHash:   entry.integrityHash,
+      computedHash,
+      isValid:      entry.integrityHash === computedHash,
+      verifiedAt:   new Date().toISOString(),
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to verify integrity hash" });
+  }
+});
+
 router.get("/:id/approvals", requireAuth(), async (req, res) => {
   try {
     const { userId } = getAuth(req);
