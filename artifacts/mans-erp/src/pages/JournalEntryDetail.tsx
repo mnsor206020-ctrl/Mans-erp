@@ -60,6 +60,7 @@ import {
 } from "lucide-react";
 import ApprovalTimeline from "@/components/journal-entries/ApprovalTimeline";
 import IntegrityBadge from "@/components/journal-entries/IntegrityBadge";
+import { AttachmentsPanel } from "@/components/journal-entries/AttachmentsPanel";
 
 const STATUS_COLORS: Record<string, string> = {
   DRAFT: "bg-slate-100 text-slate-700 border-slate-200",
@@ -500,6 +501,9 @@ export default function JournalEntryDetail({ params }: Props) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Attachments */}
+      <AttachmentsPanel journalEntryId={e.id} mode="view" />
 
       {/* Integrity Hash */}
       {e.integrityHash && (

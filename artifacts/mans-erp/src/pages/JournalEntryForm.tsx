@@ -28,6 +28,7 @@ import {
   JournalLinesTable,
   type LineState,
 } from "@/components/journal-entries/JournalLinesTable";
+import { AttachmentsPanel } from "@/components/journal-entries/AttachmentsPanel";
 
 function newLine(lineNumber: number): LineState {
   return {
@@ -396,6 +397,11 @@ export default function JournalEntryForm({ params }: Props) {
         onUpdateLine={updateLine}
         onSetLineAccount={setLineAccount}
       />
+
+      {/* Attachments — only available on an existing (saved) entry */}
+      {isEdit && params?.id && (
+        <AttachmentsPanel journalEntryId={params.id} mode="upload" />
+      )}
 
       {/* Actions */}
       <div className="flex items-center justify-between">
