@@ -57,6 +57,7 @@ import {
   User,
   Calendar,
   AlertTriangle,
+  Link2,
 } from "lucide-react";
 import ApprovalTimeline from "@/components/journal-entries/ApprovalTimeline";
 import IntegrityBadge from "@/components/journal-entries/IntegrityBadge";
@@ -395,6 +396,43 @@ export default function JournalEntryDetail({ params }: Props) {
                     <span className="font-mono font-medium hover:underline cursor-pointer">{r.number}</span>
                   </Link>
                 ))}
+              </div>
+            )}
+
+            {/* Source Tracking */}
+            {(e.sourceType || e.sourceReference || e.sourceModuleUrl) && (
+              <div className="mt-4 border-t pt-4">
+                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                  <Link2 className="h-3.5 w-3.5" />
+                  {t("je.source.section")}
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {e.sourceType && (
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">{t("je.source.type")}</p>
+                      <p className="text-sm font-medium">
+                        {t(`je.source.type.${e.sourceType}`) || e.sourceType}
+                      </p>
+                    </div>
+                  )}
+                  {e.sourceReference && (
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">{t("je.source.reference")}</p>
+                      <p className="text-sm font-medium font-mono">{e.sourceReference}</p>
+                    </div>
+                  )}
+                  {e.sourceModuleUrl && (
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">{t("je.source.moduleUrl")}</p>
+                      <Link href={e.sourceModuleUrl}>
+                        <span className="inline-flex items-center gap-1 text-sm text-primary hover:underline cursor-pointer font-mono">
+                          <Link2 className="h-3 w-3 shrink-0" />
+                          {e.sourceModuleUrl}
+                        </span>
+                      </Link>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </CardContent>

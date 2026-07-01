@@ -29,6 +29,10 @@ import {
   type LineState,
 } from "@/components/journal-entries/JournalLinesTable";
 import { AttachmentsPanel } from "@/components/journal-entries/AttachmentsPanel";
+import {
+  SourceTrackingFields,
+  type SourceTrackingValues,
+} from "@/components/journal-entries/SourceTrackingFields";
 
 function newLine(lineNumber: number): LineState {
   return {
@@ -65,6 +69,13 @@ export default function JournalEntryForm({ params }: Props) {
   const [descriptionEn, setDescriptionEn] = useState("");
   const [descriptionAr, setDescriptionAr] = useState("");
   const [reference, setReference] = useState("");
+
+  // Source tracking
+  const [sourceTracking, setSourceTracking] = useState<SourceTrackingValues>({
+    sourceType: "",
+    sourceReference: "",
+    sourceModuleUrl: "",
+  });
 
   // Lines state — initialised with 2 blank lines to satisfy the min-2 rule
   const [lines, setLines] = useState<LineState[]>([newLine(1), newLine(2)]);
@@ -110,6 +121,11 @@ export default function JournalEntryForm({ params }: Props) {
     setDescriptionEn(e.descriptionEn || "");
     setDescriptionAr(e.descriptionAr || "");
     setReference(e.reference || "");
+    setSourceTracking({
+      sourceType:      e.sourceType      || "",
+      sourceReference: e.sourceReference || "",
+      sourceModuleUrl: e.sourceModuleUrl || "",
+    });
     if (e.lines?.length > 0) {
       setLines(
         e.lines.map((l: any) => ({
@@ -173,7 +189,10 @@ export default function JournalEntryForm({ params }: Props) {
     exchangeRate: parseFloat(exchangeRate) || 1,
     descriptionEn: descriptionEn || undefined,
     descriptionAr: descriptionAr || undefined,
-    reference:     reference     || undefined,
+    reference:        reference                           || undefined,
+    sourceType:       sourceTracking.sourceType           || undefined,
+    sourceReference:  sourceTracking.sourceReference      || undefined,
+    sourceModuleUrl:  sourceTracking.sourceModuleUrl      || undefined,
     lines: lines.map((l, i) => ({
       accountId:     l.accountId,
       costCenterId:  l.costCenterId || null,
@@ -383,6 +402,13 @@ export default function JournalEntryForm({ params }: Props) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Source Tracking (optional, collapsible) */}
+      <SourceTrackingFields
+        value={sourceTracking}
+        onChange={setSourceTracking}
+        disabled={isBusy}
+      />
 
       {/* Lines table — extracted reusable component */}
       <JournalLinesTable
