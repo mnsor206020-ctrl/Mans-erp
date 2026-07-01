@@ -50,7 +50,12 @@ export interface Receipt {
   /** @nullable */
   reference?: string | null;
   /**
-     * Set externally when a journal entry is created for this receipt
+     * GL account for the contra side of the auto-generated journal entry
+     * @nullable
+     */
+  glAccountId?: string | null;
+  /**
+     * Set automatically when a journal entry is created for this receipt
      * @nullable
      */
   journalEntryId?: string | null;

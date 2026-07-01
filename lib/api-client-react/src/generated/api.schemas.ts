@@ -1111,7 +1111,12 @@ export interface Receipt {
   /** @nullable */
   reference?: string | null;
   /**
-     * Set externally when a journal entry is created for this receipt
+     * GL account for the contra side of the auto-generated journal entry
+     * @nullable
+     */
+  glAccountId?: string | null;
+  /**
+     * Set automatically when a journal entry is created for this receipt
      * @nullable
      */
   journalEntryId?: string | null;
@@ -1151,6 +1156,8 @@ export interface ReceiptCreate {
   descriptionEn?: string;
   descriptionAr?: string;
   reference?: string;
+  /** GL account for the contra side of the auto-generated journal entry */
+  glAccountId?: string;
 }
 
 /**
@@ -1248,7 +1255,12 @@ export interface Payment {
   /** @nullable */
   reference?: string | null;
   /**
-     * Set externally when a journal entry is created for this payment
+     * GL account for the contra side of the auto-generated journal entry
+     * @nullable
+     */
+  glAccountId?: string | null;
+  /**
+     * Set automatically when a journal entry is created for this payment
      * @nullable
      */
   journalEntryId?: string | null;
@@ -1288,6 +1300,8 @@ export interface PaymentCreate {
   descriptionEn?: string;
   descriptionAr?: string;
   reference?: string;
+  /** GL account for the contra side of the auto-generated journal entry */
+  glAccountId?: string;
 }
 
 /**

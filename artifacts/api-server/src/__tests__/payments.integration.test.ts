@@ -35,6 +35,14 @@ vi.mock("@workspace/prisma", () => ({
       create:    vi.fn(),
       update:    vi.fn(),
     },
+    fiscalYear: {
+      findFirst: vi.fn(),
+    },
+    journalEntry: {
+      findFirst: vi.fn(),
+      create:    vi.fn(),
+      update:    vi.fn(),
+    },
     $transaction: vi.fn(),
   },
 }));
@@ -49,6 +57,9 @@ const USER_ID         = "dddddddd-0000-0000-0000-000000000004";
 const BANK_ACCOUNT_ID = "bbbbbbbb-0000-0000-0000-000000000002";
 const CASH_BOX_ID     = "cccccccc-0000-0000-0000-000000000003";
 const PAYMENT_ID      = "eeeeeeee-0000-0000-0000-000000000005";
+const GL_ACCOUNT_ID   = "ffffffff-0000-0000-0000-000000000006";
+const FISCAL_YEAR_ID  = "99999999-0000-0000-0000-000000000009";
+const JE_ID           = "88888888-0000-0000-0000-000000000008";
 
 const mockUser = {
   id:             USER_ID,
@@ -69,6 +80,7 @@ const mockBankAccount = {
   isActive:       true,
   deletedAt:      null,
   currentBalance: "10000",
+  glAccountId:    GL_ACCOUNT_ID,
 };
 
 const mockCashBox = {
@@ -92,6 +104,8 @@ const mockPayment = {
   amountBase:     "500",
   bankAccountId:  BANK_ACCOUNT_ID,
   cashBoxId:      null,
+  glAccountId:    GL_ACCOUNT_ID,
+  journalEntryId: null,
   deletedAt:      null,
   createdAt:      new Date().toISOString(),
   updatedAt:      new Date().toISOString(),
@@ -105,6 +119,26 @@ const mockPayment = {
   cashBox: null,
 };
 
+const mockFiscalYear = { id: FISCAL_YEAR_ID, status: "OPEN" };
+
+const mockJE = {
+  id:             JE_ID,
+  number:         "JE-2026-0001",
+  organizationId: ORG_ID,
+  fiscalYearId:   FISCAL_YEAR_ID,
+  entryDate:      new Date("2026-07-01"),
+  type:           "AUTOMATIC",
+  status:         "POSTED",
+  currencyCode:   "SAR",
+  exchangeRate:   "1",
+  totalDebit:     "500",
+  totalCredit:    "500",
+  lines: [
+    { lineNumber: 1, accountId: GL_ACCOUNT_ID, debit: "500", credit: "0",   debitBase: "500", creditBase: "0" },
+    { lineNumber: 2, accountId: GL_ACCOUNT_ID, debit: "0",   credit: "500", debitBase: "0",   creditBase: "500" },
+  ],
+};
+
 // ── Express app ───────────────────────────────────────────────────────────────
 const app = express();
 app.use(express.json());
@@ -114,11 +148,13 @@ app.use("/api/payments", paymentsRouter);
 describe("Payments API — Integration", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (prisma.user.findFirst     as any).mockResolvedValue(mockUser);
-    (prisma.currency.findFirst as any).mockResolvedValue(mockCurrency);
-    (prisma.branch.findFirst   as any).mockResolvedValue(null);
+    (prisma.user.findFirst        as any).mockResolvedValue(mockUser);
+    (prisma.currency.findFirst    as any).mockResolvedValue(mockCurrency);
+    (prisma.branch.findFirst      as any).mockResolvedValue(null);
     (prisma.bankAccount.findFirst as any).mockResolvedValue(mockBankAccount);
-    (prisma.cashBox.findFirst  as any).mockResolvedValue(mockCashBox);
+    (prisma.cashBox.findFirst     as any).mockResolvedValue(mockCashBox);
+    (prisma.fiscalYear.findFirst  as any).mockResolvedValue(mockFiscalYear);
+    (prisma.journalEntry.findFirst as any).mockResolvedValue(null);
   });
 
   // ── PMT-I-01 ─────────────────────────────────────────────────────────────────
@@ -258,9 +294,14 @@ describe("Payments API — Integration", () => {
     const confirmed = { ...mockPayment, status: "CONFIRMED", confirmedAt: new Date() };
     (prisma.$transaction as any).mockImplementation(async (fn: any) => {
       const txMock = {
-        payment:     { update: vi.fn().mockResolvedValue(confirmed) },
-        bankAccount: { update: vi.fn().mockResolvedValue({}) },
-        cashBox:     { update: vi.fn() },
+        payment:      { update: vi.fn().mockResolvedValue(confirmed) },
+        bankAccount:  { update: vi.fn().mockResolvedValue({}) },
+        cashBox:      { update: vi.fn() },
+        journalEntry: {
+          findMany: vi.fn().mockResolvedValue([]),
+          create:   vi.fn().mockResolvedValue(mockJE),
+          update:   vi.fn().mockResolvedValue({}),
+        },
       };
       return await fn(txMock);
     });

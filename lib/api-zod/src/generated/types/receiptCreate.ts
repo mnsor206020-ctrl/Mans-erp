@@ -31,4 +31,6 @@ export interface ReceiptCreate {
   descriptionEn?: string;
   descriptionAr?: string;
   reference?: string;
+  /** GL account for the contra side of the auto-generated journal entry */
+  glAccountId?: string;
 }

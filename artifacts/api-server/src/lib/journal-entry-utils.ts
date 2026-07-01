@@ -11,6 +11,41 @@ export function formatJENumber(year: number, seq: number): string {
   return `JE-${year}-${String(seq).padStart(4, "0")}`;
 }
 
+// Minimal Prisma interface for generateJournalNumber — DI keeps this import-free.
+interface PrismaForJENumber {
+  journalEntry: {
+    findMany(args: {
+      where: { organizationId: string; number: { startsWith: string } };
+      select: { number: true };
+    }): Promise<{ number: string }[]>;
+  };
+}
+
+/**
+ * Generates the next sequential journal entry number for an organisation and year.
+ * Scans existing numbers with the JE-YYYY- prefix and returns one higher than the max.
+ * Exported from this util module so auto-journal routes can call it without
+ * duplicating or importing from the journal-entries route file.
+ */
+export async function generateJournalNumber(
+  orgId: string,
+  year: number,
+  prismaClient: PrismaForJENumber
+): Promise<string> {
+  const prefix = `JE-${year}-`;
+  const existing = await prismaClient.journalEntry.findMany({
+    where: { organizationId: orgId, number: { startsWith: prefix } },
+    select: { number: true },
+  });
+  let maxNum = 0;
+  for (const je of existing) {
+    const numStr = (je.number as string).replace(prefix, "");
+    const num = parseInt(numStr, 10);
+    if (!isNaN(num) && num > maxNum) maxNum = num;
+  }
+  return formatJENumber(year, maxNum + 1);
+}
+
 /**
  * Validates that the sum of debits equals the sum of credits across all lines.
  * A tolerance of 0.01 is applied to account for floating-point rounding.

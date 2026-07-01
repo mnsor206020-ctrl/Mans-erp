@@ -50,7 +50,12 @@ export interface Payment {
   /** @nullable */
   reference?: string | null;
   /**
-     * Set externally when a journal entry is created for this payment
+     * GL account for the contra side of the auto-generated journal entry
+     * @nullable
+     */
+  glAccountId?: string | null;
+  /**
+     * Set automatically when a journal entry is created for this payment
      * @nullable
      */
   journalEntryId?: string | null;

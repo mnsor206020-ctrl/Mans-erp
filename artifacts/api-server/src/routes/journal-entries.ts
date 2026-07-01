@@ -4,6 +4,7 @@ import { prisma } from "@workspace/prisma";
 import { computeIntegrityHash } from "../services/integrity-hash";
 import {
   formatJENumber,
+  generateJournalNumber as generateJournalNumberUtil,
   createHeaderSchema as createSchema,
   updateHeaderSchema as updateSchema,
   validateBalance,
@@ -72,18 +73,7 @@ async function writeApprovalRecord(params: {
 }
 
 async function generateJournalNumber(orgId: string, year: number): Promise<string> {
-  const prefix = `JE-${year}-`;
-  const existing = await prisma.journalEntry.findMany({
-    where: { organizationId: orgId, number: { startsWith: prefix } },
-    select: { number: true },
-  });
-  let maxNum = 0;
-  for (const je of existing) {
-    const numStr = je.number.replace(prefix, "");
-    const num = parseInt(numStr, 10);
-    if (!isNaN(num) && num > maxNum) maxNum = num;
-  }
-  return formatJENumber(year, maxNum + 1);
+  return generateJournalNumberUtil(orgId, year, prisma);
 }
 
 // ── Notification helpers ───────────────────────────────────────────────────────

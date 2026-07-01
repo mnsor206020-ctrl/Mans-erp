@@ -25,6 +25,14 @@ vi.mock("@workspace/prisma", () => ({
       create:    vi.fn(),
       update:    vi.fn(),
     },
+    fiscalYear: {
+      findFirst: vi.fn(),
+    },
+    journalEntry: {
+      findFirst: vi.fn(),
+      create:    vi.fn(),
+      update:    vi.fn(),
+    },
     $transaction: vi.fn(),
   },
 }));
@@ -34,10 +42,14 @@ import pettyCashRouter from "../routes/petty-cash";
 import { prisma } from "@workspace/prisma";
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
-const ORG_ID       = "aaaaaaaa-0000-0000-0000-000000000001";
-const USER_ID      = "dddddddd-0000-0000-0000-000000000004";
-const CASH_BOX_ID  = "bbbbbbbb-0000-0000-0000-000000000002";
-const PC_ID        = "cccccccc-0000-0000-0000-000000000003";
+const ORG_ID         = "aaaaaaaa-0000-0000-0000-000000000001";
+const USER_ID        = "dddddddd-0000-0000-0000-000000000004";
+const CASH_BOX_ID    = "bbbbbbbb-0000-0000-0000-000000000002";
+const PC_ID          = "cccccccc-0000-0000-0000-000000000003";
+const GL_ACCOUNT_ID  = "ffffffff-0000-0000-0000-000000000006";
+const CB_GL_ACCT_ID  = "77777777-0000-0000-0000-000000000007";
+const FISCAL_YEAR_ID = "99999999-0000-0000-0000-000000000009";
+const JE_ID          = "88888888-0000-0000-0000-000000000008";
 
 const mockUser = {
   id:             USER_ID,
@@ -56,6 +68,27 @@ const mockCashBox = {
   isActive:       true,
   deletedAt:      null,
   currentBalance: "5000",
+  glAccountId:    CB_GL_ACCT_ID,
+};
+
+const mockFiscalYear = { id: FISCAL_YEAR_ID, status: "OPEN" };
+
+const mockJE = {
+  id:             JE_ID,
+  number:         "JE-2026-0001",
+  organizationId: ORG_ID,
+  fiscalYearId:   FISCAL_YEAR_ID,
+  entryDate:      new Date("2026-07-01"),
+  type:           "AUTOMATIC",
+  status:         "POSTED",
+  currencyCode:   "SAR",
+  exchangeRate:   "1",
+  totalDebit:     "200",
+  totalCredit:    "200",
+  lines: [
+    { lineNumber: 1, accountId: CB_GL_ACCT_ID, debit: "0",   credit: "200", debitBase: "0",   creditBase: "200" },
+    { lineNumber: 2, accountId: GL_ACCOUNT_ID,  debit: "200", credit: "0",   debitBase: "200", creditBase: "0" },
+  ],
 };
 
 const mockEntry = {
@@ -89,8 +122,10 @@ app.use("/api/petty-cash", pettyCashRouter);
 describe("Petty Cash API — Integration", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (prisma.user.findFirst    as any).mockResolvedValue(mockUser);
-    (prisma.cashBox.findFirst as any).mockResolvedValue(mockCashBox);
+    (prisma.user.findFirst        as any).mockResolvedValue(mockUser);
+    (prisma.cashBox.findFirst     as any).mockResolvedValue(mockCashBox);
+    (prisma.fiscalYear.findFirst  as any).mockResolvedValue(mockFiscalYear);
+    (prisma.journalEntry.findFirst as any).mockResolvedValue(null);
   });
 
   // ── PC-I-01 ──────────────────────────────────────────────────────────────────
@@ -108,8 +143,13 @@ describe("Petty Cash API — Integration", () => {
   it("PC-I-02: POST creates an OUT entry and decrements cash box balance atomically", async () => {
     (prisma.$transaction as any).mockImplementation(async (fn: any) => {
       const txMock = {
-        pettyCash: { create: vi.fn().mockResolvedValue(mockEntry) },
-        cashBox:   { update: vi.fn().mockResolvedValue({ ...mockCashBox, currentBalance: "4800" }) },
+        pettyCash:    { create: vi.fn().mockResolvedValue(mockEntry), update: vi.fn().mockResolvedValue({}) },
+        cashBox:      { update: vi.fn().mockResolvedValue({ ...mockCashBox, currentBalance: "4800" }) },
+        journalEntry: {
+          findMany: vi.fn().mockResolvedValue([]),
+          create:   vi.fn().mockResolvedValue(mockJE),
+          update:   vi.fn().mockResolvedValue({}),
+        },
       };
       return await fn(txMock);
     });
@@ -123,6 +163,7 @@ describe("Petty Cash API — Integration", () => {
         amount:          200,
         descriptionEn:   "Office supplies",
         descriptionAr:   "مستلزمات مكتبية",
+        glAccountId:     GL_ACCOUNT_ID,
       });
 
     expect(res.status).toBe(201);
@@ -136,8 +177,13 @@ describe("Petty Cash API — Integration", () => {
     const inEntry = { ...mockEntry, type: "IN" };
     (prisma.$transaction as any).mockImplementation(async (fn: any) => {
       const txMock = {
-        pettyCash: { create: vi.fn().mockResolvedValue(inEntry) },
-        cashBox:   { update: vi.fn().mockResolvedValue({ ...mockCashBox, currentBalance: "5500" }) },
+        pettyCash:    { create: vi.fn().mockResolvedValue(inEntry), update: vi.fn().mockResolvedValue({}) },
+        cashBox:      { update: vi.fn().mockResolvedValue({ ...mockCashBox, currentBalance: "5500" }) },
+        journalEntry: {
+          findMany: vi.fn().mockResolvedValue([]),
+          create:   vi.fn().mockResolvedValue(mockJE),
+          update:   vi.fn().mockResolvedValue({}),
+        },
       };
       return await fn(txMock);
     });
@@ -151,6 +197,7 @@ describe("Petty Cash API — Integration", () => {
         amount:          500,
         descriptionEn:   "Cash replenishment",
         descriptionAr:   "تعبئة النقدية",
+        glAccountId:     GL_ACCOUNT_ID,
       });
 
     expect(res.status).toBe(201);

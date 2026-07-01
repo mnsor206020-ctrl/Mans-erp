@@ -802,6 +802,7 @@ model Receipt {
   descriptionEn   String?           @map("description_en")
   descriptionAr   String?           @map("description_ar")
   reference       String?
+  glAccountId     String?           @map("gl_account_id") @db.Uuid
   journalEntryId  String?           @map("journal_entry_id") @db.Uuid
   confirmedAt     DateTime?         @map("confirmed_at")
   voidedAt        DateTime?         @map("voided_at")
@@ -860,6 +861,7 @@ model Payment {
   descriptionEn   String?           @map("description_en")
   descriptionAr   String?           @map("description_ar")
   reference       String?
+  glAccountId     String?           @map("gl_account_id") @db.Uuid
   journalEntryId  String?           @map("journal_entry_id") @db.Uuid
   confirmedAt     DateTime?         @map("confirmed_at")
   voidedAt        DateTime?         @map("voided_at")

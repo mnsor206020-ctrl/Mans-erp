@@ -2,6 +2,11 @@ import { Router } from "express";
 import { requireAuth, getAuth } from "@clerk/express";
 import { prisma } from "@workspace/prisma";
 import { createSchema, updateSchema, voidSchema, formatPaymentNumber } from "../lib/payment-utils";
+import {
+  createAutoPostedJE,
+  createReversalJE,
+  resolveOpenFiscalYear,
+} from "../lib/auto-journal-utils";
 
 const router = Router();
 
@@ -172,6 +177,7 @@ router.post("/", requireAuth(), async (req, res) => {
         bankAccountId:   data.bankAccountId   ?? null,
         cashBoxId:       data.cashBoxId       ?? null,
         branchId:        data.branchId        ?? null,
+        glAccountId:     data.glAccountId     ?? null,
         payeeName:       data.payeeName       ?? null,
         payeeNameAr:     data.payeeNameAr     ?? null,
         payeeType:       data.payeeType       ?? null,
@@ -379,6 +385,40 @@ router.post("/:id/confirm", requireAuth(), async (req, res) => {
       return res.status(400).json({ error: "Payment must be linked to a bank account or cash box before confirming" });
     }
 
+    // ── GL account validation ─────────────────────────────────────────────────
+    if (!existing.glAccountId) {
+      return res.status(400).json({ error: "GL account is not configured." });
+    }
+
+    let cashAccountGlId: string | null = null;
+    if (existing.bankAccountId) {
+      const ba = await (prisma.bankAccount as any).findFirst({
+        where:  { id: existing.bankAccountId },
+        select: { glAccountId: true },
+      });
+      cashAccountGlId = ba?.glAccountId ?? null;
+    } else if (existing.cashBoxId) {
+      const cb = await (prisma.cashBox as any).findFirst({
+        where:  { id: existing.cashBoxId },
+        select: { glAccountId: true },
+      });
+      cashAccountGlId = cb?.glAccountId ?? null;
+    }
+    if (!cashAccountGlId) {
+      return res.status(400).json({ error: "GL account is not configured." });
+    }
+
+    // ── Fiscal year resolution ────────────────────────────────────────────────
+    const txDate     = new Date(existing.paymentDate);
+    const fiscalYear = await resolveOpenFiscalYear(
+      user.organizationId!,
+      txDate,
+      prisma as any
+    );
+    if (!fiscalYear) {
+      return res.status(400).json({ error: "No open fiscal year covers this payment date." });
+    }
+
     const amountBase = Number(existing.amountBase);
 
     const [updated] = await prisma.$transaction(async (tx) => {
@@ -410,7 +450,36 @@ router.post("/:id/confirm", requireAuth(), async (req, res) => {
         });
       }
 
-      return [payment];
+      // ── Auto journal entry ─────────────────────────────────────────────────
+      const je = await createAutoPostedJE(
+        {
+          organizationId:  user.organizationId!,
+          branchId:        existing.branchId ?? null,
+          currencyCode:    existing.currencyCode,
+          exchangeRate:    Number(existing.exchangeRate),
+          entryDate:       txDate,
+          descriptionEn:   `Payment confirmed: ${existing.number}`,
+          descriptionAr:   `دفعة مؤكدة: ${existing.number}`,
+          reference:       existing.number,
+          sourceType:      "PAYMENT",
+          sourceId:        existing.id,
+          sourceReference: existing.number,
+          createdByUserId: user.id!,
+          debitAccountId:  existing.glAccountId,
+          creditAccountId: cashAccountGlId!,
+          amount:          Number(existing.amount),
+          amountBase,
+        },
+        fiscalYear.id,
+        tx as any
+      );
+
+      await (tx.payment as any).update({
+        where: { id: req.params.id },
+        data:  { journalEntryId: je.id },
+      });
+
+      return [{ ...payment, journalEntryId: je.id }];
     });
 
     return res.json(updated);
@@ -447,6 +516,15 @@ router.post("/:id/void", requireAuth(), async (req, res) => {
       return res.status(400).json({ error: "voidReason is required", details: parsed.error.flatten() });
     }
 
+    // ── Load original JE for reversal ─────────────────────────────────────────
+    let originalJE: any = null;
+    if (existing.journalEntryId) {
+      originalJE = await prisma.journalEntry.findFirst({
+        where:   { id: existing.journalEntryId },
+        include: { lines: true },
+      });
+    }
+
     const amountBase = Number(existing.amountBase);
 
     const [updated] = await prisma.$transaction(async (tx) => {
@@ -477,6 +555,29 @@ router.post("/:id/void", requireAuth(), async (req, res) => {
           where: { id: existing.cashBoxId },
           data:  { currentBalance: { increment: amountBase } },
         });
+      }
+
+      // ── Reverse journal entry ──────────────────────────────────────────────
+      if (originalJE) {
+        await createReversalJE(
+          {
+            organizationId:       user.organizationId!,
+            currencyCode:         existing.currencyCode,
+            exchangeRate:         Number(existing.exchangeRate),
+            entryDate:            new Date(),
+            descriptionEn:        `Reversal of payment void: ${existing.number}`,
+            descriptionAr:        `عكس دفعة ملغاة: ${existing.number}`,
+            sourceType:           "PAYMENT",
+            sourceId:             existing.id,
+            sourceReference:      existing.number,
+            createdByUserId:      user.id!,
+            originalJEId:         originalJE.id,
+            originalLines:        originalJE.lines,
+            originalFiscalYearId: originalJE.fiscalYearId,
+            totalAmount:          amountBase,
+          },
+          tx as any
+        );
       }
 
       return [payment];

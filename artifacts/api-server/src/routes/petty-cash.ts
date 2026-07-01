@@ -2,6 +2,11 @@ import { Router } from "express";
 import { requireAuth, getAuth } from "@clerk/express";
 import { prisma } from "@workspace/prisma";
 import { createSchema } from "../lib/petty-cash-utils";
+import {
+  createAutoPostedJE,
+  createReversalJE,
+  resolveOpenFiscalYear,
+} from "../lib/auto-journal-utils";
 
 const router = Router();
 
@@ -82,16 +87,40 @@ router.post("/", requireAuth(), async (req, res) => {
         organizationId: user.organizationId,
         deletedAt:      null,
       },
+      select: {
+        id: true, nameEn: true, nameAr: true, code: true,
+        currencyCode: true, isActive: true,
+        glAccountId: true, organizationId: true,
+      },
     });
     if (!cashBox) return res.status(404).json({ error: "Cash box not found in this organization" });
     if (!cashBox.isActive) return res.status(400).json({ error: "Cash box is inactive" });
+
+    // ── GL account validation ─────────────────────────────────────────────────
+    if (!data.glAccountId) {
+      return res.status(400).json({ error: "GL account is not configured." });
+    }
+    if (!cashBox.glAccountId) {
+      return res.status(400).json({ error: "GL account is not configured." });
+    }
+
+    // ── Fiscal year resolution ────────────────────────────────────────────────
+    const txDate     = new Date(data.transactionDate);
+    const fiscalYear = await resolveOpenFiscalYear(
+      cashBox.organizationId,
+      txDate,
+      prisma as any
+    );
+    if (!fiscalYear) {
+      return res.status(400).json({ error: "No open fiscal year covers this transaction date." });
+    }
 
     const [entry] = await prisma.$transaction(async (tx) => {
       const newEntry = await (tx.pettyCash as any).create({
         data: {
           cashBoxId:       data.cashBoxId,
           type:            data.type,
-          transactionDate: new Date(data.transactionDate),
+          transactionDate: txDate,
           amount:          data.amount,
           descriptionEn:   data.descriptionEn,
           descriptionAr:   data.descriptionAr,
@@ -115,7 +144,40 @@ router.post("/", requireAuth(), async (req, res) => {
         data:  { currentBalance: { increment: delta } },
       });
 
-      return [newEntry];
+      // ── Auto journal entry ─────────────────────────────────────────────────
+      // IN:  Debit cashBox.glAccountId  / Credit pettyCash.glAccountId
+      // OUT: Debit pettyCash.glAccountId / Credit cashBox.glAccountId
+      const debitAccountId  = data.type === "IN" ? cashBox.glAccountId  : data.glAccountId;
+      const creditAccountId = data.type === "IN" ? data.glAccountId     : cashBox.glAccountId;
+
+      const je = await createAutoPostedJE(
+        {
+          organizationId:  cashBox.organizationId,
+          currencyCode:    cashBox.currencyCode,
+          exchangeRate:    1,
+          entryDate:       txDate,
+          descriptionEn:   data.descriptionEn ?? `Petty cash ${data.type}: ${newEntry.id}`,
+          descriptionAr:   data.descriptionAr ?? `نقدية صغيرة ${data.type}: ${newEntry.id}`,
+          reference:       data.reference ?? null,
+          sourceType:      "PETTY_CASH",
+          sourceId:        newEntry.id,
+          sourceReference: newEntry.id,
+          createdByUserId: user.id!,
+          debitAccountId,
+          creditAccountId,
+          amount:          data.amount,
+          amountBase:      data.amount,
+        },
+        fiscalYear.id,
+        tx as any
+      );
+
+      await (tx.pettyCash as any).update({
+        where: { id: newEntry.id },
+        data:  { journalEntryId: je.id },
+      });
+
+      return [{ ...newEntry, journalEntryId: je.id }];
     });
 
     return res.status(201).json(entry);
@@ -171,8 +233,22 @@ router.delete("/:id", requireAuth(), async (req, res) => {
         deletedAt: null,
         cashBox:   { organizationId: user.organizationId, deletedAt: null },
       },
+      include: {
+        cashBox: {
+          select: { id: true, organizationId: true, currencyCode: true },
+        },
+      },
     });
     if (!existing) return res.status(404).json({ error: "Petty cash entry not found" });
+
+    // ── Load original JE for reversal ─────────────────────────────────────────
+    let originalJE: any = null;
+    if (existing.journalEntryId) {
+      originalJE = await prisma.journalEntry.findFirst({
+        where:   { id: existing.journalEntryId },
+        include: { lines: true },
+      });
+    }
 
     const reversalDelta = existing.type === "IN" ? -Number(existing.amount) : Number(existing.amount);
 
@@ -186,6 +262,29 @@ router.delete("/:id", requireAuth(), async (req, res) => {
         where: { id: existing.cashBoxId },
         data:  { currentBalance: { increment: reversalDelta } },
       });
+
+      // ── Reverse journal entry ──────────────────────────────────────────────
+      if (originalJE) {
+        await createReversalJE(
+          {
+            organizationId:       existing.cashBox.organizationId,
+            currencyCode:         existing.cashBox.currencyCode,
+            exchangeRate:         1,
+            entryDate:            new Date(),
+            descriptionEn:        `Reversal of petty cash deletion: ${existing.id}`,
+            descriptionAr:        `عكس حذف نقدية صغيرة: ${existing.id}`,
+            sourceType:           "PETTY_CASH",
+            sourceId:             existing.id,
+            sourceReference:      existing.id,
+            createdByUserId:      user.id!,
+            originalJEId:         originalJE.id,
+            originalLines:        originalJE.lines,
+            originalFiscalYearId: originalJE.fiscalYearId,
+            totalAmount:          Number(existing.amount),
+          },
+          tx as any
+        );
+      }
     });
 
     return res.json({ ok: true });

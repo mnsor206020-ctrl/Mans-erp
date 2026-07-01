@@ -3832,10 +3832,14 @@ components:
           type: ["string", "null"]
         reference:
           type: ["string", "null"]
+        glAccountId:
+          type: ["string", "null"]
+          format: uuid
+          description: GL account for the contra side of the auto-generated journal entry
         journalEntryId:
           type: ["string", "null"]
           format: uuid
-          description: Set externally when a journal entry is created for this receipt
+          description: Set automatically when a journal entry is created for this receipt
         confirmedAt:
           type: ["string", "null"]
           format: date-time
@@ -3934,6 +3938,10 @@ components:
           type: string
         reference:
           type: string
+        glAccountId:
+          type: string
+          format: uuid
+          description: GL account for the contra side of the auto-generated journal entry
       required:
         - receiptDate
         - paymentMethod
@@ -4049,10 +4057,14 @@ components:
           type: ["string", "null"]
         reference:
           type: ["string", "null"]
+        glAccountId:
+          type: ["string", "null"]
+          format: uuid
+          description: GL account for the contra side of the auto-generated journal entry
         journalEntryId:
           type: ["string", "null"]
           format: uuid
-          description: Set externally when a journal entry is created for this payment
+          description: Set automatically when a journal entry is created for this payment
         confirmedAt:
           type: ["string", "null"]
           format: date-time
@@ -4151,6 +4163,10 @@ components:
           type: string
         reference:
           type: string
+        glAccountId:
+          type: string
+          format: uuid
+          description: GL account for the contra side of the auto-generated journal entry
       required:
         - paymentDate
         - paymentMethod

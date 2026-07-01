@@ -18,6 +18,7 @@ export const createSchema = z.object({
   bankAccountId:  z.string().uuid().optional(),
   cashBoxId:      z.string().uuid().optional(),
   branchId:       z.string().uuid().optional(),
+  glAccountId:    z.string().uuid().optional(),
   payerName:      z.string().optional(),
   payerNameAr:    z.string().optional(),
   payerType:      z.string().optional(),
