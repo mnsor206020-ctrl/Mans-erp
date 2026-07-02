@@ -7,6 +7,7 @@ import {
   createReversalJE,
   resolveOpenFiscalYear,
 } from "../lib/auto-journal-utils";
+import { requirePermission } from "../lib/authorize";
 
 const router = Router();
 
@@ -66,7 +67,7 @@ router.get("/", requireAuth(), async (req, res) => {
 
 // ─── POST /api/petty-cash ─────────────────────────────────────────────────────
 
-router.post("/", requireAuth(), async (req, res) => {
+router.post("/", requireAuth(), requirePermission("petty_cash", "create"), async (req, res) => {
   try {
     const { userId: clerkId } = getAuth(req);
     if (!clerkId) return res.status(401).json({ error: "Unauthenticated" });
@@ -219,7 +220,7 @@ router.get("/:id", requireAuth(), async (req, res) => {
 
 // ─── DELETE /api/petty-cash/:id ───────────────────────────────────────────────
 
-router.delete("/:id", requireAuth(), async (req, res) => {
+router.delete("/:id", requireAuth(), requirePermission("petty_cash", "delete"), async (req, res) => {
   try {
     const { userId: clerkId } = getAuth(req);
     if (!clerkId) return res.status(401).json({ error: "Unauthenticated" });

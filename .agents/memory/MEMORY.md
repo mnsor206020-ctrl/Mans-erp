@@ -3,3 +3,4 @@
 - [API server externalized deps](api-server-externalized-deps.md) — esbuild externalizes @prisma/client and zod; both must be direct deps of @workspace/api-server package.json or Node fails at runtime
 - [api-zod index ambiguity fix](api-zod-index-fix.md) — export type * from types/ conflicts with export * from api.ts for 7 Body types; use explicit named type exports
 - [validateAccounts DI pattern](validate-accounts-di.md) — validateAccounts takes prismaClient param (DI) to avoid live Prisma singleton import in utils; keeps unit tests import-isolated
+- [RBAC middleware test fixtures](rbac-test-fixtures.md) — requirePermission gating breaks existing mocked mockUser fixtures unless they include userRoles; use shared test helper

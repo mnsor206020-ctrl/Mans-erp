@@ -2,6 +2,7 @@ import { Router } from "express";
 import { requireAuth, getAuth } from "@clerk/express";
 import { prisma } from "@workspace/prisma";
 import { z } from "zod";
+import { requirePermission } from "../lib/authorize";
 
 const router = Router();
 
@@ -96,7 +97,7 @@ router.get("/:id", requireAuth(), async (req, res) => {
   }
 });
 
-router.post("/", requireAuth(), async (req, res) => {
+router.post("/", requireAuth(), requirePermission("journal_entries", "create"), async (req, res) => {
   try {
     const { userId } = getAuth(req);
     const user = await getUser(userId!);
@@ -140,7 +141,7 @@ router.post("/", requireAuth(), async (req, res) => {
   }
 });
 
-router.patch("/:id", requireAuth(), async (req, res) => {
+router.patch("/:id", requireAuth(), requirePermission("journal_entries", "update"), async (req, res) => {
   try {
     const { nameEn, nameAr, descriptionEn, descriptionAr, type, currencyCode, isActive, lines } = req.body;
 
@@ -186,7 +187,7 @@ router.patch("/:id", requireAuth(), async (req, res) => {
   }
 });
 
-router.delete("/:id", requireAuth(), async (req, res) => {
+router.delete("/:id", requireAuth(), requirePermission("journal_entries", "delete"), async (req, res) => {
   try {
     const existing = await prisma.journalEntryTemplate.findFirst({ where: { id: req.params.id, deletedAt: null } });
     if (!existing) return res.status(404).json({ error: "Template not found" });
@@ -199,7 +200,7 @@ router.delete("/:id", requireAuth(), async (req, res) => {
 });
 
 // Create JE from template
-router.post("/:id/use", requireAuth(), async (req, res) => {
+router.post("/:id/use", requireAuth(), requirePermission("journal_entries", "create"), async (req, res) => {
   try {
     const { userId } = getAuth(req);
     const user = await getUser(userId!);

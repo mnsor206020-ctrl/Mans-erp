@@ -230,6 +230,45 @@ export const ListUsersResponse = zod.array(ListUsersResponseItem)
 
 
 /**
+ * @summary Assign roles to a user (Super Admin only)
+ */
+export const UpdateUserRolesParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const UpdateUserRolesBody = zod.object({
+  "roleIds": zod.array(zod.string().uuid())
+})
+
+export const UpdateUserRolesResponse = zod.object({
+  "id": zod.number(),
+  "clerkId": zod.string(),
+  "email": zod.string(),
+  "firstNameEn": zod.string().nullish(),
+  "lastNameEn": zod.string().nullish(),
+  "firstNameAr": zod.string().nullish(),
+  "lastNameAr": zod.string().nullish(),
+  "role": zod.string(),
+  "avatarUrl": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary List all RBAC roles
+ */
+export const ListRolesResponseItem = zod.object({
+  "id": zod.string().uuid(),
+  "nameEn": zod.string(),
+  "nameAr": zod.string(),
+  "description": zod.string().nullish(),
+  "isSystem": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
+export const ListRolesResponse = zod.array(ListRolesResponseItem)
+
+
+/**
  * @summary Get chart of accounts as a hierarchical tree
  */
 export const GetChartOfAccountsTreeQueryParams = zod.object({

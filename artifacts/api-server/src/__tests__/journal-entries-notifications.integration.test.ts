@@ -60,6 +60,7 @@ vi.mock("@workspace/prisma", () => ({
 
 import journalEntriesRouter from "../routes/journal-entries";
 import { prisma } from "@workspace/prisma";
+import { userRolesGrantingAll } from "./helpers/rbac";
 
 // ── Fixtures ───────────────────────────────────────────────────────────────────
 
@@ -70,7 +71,7 @@ const USER_ID   = "dddddddd-0000-0000-0000-000000000004";
 const ACCT_1    = "eeeeeeee-0000-0000-0000-000000000005";
 const ACCT_2    = "ffffffff-0000-0000-0000-000000000006";
 
-const mockUser  = { id: USER_ID, organizationId: ORG_ID, email: "test@example.com", clerkId: "test-clerk-id" };
+const mockUser  = { id: USER_ID, organizationId: ORG_ID, email: "test@example.com", clerkId: "test-clerk-id", userRoles: userRolesGrantingAll("journal_entries") };
 const orgUsers  = [{ id: USER_ID }];
 
 const twoLines  = [

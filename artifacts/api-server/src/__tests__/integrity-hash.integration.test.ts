@@ -29,6 +29,7 @@ vi.mock("@workspace/prisma", () => ({
 
 import journalEntriesRouter from "../routes/journal-entries";
 import { prisma } from "@workspace/prisma";
+import { userRolesGrantingAll } from "./helpers/rbac";
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 const ORG_ID   = "aaaaaaaa-0000-0000-0000-000000000001";
@@ -43,6 +44,7 @@ const mockUser = {
   organizationId: ORG_ID,
   email: "test@example.com",
   clerkId: "test-clerk-id",
+  userRoles: userRolesGrantingAll("journal_entries"),
 };
 
 const twoBalancedLines = [

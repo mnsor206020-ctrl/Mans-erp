@@ -96,6 +96,7 @@ import type {
   ReceiptUpdate,
   RejectJournalEntryBody,
   ReverseJournalEntryBody,
+  Role,
   RolloverFiscalYear400,
   RolloverFiscalYearInput,
   RolloverFiscalYearResult,
@@ -104,6 +105,7 @@ import type {
   UpdateChartOfAccountInput,
   UpdateJournalEntryAttachmentBody,
   UpdateJournalEntryInput,
+  UpdateUserRolesBody,
   UploadJournalEntryAttachments201,
   UploadJournalEntryAttachmentsBody,
   UseJournalEntryTemplateBody,
@@ -961,6 +963,154 @@ export function useListUsers<TData = Awaited<ReturnType<typeof listUsers>>, TErr
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getListUsersQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateUserRolesUrl = (id: string,) => {
+
+
+
+
+  return `/api/users/${id}/roles`
+}
+
+/**
+ * @summary Assign roles to a user (Super Admin only)
+ */
+export const updateUserRoles = async (id: string,
+    updateUserRolesBody: UpdateUserRolesBody, options?: RequestInit): Promise<UserProfile> => {
+
+  return customFetch<UserProfile>(getUpdateUserRolesUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateUserRolesBody)
+  }
+);}
+
+
+
+
+export const getUpdateUserRolesMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateUserRoles>>, TError,{id: string;data: BodyType<UpdateUserRolesBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateUserRoles>>, TError,{id: string;data: BodyType<UpdateUserRolesBody>}, TContext> => {
+
+const mutationKey = ['updateUserRoles'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateUserRoles>>, {id: string;data: BodyType<UpdateUserRolesBody>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateUserRoles(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateUserRolesMutationResult = NonNullable<Awaited<ReturnType<typeof updateUserRoles>>>
+    export type UpdateUserRolesMutationBody = BodyType<UpdateUserRolesBody>
+    export type UpdateUserRolesMutationError = ErrorType<void>
+
+    /**
+ * @summary Assign roles to a user (Super Admin only)
+ */
+export const useUpdateUserRoles = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateUserRoles>>, TError,{id: string;data: BodyType<UpdateUserRolesBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateUserRoles>>,
+        TError,
+        {id: string;data: BodyType<UpdateUserRolesBody>},
+        TContext
+      > => {
+      return useMutation(getUpdateUserRolesMutationOptions(options));
+    }
+
+export const getListRolesUrl = () => {
+
+
+
+
+  return `/api/roles`
+}
+
+/**
+ * @summary List all RBAC roles
+ */
+export const listRoles = async ( options?: RequestInit): Promise<Role[]> => {
+
+  return customFetch<Role[]>(getListRolesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListRolesQueryKey = () => {
+    return [
+    `/api/roles`
+    ] as const;
+    }
+
+
+export const getListRolesQueryOptions = <TData = Awaited<ReturnType<typeof listRoles>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listRoles>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListRolesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listRoles>>> = ({ signal }) => listRoles({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listRoles>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListRolesQueryResult = NonNullable<Awaited<ReturnType<typeof listRoles>>>
+export type ListRolesQueryError = ErrorType<void>
+
+
+/**
+ * @summary List all RBAC roles
+ */
+
+export function useListRoles<TData = Awaited<ReturnType<typeof listRoles>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listRoles>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListRolesQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

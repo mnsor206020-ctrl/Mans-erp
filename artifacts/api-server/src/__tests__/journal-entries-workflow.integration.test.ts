@@ -49,6 +49,7 @@ vi.mock("@workspace/prisma", () => ({
 
 import journalEntriesRouter from "../routes/journal-entries";
 import { prisma } from "@workspace/prisma";
+import { userRolesGrantingAll } from "./helpers/rbac";
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 const ORG_ID   = "aaaaaaaa-0000-0000-0000-000000000001";
@@ -58,7 +59,7 @@ const USER_ID  = "dddddddd-0000-0000-0000-000000000004";
 const ACCT_1   = "eeeeeeee-0000-0000-0000-000000000005";
 const ACCT_2   = "ffffffff-0000-0000-0000-000000000006";
 
-const mockUser  = { id: USER_ID, organizationId: ORG_ID, email: "test@example.com", clerkId: "test-clerk-id" };
+const mockUser  = { id: USER_ID, organizationId: ORG_ID, email: "test@example.com", clerkId: "test-clerk-id", userRoles: userRolesGrantingAll("journal_entries") };
 const mockDraft = { id: ENTRY_ID, organizationId: ORG_ID, number: "JE-2026-0001", status: "DRAFT", fiscalYearId: FY_ID, exchangeRate: "1" };
 
 const twoLines = [
@@ -249,5 +250,18 @@ describe("Journal Entries Workflow API — Integration (Sprint 2.3)", () => {
     );
     const createCall = (prisma.journalEntryApproval.create as any).mock.calls[0][0];
     expect(typeof createCall.data.durationSeconds).toBe("number");
+  });
+
+  // ── W-12 (RBAC): approve requires journal_entries:approve, not just :update ─
+  it("W-12: POST /:id/approve returns 403 for a user who can only update journal entries", async () => {
+    (prisma.user.findFirst as any).mockResolvedValue({
+      ...mockUser,
+      userRoles: [{ role: { rolePermissions: [{ permission: { resource: "journal_entries", action: "update" } }] } }],
+    });
+
+    const res = await request(app).post(`/api/journal-entries/${ENTRY_ID}/approve`);
+
+    expect(res.status).toBe(403);
+    expect(prisma.journalEntry.update).not.toHaveBeenCalled();
   });
 });

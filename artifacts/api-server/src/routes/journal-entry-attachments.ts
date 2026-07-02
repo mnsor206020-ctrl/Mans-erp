@@ -4,6 +4,7 @@ import { prisma } from "@workspace/prisma";
 import multer from "multer";
 import { createHash, randomUUID } from "crypto";
 import { objectStorageClient, signObjectDownloadUrl } from "../lib/objectStorage";
+import { requirePermission } from "../lib/authorize";
 
 const router = Router({ mergeParams: true });
 
@@ -73,7 +74,7 @@ function parsePrivateObjectDir(): { bucketName: string; prefix: string } {
 
 // ── POST /api/journal-entries/:id/attachments ──────────────────────────────────
 
-router.post("/", requireAuth(), async (req, res) => {
+router.post("/", requireAuth(), requirePermission("attachments", "create"), async (req, res) => {
   // ── Parse multipart ───────────────────────────────────────────────────────
   try {
     await runUpload(req, res);
@@ -210,7 +211,7 @@ router.get("/", requireAuth(), async (req, res) => {
 
 // ── DELETE /api/journal-entries/:id/attachments/:attachmentId ─────────────────
 
-router.delete("/:attachmentId", requireAuth(), async (req, res) => {
+router.delete("/:attachmentId", requireAuth(), requirePermission("attachments", "delete"), async (req, res) => {
   try {
     const { userId } = getAuth(req);
     const user = await getUser(userId!);
@@ -254,7 +255,7 @@ router.delete("/:attachmentId", requireAuth(), async (req, res) => {
 
 // ── PATCH /api/journal-entries/:id/attachments/:attachmentId ──────────────────
 
-router.patch("/:attachmentId", requireAuth(), async (req, res) => {
+router.patch("/:attachmentId", requireAuth(), requirePermission("attachments", "update"), async (req, res) => {
   try {
     const { userId } = getAuth(req);
     const user = await getUser(userId!);

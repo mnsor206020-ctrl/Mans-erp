@@ -39,6 +39,7 @@ vi.mock("@workspace/prisma", () => ({
 // ── Import router after mocks ─────────────────────────────────────────────────
 import bankAccountsRouter from "../routes/bank-accounts";
 import { prisma } from "@workspace/prisma";
+import { userRolesGrantingAll } from "./helpers/rbac";
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 const ORG_ID     = "aaaaaaaa-0000-0000-0000-000000000001";
@@ -52,6 +53,7 @@ const mockUser = {
   organizationId: ORG_ID,
   clerkId:        "test-clerk-id",
   deletedAt:      null,
+  userRoles:      userRolesGrantingAll("bank_accounts"),
 };
 
 const mockBank = {
@@ -259,5 +261,24 @@ describe("Bank Accounts API — Integration", () => {
 
     const updateCall = (prisma.bankAccount.update as any).mock.calls[0][0];
     expect(updateCall.data.isActive).toBe(false);
+  });
+
+  // ── BA-I-11 (RBAC) ─────────────────────────────────────────────────────────
+  it("BA-I-11: POST /bank-accounts returns 403 for a user without bank_accounts:create permission", async () => {
+    (prisma.user.findFirst as any).mockResolvedValue({ ...mockUser, userRoles: [] });
+
+    const res = await request(app)
+      .post("/api/bank-accounts")
+      .send({
+        bankId:        BANK_ID,
+        currencyCode:  "SAR",
+        accountNumber: "SA0000000099",
+        accountNameEn: "Blocked Account",
+        accountNameAr: "حساب محظور",
+        type:          "CURRENT",
+      });
+
+    expect(res.status).toBe(403);
+    expect(prisma.bankAccount.create).not.toHaveBeenCalled();
   });
 });

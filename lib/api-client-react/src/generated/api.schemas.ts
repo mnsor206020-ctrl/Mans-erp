@@ -81,6 +81,16 @@ export interface OrganizationUpdate {
   status?: string;
 }
 
+export interface Role {
+  id: string;
+  nameEn: string;
+  nameAr: string;
+  /** @nullable */
+  description?: string | null;
+  isSystem: boolean;
+  createdAt: string;
+}
+
 export interface UserProfile {
   id: number;
   clerkId: string;
@@ -1540,6 +1550,10 @@ export interface IncomeStatement {
   totalExpenses: number;
   netIncome: number;
 }
+
+export type UpdateUserRolesBody = {
+  roleIds: string[];
+};
 
 export type GetChartOfAccountsTreeParams = {
 organizationId?: string;

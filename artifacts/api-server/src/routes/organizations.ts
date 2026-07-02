@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { requireAuth } from "@clerk/express";
 import { prisma } from "@workspace/prisma";
+import { requirePermission } from "../lib/authorize";
 
 const router = Router();
 
@@ -16,7 +17,7 @@ router.get("/", requireAuth(), async (req, res) => {
   }
 });
 
-router.post("/", requireAuth(), async (req, res) => {
+router.post("/", requireAuth(), requirePermission("organizations", "create"), async (req, res) => {
   try {
     const { nameEn, nameAr, type, registrationNumber, email, phone, city } = req.body;
     if (!nameEn || !nameAr || !type) {
@@ -43,7 +44,7 @@ router.get("/:id", requireAuth(), async (req, res) => {
   }
 });
 
-router.patch("/:id", requireAuth(), async (req, res) => {
+router.patch("/:id", requireAuth(), requirePermission("organizations", "update"), async (req, res) => {
   try {
     const org = await prisma.organization.update({
       where: { id: req.params.id },

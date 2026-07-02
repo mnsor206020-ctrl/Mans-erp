@@ -10,9 +10,12 @@ vi.mock("@clerk/express", () => ({
 }));
 
 // ─── Shared fixtures ──────────────────────────────────────────────────────────
+import { userRolesGrantingAll } from "./helpers/rbac";
+
 const mockUser = {
   id: "user-1", clerkId: "clerk-user-1",
   organizationId: "org-1", email: "test@test.com", deletedAt: null,
+  userRoles: userRolesGrantingAll("fiscal_years"),
 };
 
 const mockClosedFY = {

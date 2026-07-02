@@ -4,6 +4,7 @@ import { prisma } from "@workspace/prisma";
 import {
   generateJournalNumber as generateJournalNumberUtil,
 } from "../lib/journal-entry-utils";
+import { requirePermission } from "../lib/authorize";
 
 const router = Router();
 
@@ -36,7 +37,7 @@ router.get("/", requireAuth(), async (req, res) => {
   }
 });
 
-router.post("/", requireAuth(), async (req, res) => {
+router.post("/", requireAuth(), requirePermission("fiscal_years", "create"), async (req, res) => {
   try {
     const { userId } = getAuth(req);
     const user = await getUser(userId!);
@@ -68,7 +69,7 @@ router.post("/", requireAuth(), async (req, res) => {
 });
 
 // ── POST /:id/close — create closing entries and mark fiscal year CLOSED ───────
-router.post("/:id/close", requireAuth(), async (req, res): Promise<void> => {
+router.post("/:id/close", requireAuth(), requirePermission("fiscal_years", "update"), async (req, res): Promise<void> => {
   try {
     const { userId } = getAuth(req);
     const user = await getUser(userId!);
@@ -257,7 +258,7 @@ router.post("/:id/close", requireAuth(), async (req, res): Promise<void> => {
 });
 
 // ── POST /:id/rollover — create next fiscal year with opening balances ────────
-router.post("/:id/rollover", requireAuth(), async (req, res): Promise<void> => {
+router.post("/:id/rollover", requireAuth(), requirePermission("fiscal_years", "update"), async (req, res): Promise<void> => {
   try {
     const { userId } = getAuth(req);
     const user = await getUser(userId!);

@@ -2,6 +2,7 @@ import { Router } from "express";
 import { requireAuth, getAuth } from "@clerk/express";
 import { prisma } from "@workspace/prisma";
 import { createSchema, updateSchema } from "../lib/cash-box-utils";
+import { requirePermission } from "../lib/authorize";
 
 const router = Router();
 
@@ -86,7 +87,7 @@ router.get("/", requireAuth(), async (req, res) => {
 
 // ─── POST /api/cash-boxes ─────────────────────────────────────────────────────
 
-router.post("/", requireAuth(), async (req, res) => {
+router.post("/", requireAuth(), requirePermission("cash_boxes", "create"), async (req, res) => {
   try {
     const { userId: clerkId } = getAuth(req);
     if (!clerkId) return res.status(401).json({ error: "Unauthenticated" });
@@ -162,7 +163,7 @@ router.get("/:id", requireAuth(), async (req, res) => {
 
 // ─── PATCH /api/cash-boxes/:id ────────────────────────────────────────────────
 
-router.patch("/:id", requireAuth(), async (req, res) => {
+router.patch("/:id", requireAuth(), requirePermission("cash_boxes", "update"), async (req, res) => {
   try {
     const { userId: clerkId } = getAuth(req);
     if (!clerkId) return res.status(401).json({ error: "Unauthenticated" });
@@ -212,7 +213,7 @@ router.patch("/:id", requireAuth(), async (req, res) => {
 
 // ─── DELETE /api/cash-boxes/:id ───────────────────────────────────────────────
 
-router.delete("/:id", requireAuth(), async (req, res) => {
+router.delete("/:id", requireAuth(), requirePermission("cash_boxes", "delete"), async (req, res) => {
   try {
     const { userId: clerkId } = getAuth(req);
     if (!clerkId) return res.status(401).json({ error: "Unauthenticated" });
@@ -250,7 +251,7 @@ router.delete("/:id", requireAuth(), async (req, res) => {
 
 // ─── POST /api/cash-boxes/:id/toggle-active ───────────────────────────────────
 
-router.post("/:id/toggle-active", requireAuth(), async (req, res) => {
+router.post("/:id/toggle-active", requireAuth(), requirePermission("cash_boxes", "update"), async (req, res) => {
   try {
     const { userId: clerkId } = getAuth(req);
     if (!clerkId) return res.status(401).json({ error: "Unauthenticated" });

@@ -51,6 +51,7 @@ vi.mock("@workspace/prisma", () => ({
 // ── Import router (gets mocked dependencies) ──────────────────────────────────
 import journalEntriesRouter from "../routes/journal-entries";
 import { prisma } from "@workspace/prisma";
+import { userRolesGrantingAll } from "./helpers/rbac";
 
 // ── Test fixtures ─────────────────────────────────────────────────────────────
 const ORG_ID     = "aaaaaaaa-0000-0000-0000-000000000001";
@@ -60,7 +61,7 @@ const USER_ID    = "dddddddd-0000-0000-0000-000000000004";
 const ACCOUNT_1  = "eeeeeeee-0000-0000-0000-000000000005";
 const ACCOUNT_2  = "ffffffff-0000-0000-0000-000000000006";
 
-const mockUser  = { id: USER_ID,  organizationId: ORG_ID, email: "test@example.com", clerkId: "test-clerk-id" };
+const mockUser  = { id: USER_ID,  organizationId: ORG_ID, email: "test@example.com", clerkId: "test-clerk-id", userRoles: userRolesGrantingAll("journal_entries") };
 const mockFY    = { id: FY_ID,    organizationId: ORG_ID, status: "OPEN" };
 const mockEntry = { id: ENTRY_ID, organizationId: ORG_ID, number: "JE-2026-0001", status: "DRAFT", fiscalYearId: FY_ID, exchangeRate: "1" };
 

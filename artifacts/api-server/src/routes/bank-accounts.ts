@@ -2,6 +2,7 @@ import { Router } from "express";
 import { requireAuth, getAuth } from "@clerk/express";
 import { prisma } from "@workspace/prisma";
 import { createSchema, updateSchema } from "../lib/bank-account-utils";
+import { requirePermission } from "../lib/authorize";
 
 const router = Router();
 
@@ -98,7 +99,7 @@ router.get("/", requireAuth(), async (req, res) => {
 
 // ─── POST /api/bank-accounts ──────────────────────────────────────────────────
 
-router.post("/", requireAuth(), async (req, res) => {
+router.post("/", requireAuth(), requirePermission("bank_accounts", "create"), async (req, res) => {
   try {
     const { userId: clerkId } = getAuth(req);
     if (!clerkId) return res.status(401).json({ error: "Unauthenticated" });
@@ -187,7 +188,7 @@ router.get("/:id", requireAuth(), async (req, res) => {
 
 // ─── PATCH /api/bank-accounts/:id ────────────────────────────────────────────
 
-router.patch("/:id", requireAuth(), async (req, res) => {
+router.patch("/:id", requireAuth(), requirePermission("bank_accounts", "update"), async (req, res) => {
   try {
     const { userId: clerkId } = getAuth(req);
     if (!clerkId) return res.status(401).json({ error: "Unauthenticated" });
@@ -242,7 +243,7 @@ router.patch("/:id", requireAuth(), async (req, res) => {
 
 // ─── DELETE /api/bank-accounts/:id ───────────────────────────────────────────
 
-router.delete("/:id", requireAuth(), async (req, res) => {
+router.delete("/:id", requireAuth(), requirePermission("bank_accounts", "delete"), async (req, res) => {
   try {
     const { userId: clerkId } = getAuth(req);
     if (!clerkId) return res.status(401).json({ error: "Unauthenticated" });
@@ -280,7 +281,7 @@ router.delete("/:id", requireAuth(), async (req, res) => {
 
 // ─── POST /api/bank-accounts/:id/toggle-active ───────────────────────────────
 
-router.post("/:id/toggle-active", requireAuth(), async (req, res) => {
+router.post("/:id/toggle-active", requireAuth(), requirePermission("bank_accounts", "update"), async (req, res) => {
   try {
     const { userId: clerkId } = getAuth(req);
     if (!clerkId) return res.status(401).json({ error: "Unauthenticated" });

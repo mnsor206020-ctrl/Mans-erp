@@ -2,6 +2,7 @@ import { Router } from "express";
 import { requireAuth, getAuth } from "@clerk/express";
 import { prisma } from "@workspace/prisma";
 import { z } from "zod";
+import { requirePermission } from "../lib/authorize";
 
 const router = Router();
 
@@ -240,7 +241,7 @@ router.get("/:id", requireAuth(), async (req, res) => {
 
 // ── POST / ───────────────────────────────────────────────────────────────────
 
-router.post("/", requireAuth(), async (req, res) => {
+router.post("/", requireAuth(), requirePermission("chart_of_accounts", "create"), async (req, res) => {
   try {
     const { userId } = getAuth(req);
     const user = await getCurrentUser(userId!);
@@ -321,7 +322,7 @@ router.post("/", requireAuth(), async (req, res) => {
 
 // ── PATCH /:id ───────────────────────────────────────────────────────────────
 
-router.patch("/:id", requireAuth(), async (req, res) => {
+router.patch("/:id", requireAuth(), requirePermission("chart_of_accounts", "update"), async (req, res) => {
   try {
     const { userId } = getAuth(req);
     const user = await getCurrentUser(userId!);
@@ -426,7 +427,7 @@ router.patch("/:id", requireAuth(), async (req, res) => {
 
 // ── DELETE /:id ──────────────────────────────────────────────────────────────
 
-router.delete("/:id", requireAuth(), async (req, res) => {
+router.delete("/:id", requireAuth(), requirePermission("chart_of_accounts", "delete"), async (req, res) => {
   try {
     const { userId } = getAuth(req);
     const user = await getCurrentUser(userId!);
@@ -480,7 +481,7 @@ router.delete("/:id", requireAuth(), async (req, res) => {
 
 // ── POST /:id/toggle-active ──────────────────────────────────────────────────
 
-router.post("/:id/toggle-active", requireAuth(), async (req, res) => {
+router.post("/:id/toggle-active", requireAuth(), requirePermission("chart_of_accounts", "update"), async (req, res) => {
   try {
     const { userId } = getAuth(req);
     const user = await getCurrentUser(userId!);

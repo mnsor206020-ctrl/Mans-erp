@@ -35,6 +35,8 @@ tags:
     description: Money paid out by the organization (bank account or cash box)
   - name: petty-cash
     description: Petty cash IN/OUT entries against a cash box
+  - name: roles
+    description: Role-based access control (RBAC) role and user role assignment
 paths:
   /healthz:
     get:
@@ -257,6 +259,71 @@ paths:
                   $ref: "#/components/schemas/UserProfile"
         "401":
           description: Unauthorized
+
+  /users/{id}/roles:
+    patch:
+      operationId: updateUserRoles
+      tags: [users, roles]
+      summary: Assign roles to a user (Super Admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                roleIds:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+              required:
+                - roleIds
+      responses:
+        "200":
+          description: User with updated roles
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "400":
+          description: Validation failed or unknown role id
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden — caller lacks the `users:update` permission
+        "404":
+          description: User not found
+
+  /roles:
+    get:
+      operationId: listRoles
+      tags: [roles]
+      summary: List all RBAC roles
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of roles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Role"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden — caller lacks the `roles:read` permission
 
   /chart-of-accounts/tree:
     get:
@@ -2686,6 +2753,30 @@ components:
           type: string
         status:
           type: string
+
+    Role:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        nameEn:
+          type: string
+        nameAr:
+          type: string
+        description:
+          type: ["string", "null"]
+        isSystem:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - nameEn
+        - nameAr
+        - isSystem
+        - createdAt
 
     UserProfile:
       type: object

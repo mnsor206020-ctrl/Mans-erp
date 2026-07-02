@@ -95,6 +95,11 @@ async function main() {
       create: { id: "00000000-0000-0000-0000-000000000006", nameEn: "Auditor",        nameAr: "مراجع الحسابات",    isSystem: true },
       update: {},
     }),
+    prisma.role.upsert({
+      where: { id: "00000000-0000-0000-0000-000000000007" },
+      create: { id: "00000000-0000-0000-0000-000000000007", nameEn: "Finance Manager", nameAr: "مدير مالي",        isSystem: true },
+      update: {},
+    }),
   ]);
   console.log(`     Created ${roles.length} system roles`);
 
@@ -158,6 +163,31 @@ async function main() {
     skipDuplicates: true,
     data: auditorPerms.map((p) => ({ roleId: auditorRole.id, permissionId: p.id })),
   });
+
+  // Assign full financial authority (including approve/void/delete) to Finance Manager,
+  // covering the same resources as Accountant plus fiscal year management
+  const financeManagerRole = roles[6];
+  const financeManagerResources = [...accountantResources, "fiscal_years"];
+  const financeManagerPerms = allPermissions.filter((p) =>
+    financeManagerResources.includes(p.resource)
+  );
+  await prisma.rolePermission.createMany({
+    skipDuplicates: true,
+    data: financeManagerPerms.map((p) => ({ roleId: financeManagerRole.id, permissionId: p.id })),
+  });
+
+  // ── Bootstrap: preserve access for any users that already exist ──
+  // (RBAC enforcement is new — existing users must not be locked out)
+  const usersWithoutRoles = await prisma.user.findMany({
+    where: { deletedAt: null, userRoles: { none: {} } },
+  });
+  if (usersWithoutRoles.length > 0) {
+    await prisma.userRole.createMany({
+      skipDuplicates: true,
+      data: usersWithoutRoles.map((u) => ({ userId: u.id, roleId: superAdminRole.id })),
+    });
+    console.log(`     Bootstrapped ${usersWithoutRoles.length} existing user(s) as Super Admin`);
+  }
 
   // ── Demo Organization ─────────────────────────────────────────
   console.log("  → Demo organization");

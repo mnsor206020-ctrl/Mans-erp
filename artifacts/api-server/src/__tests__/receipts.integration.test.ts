@@ -50,6 +50,7 @@ vi.mock("@workspace/prisma", () => ({
 // ── Import router after mocks ─────────────────────────────────────────────────
 import receiptsRouter from "../routes/receipts";
 import { prisma } from "@workspace/prisma";
+import { userRolesGrantingAll } from "./helpers/rbac";
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 const ORG_ID          = "aaaaaaaa-0000-0000-0000-000000000001";
@@ -66,6 +67,7 @@ const mockUser = {
   organizationId: ORG_ID,
   clerkId:        "test-clerk-id",
   deletedAt:      null,
+  userRoles:      userRolesGrantingAll("receipts"),
 };
 
 const mockCurrency = {

@@ -52,13 +52,14 @@ vi.mock("../lib/objectStorage", () => ({
 // ── Import router (gets mocked dependencies) ───────────────────────────────────
 import attachmentsRouter from "../routes/journal-entry-attachments";
 import { prisma } from "@workspace/prisma";
+import { userRolesGrantingAll } from "./helpers/rbac";
 
 // ── Test fixtures ─────────────────────────────────────────────────────────────
 const ORG_ID   = "aaaaaaaa-0000-0000-0000-000000000001";
 const ENTRY_ID = "cccccccc-0000-0000-0000-000000000003";
 const USER_ID  = "dddddddd-0000-0000-0000-000000000004";
 
-const mockUser  = { id: USER_ID, organizationId: ORG_ID, clerkId: "test-clerk-id" };
+const mockUser  = { id: USER_ID, organizationId: ORG_ID, clerkId: "test-clerk-id", userRoles: userRolesGrantingAll("attachments") };
 const mockEntry = { id: ENTRY_ID };
 
 const SMALL_PDF = Buffer.from("%PDF-1.4 tiny");
