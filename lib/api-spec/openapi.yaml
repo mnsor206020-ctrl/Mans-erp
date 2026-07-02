@@ -2336,6 +2336,43 @@ paths:
         "404":
           description: Account not found
 
+  /reports/balance-sheet:
+    get:
+      operationId: getBalanceSheet
+      tags: [reports]
+      summary: Get Balance Sheet report
+      description: >
+        Returns aggregated account balances grouped into Assets, Liabilities,
+        and Equity sections for all POSTED journal entries in the fiscal year
+        up to the given asOf date. Includes totals and an isBalanced flag
+        verifying the accounting equation (Assets = Liabilities + Equity).
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: fiscalYearId
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+          description: UUID of the fiscal year
+        - name: asOf
+          in: query
+          required: true
+          schema: { type: string, format: date }
+          description: Report date — include entries on or before this date (ISO 8601)
+      responses:
+        "200":
+          description: Balance sheet data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BalanceSheet"
+        "400":
+          description: Validation error (missing required params)
+        "401":
+          description: Unauthorized
+        "404":
+          description: Fiscal year not found
+
 components:
   securitySchemes:
     bearerAuth:
@@ -4546,3 +4583,66 @@ components:
         - from
         - to
         - lines
+
+    # ─── Balance Sheet schemas ────────────────────────────────────────────────────
+
+    BalanceSheetAccount:
+      type: object
+      properties:
+        accountId:
+          type: string
+          format: uuid
+        accountCode:
+          type: string
+        accountNameEn:
+          type: string
+        accountNameAr:
+          type: string
+        balance:
+          type: number
+      required:
+        - accountId
+        - accountCode
+        - accountNameEn
+        - accountNameAr
+        - balance
+
+    BalanceSheet:
+      type: object
+      properties:
+        fiscalYearId:
+          type: string
+          format: uuid
+        asOf:
+          type: string
+          format: date
+        assets:
+          type: array
+          items:
+            $ref: "#/components/schemas/BalanceSheetAccount"
+        liabilities:
+          type: array
+          items:
+            $ref: "#/components/schemas/BalanceSheetAccount"
+        equity:
+          type: array
+          items:
+            $ref: "#/components/schemas/BalanceSheetAccount"
+        totalAssets:
+          type: number
+        totalLiabilities:
+          type: number
+        totalEquity:
+          type: number
+        isBalanced:
+          type: boolean
+      required:
+        - fiscalYearId
+        - asOf
+        - assets
+        - liabilities
+        - equity
+        - totalAssets
+        - totalLiabilities
+        - totalEquity
+        - isBalanced

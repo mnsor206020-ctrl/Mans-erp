@@ -3685,3 +3685,43 @@ export const GetAccountLedgerResponse = zod.object({
 })
 
 
+/**
+ * Returns aggregated account balances grouped into Assets, Liabilities, and Equity sections for all POSTED journal entries in the fiscal year up to the given asOf date. Includes totals and an isBalanced flag verifying the accounting equation (Assets = Liabilities + Equity).
+ * @summary Get Balance Sheet report
+ */
+export const GetBalanceSheetQueryParams = zod.object({
+  "fiscalYearId": zod.coerce.string().uuid().describe('UUID of the fiscal year'),
+  "asOf": zod.date().describe('Report date — include entries on or before this date (ISO 8601)')
+})
+
+export const GetBalanceSheetResponse = zod.object({
+  "fiscalYearId": zod.string().uuid(),
+  "asOf": zod.coerce.date(),
+  "assets": zod.array(zod.object({
+  "accountId": zod.string().uuid(),
+  "accountCode": zod.string(),
+  "accountNameEn": zod.string(),
+  "accountNameAr": zod.string(),
+  "balance": zod.number()
+})),
+  "liabilities": zod.array(zod.object({
+  "accountId": zod.string().uuid(),
+  "accountCode": zod.string(),
+  "accountNameEn": zod.string(),
+  "accountNameAr": zod.string(),
+  "balance": zod.number()
+})),
+  "equity": zod.array(zod.object({
+  "accountId": zod.string().uuid(),
+  "accountCode": zod.string(),
+  "accountNameEn": zod.string(),
+  "accountNameAr": zod.string(),
+  "balance": zod.number()
+})),
+  "totalAssets": zod.number(),
+  "totalLiabilities": zod.number(),
+  "totalEquity": zod.number(),
+  "isBalanced": zod.boolean()
+})
+
+

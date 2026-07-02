@@ -77,4 +77,7 @@ export type {
   AccountLedger,
   AccountLedgerLine,
   GetAccountLedgerParams,
+  BalanceSheet,
+  BalanceSheetAccount,
+  GetBalanceSheetParams,
 } from "./generated/types";

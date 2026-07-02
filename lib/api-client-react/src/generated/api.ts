@@ -24,6 +24,7 @@ import type {
   ActivityItem,
   ApproveJournalEntryBody,
   AttachmentDownloadResponse,
+  BalanceSheet,
   Bank,
   BankAccount,
   BankAccountCreate,
@@ -48,6 +49,7 @@ import type {
   DeleteJournalEntryTemplate200,
   FiscalYear,
   GetAccountLedgerParams,
+  GetBalanceSheetParams,
   GetChartOfAccountsTreeParams,
   GetTrialBalanceParams,
   GetUnreadNotifications200,
@@ -6250,6 +6252,91 @@ export function useGetAccountLedger<TData = Awaited<ReturnType<typeof getAccount
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetAccountLedgerQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetBalanceSheetUrl = (params: GetBalanceSheetParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/reports/balance-sheet?${stringifiedParams}` : `/api/reports/balance-sheet`
+}
+
+/**
+ * Returns aggregated account balances grouped into Assets, Liabilities, and Equity sections for all POSTED journal entries in the fiscal year up to the given asOf date. Includes totals and an isBalanced flag verifying the accounting equation (Assets = Liabilities + Equity).
+ * @summary Get Balance Sheet report
+ */
+export const getBalanceSheet = async (params: GetBalanceSheetParams, options?: RequestInit): Promise<BalanceSheet> => {
+
+  return customFetch<BalanceSheet>(getGetBalanceSheetUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetBalanceSheetQueryKey = (params?: GetBalanceSheetParams,) => {
+    return [
+    `/api/reports/balance-sheet`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetBalanceSheetQueryOptions = <TData = Awaited<ReturnType<typeof getBalanceSheet>>, TError = ErrorType<void>>(params: GetBalanceSheetParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBalanceSheet>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetBalanceSheetQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBalanceSheet>>> = ({ signal }) => getBalanceSheet(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getBalanceSheet>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetBalanceSheetQueryResult = NonNullable<Awaited<ReturnType<typeof getBalanceSheet>>>
+export type GetBalanceSheetQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get Balance Sheet report
+ */
+
+export function useGetBalanceSheet<TData = Awaited<ReturnType<typeof getBalanceSheet>>, TError = ErrorType<void>>(
+ params: GetBalanceSheetParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBalanceSheet>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetBalanceSheetQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

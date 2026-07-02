@@ -195,4 +195,150 @@ router.get("/account-ledger", requireAuth(), async (req, res): Promise<void> => 
   }
 });
 
+// ─── GET /reports/balance-sheet ───────────────────────────────────────────────
+
+router.get("/balance-sheet", requireAuth(), async (req, res): Promise<void> => {
+  try {
+    const { userId } = getAuth(req);
+    if (!userId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    const user = await prisma.user.findFirst({ where: { clerkId: userId, deletedAt: null } });
+    if (!user) {
+      res.status(401).json({ error: "User not found" });
+      return;
+    }
+    if (!user.organizationId) {
+      res.status(400).json({ error: "User has no organization" });
+      return;
+    }
+
+    const { fiscalYearId, asOf } = req.query as Record<string, string>;
+    if (!fiscalYearId || !asOf) {
+      res.status(400).json({ error: "fiscalYearId and asOf are required" });
+      return;
+    }
+
+    const fiscalYear = await prisma.fiscalYear.findFirst({
+      where: { id: fiscalYearId, organizationId: user.organizationId, deletedAt: null },
+    });
+    if (!fiscalYear) {
+      res.status(404).json({ error: "Fiscal year not found" });
+      return;
+    }
+
+    const lines = await prisma.journalEntryLine.findMany({
+      where: {
+        account: {
+          type:           { in: ["ASSET", "LIABILITY", "EQUITY"] },
+          organizationId: user.organizationId,
+          deletedAt:      null,
+        },
+        journalEntry: {
+          fiscalYearId,
+          status:    "POSTED",
+          deletedAt: null,
+          entryDate: { lte: new Date(asOf) },
+        },
+      },
+      include: {
+        account: {
+          select: {
+            id:      true,
+            code:    true,
+            nameEn:  true,
+            nameAr:  true,
+            type:    true,
+            nature:  true,
+          },
+        },
+      },
+    });
+
+    // Aggregate debit/credit per account
+    const accountMap = new Map<string, {
+      accountId:     string;
+      accountCode:   string;
+      accountNameEn: string;
+      accountNameAr: string;
+      type:          string;
+      nature:        string;
+      totalDebit:    number;
+      totalCredit:   number;
+    }>();
+
+    for (const line of lines) {
+      const key      = line.accountId;
+      const existing = accountMap.get(key);
+      if (existing) {
+        existing.totalDebit  += Number(line.debit);
+        existing.totalCredit += Number(line.credit);
+      } else {
+        accountMap.set(key, {
+          accountId:     line.accountId,
+          accountCode:   line.account.code,
+          accountNameEn: line.account.nameEn,
+          accountNameAr: line.account.nameAr,
+          type:          line.account.type,
+          nature:        line.account.nature,
+          totalDebit:    Number(line.debit),
+          totalCredit:   Number(line.credit),
+        });
+      }
+    }
+
+    // Balance per nature: DEBIT accounts → debit − credit; CREDIT accounts → credit − debit
+    const assets:      { accountId: string; accountCode: string; accountNameEn: string; accountNameAr: string; balance: number }[] = [];
+    const liabilities: typeof assets = [];
+    const equity:      typeof assets = [];
+
+    for (const acc of accountMap.values()) {
+      const balance =
+        acc.nature === "DEBIT"
+          ? acc.totalDebit - acc.totalCredit
+          : acc.totalCredit - acc.totalDebit;
+
+      const row = {
+        accountId:     acc.accountId,
+        accountCode:   acc.accountCode,
+        accountNameEn: acc.accountNameEn,
+        accountNameAr: acc.accountNameAr,
+        balance,
+      };
+
+      if      (acc.type === "ASSET")     assets.push(row);
+      else if (acc.type === "LIABILITY") liabilities.push(row);
+      else if (acc.type === "EQUITY")    equity.push(row);
+    }
+
+    // Sort each section by account code
+    const byCode = (a: { accountCode: string }, b: { accountCode: string }) =>
+      a.accountCode.localeCompare(b.accountCode);
+    assets.sort(byCode);
+    liabilities.sort(byCode);
+    equity.sort(byCode);
+
+    const totalAssets      = assets.reduce((s, r) => s + r.balance, 0);
+    const totalLiabilities = liabilities.reduce((s, r) => s + r.balance, 0);
+    const totalEquity      = equity.reduce((s, r) => s + r.balance, 0);
+    const isBalanced       = Math.abs(totalAssets - (totalLiabilities + totalEquity)) < 0.01;
+
+    res.json({
+      fiscalYearId,
+      asOf,
+      assets,
+      liabilities,
+      equity,
+      totalAssets,
+      totalLiabilities,
+      totalEquity,
+      isBalanced,
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to generate balance sheet" });
+  }
+});
+
 export default router;

@@ -1446,6 +1446,26 @@ export interface AccountLedger {
   lines: AccountLedgerLine[];
 }
 
+export interface BalanceSheetAccount {
+  accountId: string;
+  accountCode: string;
+  accountNameEn: string;
+  accountNameAr: string;
+  balance: number;
+}
+
+export interface BalanceSheet {
+  fiscalYearId: string;
+  asOf: string;
+  assets: BalanceSheetAccount[];
+  liabilities: BalanceSheetAccount[];
+  equity: BalanceSheetAccount[];
+  totalAssets: number;
+  totalLiabilities: number;
+  totalEquity: number;
+  isBalanced: boolean;
+}
+
 export type GetChartOfAccountsTreeParams = {
 organizationId?: string;
 };
@@ -1789,5 +1809,16 @@ from: string;
  * End date (ISO 8601, inclusive)
  */
 to: string;
+};
+
+export type GetBalanceSheetParams = {
+/**
+ * UUID of the fiscal year
+ */
+fiscalYearId: string;
+/**
+ * Report date — include entries on or before this date (ISO 8601)
+ */
+asOf: string;
 };
 
