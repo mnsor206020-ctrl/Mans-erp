@@ -76,6 +76,7 @@ import type {
   ListPettyCashParams,
   ListReceipts200,
   ListReceiptsParams,
+  MonthlyFinancialDataPoint,
   OkResponse,
   Organization,
   OrganizationInput,
@@ -277,6 +278,84 @@ export function useGetDashboardStats<TData = Awaited<ReturnType<typeof getDashbo
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetDashboardStatsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetDashboardMonthlyUrl = () => {
+
+
+
+
+  return `/api/dashboard/monthly`
+}
+
+/**
+ * Returns the last 12 months of receipts, payments, and net cash for the authenticated user's organization. CONFIRMED transactions only. Missing months return zero values.
+ * @summary Get monthly financial chart data
+ */
+export const getDashboardMonthly = async ( options?: RequestInit): Promise<MonthlyFinancialDataPoint[]> => {
+
+  return customFetch<MonthlyFinancialDataPoint[]>(getGetDashboardMonthlyUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDashboardMonthlyQueryKey = () => {
+    return [
+    `/api/dashboard/monthly`
+    ] as const;
+    }
+
+
+export const getGetDashboardMonthlyQueryOptions = <TData = Awaited<ReturnType<typeof getDashboardMonthly>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDashboardMonthly>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDashboardMonthlyQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDashboardMonthly>>> = ({ signal }) => getDashboardMonthly({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDashboardMonthly>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetDashboardMonthlyQueryResult = NonNullable<Awaited<ReturnType<typeof getDashboardMonthly>>>
+export type GetDashboardMonthlyQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get monthly financial chart data
+ */
+
+export function useGetDashboardMonthly<TData = Awaited<ReturnType<typeof getDashboardMonthly>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDashboardMonthly>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetDashboardMonthlyQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

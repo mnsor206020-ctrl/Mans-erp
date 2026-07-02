@@ -68,6 +68,31 @@ paths:
         "401":
           description: Unauthorized
 
+  /dashboard/monthly:
+    get:
+      operationId: getDashboardMonthly
+      tags: [dashboard]
+      summary: Get monthly financial chart data
+      description: >
+        Returns the last 12 months of receipts, payments, and net cash for the
+        authenticated user's organization. CONFIRMED transactions only.
+        Missing months return zero values.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Monthly financial data points
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MonthlyFinancialDataPoint"
+        "401":
+          description: Unauthorized
+        "400":
+          description: User has no organization
+
   /dashboard/activity:
     get:
       operationId: getRecentActivity
@@ -2445,6 +2470,18 @@ components:
           type: number
         monthlyGrowth:
           type: number
+        totalReceipts:
+          type: number
+        totalPayments:
+          type: number
+        netCash:
+          type: number
+        currentBankBalance:
+          type: number
+        currentCashBoxBalance:
+          type: number
+        postedJournalEntriesCount:
+          type: integer
       required:
         - totalUsers
         - totalOrganizations
@@ -2452,6 +2489,30 @@ components:
         - totalBeneficiaries
         - totalDonations
         - monthlyGrowth
+        - totalReceipts
+        - totalPayments
+        - netCash
+        - currentBankBalance
+        - currentCashBoxBalance
+        - postedJournalEntriesCount
+
+    MonthlyFinancialDataPoint:
+      type: object
+      properties:
+        month:
+          type: string
+          description: "ISO month label e.g. 2025-06"
+        receipts:
+          type: number
+        payments:
+          type: number
+        net:
+          type: number
+      required:
+        - month
+        - receipts
+        - payments
+        - net
 
     ActivityItem:
       type: object

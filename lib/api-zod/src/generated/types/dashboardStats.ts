@@ -13,4 +13,10 @@ export interface DashboardStats {
   totalBeneficiaries: number;
   totalDonations: number;
   monthlyGrowth: number;
+  totalReceipts: number;
+  totalPayments: number;
+  netCash: number;
+  currentBankBalance: number;
+  currentCashBoxBalance: number;
+  postedJournalEntriesCount: number;
 }

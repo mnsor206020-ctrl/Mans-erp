@@ -16,6 +16,20 @@ export interface DashboardStats {
   totalBeneficiaries: number;
   totalDonations: number;
   monthlyGrowth: number;
+  totalReceipts: number;
+  totalPayments: number;
+  netCash: number;
+  currentBankBalance: number;
+  currentCashBoxBalance: number;
+  postedJournalEntriesCount: number;
+}
+
+export interface MonthlyFinancialDataPoint {
+  /** ISO month label e.g. 2025-06 */
+  month: string;
+  receipts: number;
+  payments: number;
+  net: number;
 }
 
 export interface ActivityItem {

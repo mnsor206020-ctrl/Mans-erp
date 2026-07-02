@@ -104,6 +104,7 @@ export * from './listReceipts200';
 export * from './listReceiptsParams';
 export * from './listReceiptsPaymentMethod';
 export * from './listReceiptsStatus';
+export * from './monthlyFinancialDataPoint';
 export * from './notification';
 export * from './okResponse';
 export * from './organization';

@@ -27,8 +27,27 @@ export const GetDashboardStatsResponse = zod.object({
   "activeProjects": zod.number(),
   "totalBeneficiaries": zod.number(),
   "totalDonations": zod.number(),
-  "monthlyGrowth": zod.number()
+  "monthlyGrowth": zod.number(),
+  "totalReceipts": zod.number(),
+  "totalPayments": zod.number(),
+  "netCash": zod.number(),
+  "currentBankBalance": zod.number(),
+  "currentCashBoxBalance": zod.number(),
+  "postedJournalEntriesCount": zod.number()
 })
+
+
+/**
+ * Returns the last 12 months of receipts, payments, and net cash for the authenticated user's organization. CONFIRMED transactions only. Missing months return zero values.
+ * @summary Get monthly financial chart data
+ */
+export const GetDashboardMonthlyResponseItem = zod.object({
+  "month": zod.string().describe('ISO month label e.g. 2025-06'),
+  "receipts": zod.number(),
+  "payments": zod.number(),
+  "net": zod.number()
+})
+export const GetDashboardMonthlyResponse = zod.array(GetDashboardMonthlyResponseItem)
 
 
 /**
