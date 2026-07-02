@@ -20,6 +20,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AccountLedger,
   ActivityItem,
   ApproveJournalEntryBody,
   AttachmentDownloadResponse,
@@ -46,7 +47,9 @@ import type {
   DeleteJournalEntryAttachment200,
   DeleteJournalEntryTemplate200,
   FiscalYear,
+  GetAccountLedgerParams,
   GetChartOfAccountsTreeParams,
+  GetTrialBalanceParams,
   GetUnreadNotifications200,
   HealthStatus,
   JournalEntry,
@@ -65,11 +68,9 @@ import type {
   ListJournalEntryTemplatesParams,
   ListPayments200,
   ListPaymentsParams,
-  GetTrialBalanceParams,
   ListPettyCash200,
   ListPettyCashParams,
   ListReceipts200,
-  TrialBalance,
   ListReceiptsParams,
   OkResponse,
   Organization,
@@ -88,6 +89,7 @@ import type {
   RejectJournalEntryBody,
   ReverseJournalEntryBody,
   SubmitJournalEntryBody,
+  TrialBalance,
   UpdateChartOfAccountInput,
   UpdateJournalEntryAttachmentBody,
   UpdateJournalEntryInput,
@@ -6090,12 +6092,11 @@ export const useDeletePettyCash = <TError = ErrorType<void>,
       return useMutation(getDeletePettyCashMutationOptions(options));
     }
 
-
-
-export const getGetTrialBalanceUrl = (params: GetTrialBalanceParams) => {
+export const getGetTrialBalanceUrl = (params: GetTrialBalanceParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
+
     if (value !== undefined) {
       normalizedParams.append(key, value === null ? 'null' : String(value))
     }
@@ -6107,6 +6108,7 @@ export const getGetTrialBalanceUrl = (params: GetTrialBalanceParams) => {
 }
 
 /**
+ * Returns aggregated debit and credit totals per account for all POSTED journal entries within the specified fiscal year. Optionally filtered to entries on or before the asOf date.
  * @summary Get Trial Balance report
  */
 export const getTrialBalance = async (params: GetTrialBalanceParams, options?: RequestInit): Promise<TrialBalance> => {
@@ -6115,36 +6117,49 @@ export const getTrialBalance = async (params: GetTrialBalanceParams, options?: R
   {
     ...options,
     method: 'GET'
+
+
   }
 );}
 
 
-export const getGetTrialBalanceQueryKey = (params: GetTrialBalanceParams) => {
+
+
+
+export const getGetTrialBalanceQueryKey = (params?: GetTrialBalanceParams,) => {
     return [
     `/api/reports/trial-balance`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetTrialBalanceQueryOptions = <TData = Awaited<ReturnType<typeof getTrialBalance>>, TError = ErrorType<unknown>>(params: GetTrialBalanceParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTrialBalance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getGetTrialBalanceQueryOptions = <TData = Awaited<ReturnType<typeof getTrialBalance>>, TError = ErrorType<void>>(params: GetTrialBalanceParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTrialBalance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getGetTrialBalanceQueryKey(params);
 
+
+
     const queryFn: QueryFunction<Awaited<ReturnType<typeof getTrialBalance>>> = ({ signal }) => getTrialBalance(params, { signal, ...requestOptions });
+
+
+
+
 
    return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTrialBalance>>, TError, TData> & { queryKey: QueryKey }
 }
 
 export type GetTrialBalanceQueryResult = NonNullable<Awaited<ReturnType<typeof getTrialBalance>>>
-export type GetTrialBalanceQueryError = ErrorType<unknown>
+export type GetTrialBalanceQueryError = ErrorType<void>
+
 
 /**
  * @summary Get Trial Balance report
  */
-export function useGetTrialBalance<TData = Awaited<ReturnType<typeof getTrialBalance>>, TError = ErrorType<unknown>>(
+
+export function useGetTrialBalance<TData = Awaited<ReturnType<typeof getTrialBalance>>, TError = ErrorType<void>>(
  params: GetTrialBalanceParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTrialBalance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
@@ -6155,3 +6170,95 @@ export function useGetTrialBalance<TData = Awaited<ReturnType<typeof getTrialBal
 
   return withQueryKey(query, queryOptions.queryKey);
 }
+
+
+
+
+
+
+
+export const getGetAccountLedgerUrl = (params: GetAccountLedgerParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/reports/account-ledger?${stringifiedParams}` : `/api/reports/account-ledger`
+}
+
+/**
+ * Returns all POSTED journal entry lines for a specific account within a date range, ordered by entry date, journal number, and line number. Includes a server-calculated running balance column.
+ * @summary Get Account Ledger report
+ */
+export const getAccountLedger = async (params: GetAccountLedgerParams, options?: RequestInit): Promise<AccountLedger> => {
+
+  return customFetch<AccountLedger>(getGetAccountLedgerUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAccountLedgerQueryKey = (params?: GetAccountLedgerParams,) => {
+    return [
+    `/api/reports/account-ledger`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetAccountLedgerQueryOptions = <TData = Awaited<ReturnType<typeof getAccountLedger>>, TError = ErrorType<void>>(params: GetAccountLedgerParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAccountLedger>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAccountLedgerQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAccountLedger>>> = ({ signal }) => getAccountLedger(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAccountLedger>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAccountLedgerQueryResult = NonNullable<Awaited<ReturnType<typeof getAccountLedger>>>
+export type GetAccountLedgerQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get Account Ledger report
+ */
+
+export function useGetAccountLedger<TData = Awaited<ReturnType<typeof getAccountLedger>>, TError = ErrorType<void>>(
+ params: GetAccountLedgerParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAccountLedger>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAccountLedgerQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+

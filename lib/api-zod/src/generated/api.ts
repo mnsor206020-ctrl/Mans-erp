@@ -3628,31 +3628,60 @@ export const DeletePettyCashResponse = zod.object({
 })
 
 
-
-
 /**
- * Returns Trial Balance data for a fiscal year
+ * Returns aggregated debit and credit totals per account for all POSTED journal entries within the specified fiscal year. Optionally filtered to entries on or before the asOf date.
  * @summary Get Trial Balance report
  */
-export const GetTrialBalanceParams = zod.object({
-  "fiscalYearId": zod.coerce.string().uuid(),
-  "asOf": zod.coerce.string().optional()
-})
-
-export const GetTrialBalanceResponseLine = zod.object({
-  "accountId":     zod.string().uuid(),
-  "accountCode":   zod.string(),
-  "accountNameEn": zod.string(),
-  "accountNameAr": zod.string(),
-  "totalDebit":    zod.number(),
-  "totalCredit":   zod.number(),
-  "balance":       zod.number()
+export const GetTrialBalanceQueryParams = zod.object({
+  "fiscalYearId": zod.coerce.string().uuid().describe('UUID of the fiscal year'),
+  "asOf": zod.date().optional().describe('Only include entries on or before this date (ISO 8601)')
 })
 
 export const GetTrialBalanceResponse = zod.object({
   "fiscalYearId": zod.string().uuid(),
-  "asOf":         zod.string().nullish(),
-  "lines":        zod.array(GetTrialBalanceResponseLine),
-  "totalDebit":   zod.number(),
-  "totalCredit":  zod.number()
+  "asOf": zod.coerce.date().nullish(),
+  "lines": zod.array(zod.object({
+  "accountId": zod.string().uuid(),
+  "accountCode": zod.string(),
+  "accountNameEn": zod.string(),
+  "accountNameAr": zod.string(),
+  "totalDebit": zod.number(),
+  "totalCredit": zod.number(),
+  "balance": zod.number()
+})),
+  "totalDebit": zod.number(),
+  "totalCredit": zod.number()
 })
+
+
+/**
+ * Returns all POSTED journal entry lines for a specific account within a date range, ordered by entry date, journal number, and line number. Includes a server-calculated running balance column.
+ * @summary Get Account Ledger report
+ */
+export const GetAccountLedgerQueryParams = zod.object({
+  "accountId": zod.coerce.string().uuid().describe('UUID of the chart of account'),
+  "from": zod.date().describe('Start date (ISO 8601, inclusive)'),
+  "to": zod.date().describe('End date (ISO 8601, inclusive)')
+})
+
+export const GetAccountLedgerResponse = zod.object({
+  "accountId": zod.string().uuid(),
+  "accountCode": zod.string(),
+  "accountNameEn": zod.string(),
+  "accountNameAr": zod.string(),
+  "from": zod.coerce.date(),
+  "to": zod.coerce.date(),
+  "lines": zod.array(zod.object({
+  "journalEntryId": zod.string().uuid(),
+  "journalNumber": zod.string(),
+  "entryDate": zod.coerce.date(),
+  "descriptionEn": zod.string().nullish(),
+  "descriptionAr": zod.string().nullish(),
+  "reference": zod.string().nullish(),
+  "debit": zod.number(),
+  "credit": zod.number(),
+  "runningBalance": zod.number()
+}))
+})
+
+

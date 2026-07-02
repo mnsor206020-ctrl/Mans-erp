@@ -2257,6 +2257,85 @@ paths:
         "404":
           description: Not found
 
+  # ─── Reports ─────────────────────────────────────────────────────────────────
+
+  /reports/trial-balance:
+    get:
+      operationId: getTrialBalance
+      tags: [reports]
+      summary: Get Trial Balance report
+      description: >
+        Returns aggregated debit and credit totals per account for all POSTED
+        journal entries within the specified fiscal year. Optionally filtered
+        to entries on or before the asOf date.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: fiscalYearId
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+          description: UUID of the fiscal year
+        - name: asOf
+          in: query
+          required: false
+          schema: { type: string, format: date }
+          description: Only include entries on or before this date (ISO 8601)
+      responses:
+        "200":
+          description: Trial balance data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrialBalance"
+        "400":
+          description: Validation error (missing fiscalYearId)
+        "401":
+          description: Unauthorized
+        "404":
+          description: Fiscal year not found
+
+  /reports/account-ledger:
+    get:
+      operationId: getAccountLedger
+      tags: [reports]
+      summary: Get Account Ledger report
+      description: >
+        Returns all POSTED journal entry lines for a specific account within a
+        date range, ordered by entry date, journal number, and line number.
+        Includes a server-calculated running balance column.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: accountId
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+          description: UUID of the chart of account
+        - name: from
+          in: query
+          required: true
+          schema: { type: string, format: date }
+          description: Start date (ISO 8601, inclusive)
+        - name: to
+          in: query
+          required: true
+          schema: { type: string, format: date }
+          description: End date (ISO 8601, inclusive)
+      responses:
+        "200":
+          description: Account ledger data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountLedger"
+        "400":
+          description: Validation error (missing required params)
+        "401":
+          description: Unauthorized
+        "404":
+          description: Account not found
+
 components:
   securitySchemes:
     bearerAuth:
@@ -4350,38 +4429,120 @@ components:
       required:
         - ok
 
-  /reports/trial-balance:
-    get:
-      operationId: getTrialBalance
-      tags: [reports]
-      summary: Get Trial Balance report
-      description: >
-        Returns aggregated debit and credit totals per account for all POSTED
-        journal entries within the specified fiscal year. Optionally filtered
-        to entries on or before the asOf date.
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: fiscalYearId
-          in: query
-          required: true
-          schema: { type: string, format: uuid }
-          description: UUID of the fiscal year
-        - name: asOf
-          in: query
-          required: false
-          schema: { type: string, format: date }
-          description: Only include entries on or before this date (ISO 8601)
-      responses:
-        "200":
-          description: Trial balance data
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TrialBalance"
-        "400":
-          description: Validation error (missing fiscalYearId)
-        "401":
-          description: Unauthorized
-        "404":
-          description: Fiscal year not found
+    # ─── Reports schemas ──────────────────────────────────────────────────────────
+
+    TrialBalanceLine:
+      type: object
+      properties:
+        accountId:
+          type: string
+          format: uuid
+        accountCode:
+          type: string
+        accountNameEn:
+          type: string
+        accountNameAr:
+          type: string
+        totalDebit:
+          type: number
+        totalCredit:
+          type: number
+        balance:
+          type: number
+      required:
+        - accountId
+        - accountCode
+        - accountNameEn
+        - accountNameAr
+        - totalDebit
+        - totalCredit
+        - balance
+
+    TrialBalance:
+      type: object
+      properties:
+        fiscalYearId:
+          type: string
+          format: uuid
+        asOf:
+          type: string
+          format: date
+          nullable: true
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/TrialBalanceLine"
+        totalDebit:
+          type: number
+        totalCredit:
+          type: number
+      required:
+        - fiscalYearId
+        - lines
+        - totalDebit
+        - totalCredit
+
+    AccountLedgerLine:
+      type: object
+      properties:
+        journalEntryId:
+          type: string
+          format: uuid
+        journalNumber:
+          type: string
+        entryDate:
+          type: string
+          format: date
+        descriptionEn:
+          type: string
+          nullable: true
+        descriptionAr:
+          type: string
+          nullable: true
+        reference:
+          type: string
+          nullable: true
+        debit:
+          type: number
+        credit:
+          type: number
+        runningBalance:
+          type: number
+      required:
+        - journalEntryId
+        - journalNumber
+        - entryDate
+        - debit
+        - credit
+        - runningBalance
+
+    AccountLedger:
+      type: object
+      properties:
+        accountId:
+          type: string
+          format: uuid
+        accountCode:
+          type: string
+        accountNameEn:
+          type: string
+        accountNameAr:
+          type: string
+        from:
+          type: string
+          format: date
+        to:
+          type: string
+          format: date
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/AccountLedgerLine"
+      required:
+        - accountId
+        - accountCode
+        - accountNameEn
+        - accountNameAr
+        - from
+        - to
+        - lines

@@ -1406,6 +1406,46 @@ export interface OkResponse {
   ok: boolean;
 }
 
+export interface TrialBalanceLine {
+  accountId: string;
+  accountCode: string;
+  accountNameEn: string;
+  accountNameAr: string;
+  totalDebit: number;
+  totalCredit: number;
+  balance: number;
+}
+
+export interface TrialBalance {
+  fiscalYearId: string;
+  asOf?: string | null;
+  lines: TrialBalanceLine[];
+  totalDebit: number;
+  totalCredit: number;
+}
+
+export interface AccountLedgerLine {
+  journalEntryId: string;
+  journalNumber: string;
+  entryDate: string;
+  descriptionEn?: string | null;
+  descriptionAr?: string | null;
+  reference?: string | null;
+  debit: number;
+  credit: number;
+  runningBalance: number;
+}
+
+export interface AccountLedger {
+  accountId: string;
+  accountCode: string;
+  accountNameEn: string;
+  accountNameAr: string;
+  from: string;
+  to: string;
+  lines: AccountLedgerLine[];
+}
+
 export type GetChartOfAccountsTreeParams = {
 organizationId?: string;
 };
@@ -1725,28 +1765,29 @@ export type ListPettyCash200 = {
   data?: PettyCash[];
 };
 
-export interface TrialBalanceLine {
-  accountId:     string;
-  accountCode:   string;
-  accountNameEn: string;
-  accountNameAr: string;
-  totalDebit:    number;
-  totalCredit:   number;
-  balance:       number;
-}
-
-export interface TrialBalance {
-  fiscalYearId: string;
-  asOf?:        string | null;
-  lines:        TrialBalanceLine[];
-  totalDebit:   number;
-  totalCredit:  number;
-}
-
 export type GetTrialBalanceParams = {
-  /** UUID of the fiscal year (required) */
-  fiscalYearId: string;
-  /** Optional ISO date — only entries on or before this date are included */
-  asOf?: string;
+/**
+ * UUID of the fiscal year
+ */
+fiscalYearId: string;
+/**
+ * Only include entries on or before this date (ISO 8601)
+ */
+asOf?: string;
+};
+
+export type GetAccountLedgerParams = {
+/**
+ * UUID of the chart of account
+ */
+accountId: string;
+/**
+ * Start date (ISO 8601, inclusive)
+ */
+from: string;
+/**
+ * End date (ISO 8601, inclusive)
+ */
+to: string;
 };
 

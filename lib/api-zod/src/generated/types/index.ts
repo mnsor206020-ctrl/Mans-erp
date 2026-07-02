@@ -7,6 +7,8 @@
  */
 
 export * from './_journalEntryCount';
+export * from './accountLedger';
+export * from './accountLedgerLine';
 export * from './activityItem';
 export * from './approveJournalEntryBody';
 export * from './attachmentDownloadResponse';
@@ -45,7 +47,9 @@ export * from './deleteJournalEntryAttachment200';
 export * from './deleteJournalEntryTemplate200';
 export * from './fiscalYear';
 export * from './fiscalYearStatus';
+export * from './getAccountLedgerParams';
 export * from './getChartOfAccountsTreeParams';
+export * from './getTrialBalanceParams';
 export * from './getUnreadNotifications200';
 export * from './healthStatus';
 export * from './journalEntry';
@@ -122,6 +126,8 @@ export * from './rejectJournalEntryBody';
 export * from './reverseJournalEntryBody';
 export * from './submitJournalEntryBody';
 export * from './transactionStatus';
+export * from './trialBalance';
+export * from './trialBalanceLine';
 export * from './updateChartOfAccountInput';
 export * from './updateChartOfAccountInputNature';
 export * from './updateChartOfAccountInputType';

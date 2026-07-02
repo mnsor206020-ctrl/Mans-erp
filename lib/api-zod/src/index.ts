@@ -74,4 +74,7 @@ export type {
   TrialBalance,
   TrialBalanceLine,
   GetTrialBalanceParams,
+  AccountLedger,
+  AccountLedgerLine,
+  GetAccountLedgerParams,
 } from "./generated/types";
