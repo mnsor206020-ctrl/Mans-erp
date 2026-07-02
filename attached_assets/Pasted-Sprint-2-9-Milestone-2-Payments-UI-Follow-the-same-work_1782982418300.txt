@@ -1,0 +1,86 @@
+Sprint 2.9 — Milestone 2 (Payments UI)
+
+Follow the same workflow and standards used for the completed Receipts UI. Do not perform repository-wide refactors or unrelated cleanup. Work only on the Payments feature.
+
+Rules:
+- Audit first, then implement.
+- Keep changes minimal and consistent with existing architecture.
+- Reuse existing components and patterns wherever possible.
+- No production behavior changes outside Payments.
+- Preserve TypeScript strictness.
+- Do not modify generated files unless required.
+- No long progress reports. Only report milestone completion and blockers.
+
+Tasks
+
+1. Audit
+- Inspect Payments.tsx.
+- Inspect ReceiptFormDialog.tsx and use it as the implementation reference.
+- Inspect payment API hooks.
+- Inspect payment schema/types.
+- Inspect existing translation keys.
+
+2. Create PaymentFormDialog.tsx
+Implement a reusable dialog supporting both Create and Edit modes.
+
+Fields:
+- Payment Date
+- Payment Method
+- Amount
+- Currency
+- Exchange Rate (only when currency != SAR)
+- Bank Account selector (non-cash methods)
+- Cash Box selector (cash payments)
+- GL Account selector (required for automatic journal entry)
+- Payee Name (EN)
+- Payee Name (AR)
+- Reference
+- Description (EN)
+- Description (AR)
+- Cheque Number
+- Cheque Date
+- Cheque Bank Name
+
+Behavior:
+- Edit mode when payment prop exists.
+- Create mode otherwise.
+- Client-side validation.
+- Inline validation messages.
+- Fully bilingual labels.
+- Reuse existing AccountPicker and shared form components.
+- Reuse bank account and cash box hooks.
+
+3. Update Payments.tsx
+
+Enable:
+- New Payment button
+- Edit action for DRAFT payments
+- Status filter
+- Payment Method filter
+- Search
+- Cache invalidation after:
+  - create
+  - update
+  - confirm
+  - void
+  - delete
+
+Use generated query keys only.
+
+4. TypeScript
+Run strict type-check only on affected packages.
+
+Acceptance Criteria
+
+- PaymentFormDialog implemented.
+- Payments page fully functional.
+- No new TypeScript errors.
+- Existing behavior preserved.
+- UI consistent with Receipts implementation.
+- No unrelated code changes.
+
+Return only:
+- Files created
+- Files modified
+- TypeScript result
+- Any blockers (if present)

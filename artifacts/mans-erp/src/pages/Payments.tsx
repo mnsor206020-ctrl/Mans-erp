@@ -8,6 +8,7 @@ import {
   useVoidPayment,
   getListPaymentsQueryKey,
 } from "@workspace/api-client-react";
+import type { Payment } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -45,6 +46,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { PaymentFormDialog } from "@/components/banking/PaymentFormDialog";
 import {
   Plus,
   Search,
@@ -54,6 +56,7 @@ import {
   XCircle,
   Trash2,
   RefreshCw,
+  Pencil,
 } from "lucide-react";
 
 const STATUS_OPTIONS = ["DRAFT", "CONFIRMED", "RECONCILED", "VOIDED"] as const;
@@ -74,10 +77,14 @@ export default function Payments() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // ── Filters ──────────────────────────────────────────────────────────────────
   const [search, setSearch]             = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [methodFilter, setMethodFilter] = useState("ALL");
 
+  // ── Dialog state ─────────────────────────────────────────────────────────────
+  const [formOpen, setFormOpen]           = useState(false);
+  const [editPayment, setEditPayment]     = useState<Payment | null>(null);
   const [deleteTarget, setDeleteTarget]   = useState<{ id: string; number: string } | null>(null);
   const [confirmTarget, setConfirmTarget] = useState<{ id: string; number: string } | null>(null);
   const [voidTarget, setVoidTarget]       = useState<{ id: string; number: string } | null>(null);
@@ -85,6 +92,7 @@ export default function Payments() {
 
   const handleSearchChange = useCallback((val: string) => setSearch(val), []);
 
+  // ── Query ─────────────────────────────────────────────────────────────────────
   const queryParams: Record<string, any> = {};
   if (statusFilter !== "ALL") queryParams.status = statusFilter;
   if (methodFilter !== "ALL") queryParams.paymentMethod = methodFilter;
@@ -104,6 +112,7 @@ export default function Payments() {
       })
     : allPayments;
 
+  // ── Mutations ─────────────────────────────────────────────────────────────────
   const deleteMutation  = useDeletePayment();
   const confirmMutation = useConfirmPayment();
   const voidMutation    = useVoidPayment();
@@ -117,7 +126,7 @@ export default function Payments() {
       { id: deleteTarget.id },
       {
         onSuccess: () => {
-          toast({ title: t("common.deleted") });
+          toast({ title: lang === "ar" ? "تم الحذف" : "Deleted" });
           setDeleteTarget(null);
           invalidate();
         },
@@ -165,6 +174,16 @@ export default function Payments() {
     );
   };
 
+  const openCreate = () => {
+    setEditPayment(null);
+    setFormOpen(true);
+  };
+
+  const openEdit = (p: any) => {
+    setEditPayment(p as Payment);
+    setFormOpen(true);
+  };
+
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       {/* Header */}
@@ -180,7 +199,7 @@ export default function Payments() {
           <Button variant="outline" size="sm" onClick={() => refetch()}>
             <RefreshCw className="w-4 h-4" />
           </Button>
-          <Button size="sm" disabled>
+          <Button size="sm" onClick={openCreate}>
             <Plus className="w-4 h-4 me-2" />
             {t("banking.payments.new")}
           </Button>
@@ -194,7 +213,7 @@ export default function Payments() {
           <Input
             value={search}
             onChange={(e) => handleSearchChange(e.target.value)}
-            placeholder={lang === "ar" ? "بحث..." : "Search by number, payee, reference..."}
+            placeholder={lang === "ar" ? "بحث برقم المدفوعة، المستفيد، المرجع..." : "Search by number, payee, reference..."}
             className="ps-9"
           />
         </div>
@@ -233,7 +252,9 @@ export default function Payments() {
             <table className="w-full text-sm">
               <thead className="bg-muted/50 border-b">
                 <tr>
-                  <th className="text-start font-semibold py-3 px-4 whitespace-nowrap">{lang === "ar" ? "رقم الدفعة" : "Number"}</th>
+                  <th className="text-start font-semibold py-3 px-4 whitespace-nowrap">
+                    {lang === "ar" ? "رقم المدفوعة" : "Number"}
+                  </th>
                   <th className="text-start font-semibold py-3 px-4 whitespace-nowrap">{t("banking.date")}</th>
                   <th className="text-start font-semibold py-3 px-4 whitespace-nowrap">{t("banking.paymentMethod")}</th>
                   <th className="text-start font-semibold py-3 px-4 whitespace-nowrap">{t("banking.payee")}</th>
@@ -293,6 +314,10 @@ export default function Payments() {
                             <DropdownMenuContent align="end">
                               {p.status === "DRAFT" && (
                                 <>
+                                  <DropdownMenuItem onClick={() => openEdit(p)}>
+                                    <Pencil className="w-4 h-4 me-2" />
+                                    {t("common.edit")}
+                                  </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => setConfirmTarget({ id: p.id, number: p.number })}>
                                     <CheckCircle className="w-4 h-4 me-2 text-green-600" />
                                     {t("banking.confirm")}
@@ -331,6 +356,14 @@ export default function Payments() {
         )}
       </Card>
 
+      {/* Create / Edit Dialog */}
+      <PaymentFormDialog
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        payment={editPayment}
+        onSuccess={invalidate}
+      />
+
       {/* Delete Dialog */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
         <AlertDialogContent>
@@ -338,7 +371,7 @@ export default function Payments() {
             <AlertDialogTitle>{t("banking.delete.confirm")}</AlertDialogTitle>
             <AlertDialogDescription>
               {lang === "ar"
-                ? `سيتم حذف الدفعة ${deleteTarget?.number} بشكل دائم.`
+                ? `سيتم حذف المدفوعة ${deleteTarget?.number} بشكل دائم.`
                 : `Payment ${deleteTarget?.number} will be permanently deleted.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -358,8 +391,8 @@ export default function Payments() {
             <AlertDialogTitle>{t("banking.confirm")}</AlertDialogTitle>
             <AlertDialogDescription>
               {lang === "ar"
-                ? `سيتم تأكيد الدفعة ${confirmTarget?.number} وتحديث الرصيد.`
-                : `Payment ${confirmTarget?.number} will be confirmed and the account balance updated.`}
+                ? `سيتم تأكيد المدفوعة ${confirmTarget?.number} وتحديث الرصيد وإنشاء قيد محاسبي تلقائياً.`
+                : `Payment ${confirmTarget?.number} will be confirmed, the account balance updated, and a journal entry created automatically.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -372,7 +405,10 @@ export default function Payments() {
       </AlertDialog>
 
       {/* Void Dialog */}
-      <Dialog open={!!voidTarget} onOpenChange={(o) => { if (!o) { setVoidTarget(null); setVoidReason(""); } }}>
+      <Dialog
+        open={!!voidTarget}
+        onOpenChange={(o) => { if (!o) { setVoidTarget(null); setVoidReason(""); } }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t("banking.void")} — {voidTarget?.number}</DialogTitle>
