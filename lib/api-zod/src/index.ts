@@ -71,4 +71,7 @@ export type {
   UpdateJournalEntryInputType,
   UserProfile,
   UserProfileUpdate,
+  TrialBalance,
+  TrialBalanceLine,
+  GetTrialBalanceParams,
 } from "./generated/types";

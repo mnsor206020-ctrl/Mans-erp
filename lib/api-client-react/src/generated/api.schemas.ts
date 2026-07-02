@@ -1725,3 +1725,28 @@ export type ListPettyCash200 = {
   data?: PettyCash[];
 };
 
+export interface TrialBalanceLine {
+  accountId:     string;
+  accountCode:   string;
+  accountNameEn: string;
+  accountNameAr: string;
+  totalDebit:    number;
+  totalCredit:   number;
+  balance:       number;
+}
+
+export interface TrialBalance {
+  fiscalYearId: string;
+  asOf?:        string | null;
+  lines:        TrialBalanceLine[];
+  totalDebit:   number;
+  totalCredit:  number;
+}
+
+export type GetTrialBalanceParams = {
+  /** UUID of the fiscal year (required) */
+  fiscalYearId: string;
+  /** Optional ISO date — only entries on or before this date are included */
+  asOf?: string;
+};
+

@@ -4349,3 +4349,39 @@ components:
           type: boolean
       required:
         - ok
+
+  /reports/trial-balance:
+    get:
+      operationId: getTrialBalance
+      tags: [reports]
+      summary: Get Trial Balance report
+      description: >
+        Returns aggregated debit and credit totals per account for all POSTED
+        journal entries within the specified fiscal year. Optionally filtered
+        to entries on or before the asOf date.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: fiscalYearId
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+          description: UUID of the fiscal year
+        - name: asOf
+          in: query
+          required: false
+          schema: { type: string, format: date }
+          description: Only include entries on or before this date (ISO 8601)
+      responses:
+        "200":
+          description: Trial balance data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrialBalance"
+        "400":
+          description: Validation error (missing fiscalYearId)
+        "401":
+          description: Unauthorized
+        "404":
+          description: Fiscal year not found

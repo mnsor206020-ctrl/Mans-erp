@@ -3628,3 +3628,31 @@ export const DeletePettyCashResponse = zod.object({
 })
 
 
+
+
+/**
+ * Returns Trial Balance data for a fiscal year
+ * @summary Get Trial Balance report
+ */
+export const GetTrialBalanceParams = zod.object({
+  "fiscalYearId": zod.coerce.string().uuid(),
+  "asOf": zod.coerce.string().optional()
+})
+
+export const GetTrialBalanceResponseLine = zod.object({
+  "accountId":     zod.string().uuid(),
+  "accountCode":   zod.string(),
+  "accountNameEn": zod.string(),
+  "accountNameAr": zod.string(),
+  "totalDebit":    zod.number(),
+  "totalCredit":   zod.number(),
+  "balance":       zod.number()
+})
+
+export const GetTrialBalanceResponse = zod.object({
+  "fiscalYearId": zod.string().uuid(),
+  "asOf":         zod.string().nullish(),
+  "lines":        zod.array(GetTrialBalanceResponseLine),
+  "totalDebit":   zod.number(),
+  "totalCredit":  zod.number()
+})
