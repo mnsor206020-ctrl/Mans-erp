@@ -96,6 +96,9 @@ import type {
   ReceiptUpdate,
   RejectJournalEntryBody,
   ReverseJournalEntryBody,
+  RolloverFiscalYear400,
+  RolloverFiscalYearInput,
+  RolloverFiscalYearResult,
   SubmitJournalEntryBody,
   TrialBalance,
   UpdateChartOfAccountInput,
@@ -1719,6 +1722,77 @@ export const useCloseFiscalYear = <TError = ErrorType<CloseFiscalYear400 | void>
         TContext
       > => {
       return useMutation(getCloseFiscalYearMutationOptions(options));
+    }
+
+export const getRolloverFiscalYearUrl = (id: string,) => {
+
+
+
+
+  return `/api/fiscal-years/${id}/rollover`
+}
+
+/**
+ * @summary Roll a closed fiscal year forward into a new fiscal year with opening balances
+ */
+export const rolloverFiscalYear = async (id: string,
+    rolloverFiscalYearInput?: RolloverFiscalYearInput, options?: RequestInit): Promise<RolloverFiscalYearResult> => {
+
+  return customFetch<RolloverFiscalYearResult>(getRolloverFiscalYearUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(rolloverFiscalYearInput)
+  }
+);}
+
+
+
+
+export const getRolloverFiscalYearMutationOptions = <TError = ErrorType<RolloverFiscalYear400 | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rolloverFiscalYear>>, TError,{id: string;data?: BodyType<RolloverFiscalYearInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof rolloverFiscalYear>>, TError,{id: string;data?: BodyType<RolloverFiscalYearInput>}, TContext> => {
+
+const mutationKey = ['rolloverFiscalYear'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof rolloverFiscalYear>>, {id: string;data?: BodyType<RolloverFiscalYearInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  rolloverFiscalYear(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RolloverFiscalYearMutationResult = NonNullable<Awaited<ReturnType<typeof rolloverFiscalYear>>>
+    export type RolloverFiscalYearMutationBody = BodyType<RolloverFiscalYearInput> | undefined
+    export type RolloverFiscalYearMutationError = ErrorType<RolloverFiscalYear400 | void>
+
+    /**
+ * @summary Roll a closed fiscal year forward into a new fiscal year with opening balances
+ */
+export const useRolloverFiscalYear = <TError = ErrorType<RolloverFiscalYear400 | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rolloverFiscalYear>>, TError,{id: string;data?: BodyType<RolloverFiscalYearInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof rolloverFiscalYear>>,
+        TError,
+        {id: string;data?: BodyType<RolloverFiscalYearInput>},
+        TContext
+      > => {
+      return useMutation(getRolloverFiscalYearMutationOptions(options));
     }
 
 export const getListCostCentersUrl = (params?: ListCostCentersParams,) => {

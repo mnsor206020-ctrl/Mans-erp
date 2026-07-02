@@ -355,6 +355,29 @@ export interface CloseFiscalYearResult {
   closedAt: string;
 }
 
+export interface RolloverFiscalYearInput {
+  nameEn?: string;
+  nameAr?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+export type RolloverFiscalYearResultStatus = typeof RolloverFiscalYearResultStatus[keyof typeof RolloverFiscalYearResultStatus];
+
+
+export const RolloverFiscalYearResultStatus = {
+  OPEN: 'OPEN',
+} as const;
+
+export interface RolloverFiscalYearResult {
+  fiscalYearId: string;
+  previousFiscalYearId: string;
+  status: RolloverFiscalYearResultStatus;
+  openingJournalEntryId: string;
+  startDate: string;
+  endDate: string;
+}
+
 export interface CostCenter {
   id: string;
   organizationId: string;
@@ -1562,6 +1585,10 @@ export const ListFiscalYearsStatus = {
 } as const;
 
 export type CloseFiscalYear400 = {
+  error?: string;
+};
+
+export type RolloverFiscalYear400 = {
   error?: string;
 };
 

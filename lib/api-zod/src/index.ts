@@ -86,4 +86,7 @@ export type {
   CloseFiscalYearInput,
   CloseFiscalYearResult,
   CloseFiscalYearResultStatus,
+  RolloverFiscalYearInput,
+  RolloverFiscalYearResult,
+  RolloverFiscalYearResultStatus,
 } from "./generated/types";

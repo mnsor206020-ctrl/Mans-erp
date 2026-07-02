@@ -256,4 +256,184 @@ router.post("/:id/close", requireAuth(), async (req, res): Promise<void> => {
   }
 });
 
+// ── POST /:id/rollover — create next fiscal year with opening balances ────────
+router.post("/:id/rollover", requireAuth(), async (req, res): Promise<void> => {
+  try {
+    const { userId } = getAuth(req);
+    const user = await getUser(userId!);
+    if (!user) { res.status(401).json({ error: "User not found" }); return; }
+    if (!user.organizationId) { res.status(400).json({ error: "User has no organization" }); return; }
+
+    // ── 1. Resolve and guard the source fiscal year ────────────────────────────
+    const sourceFY = await prisma.fiscalYear.findFirst({
+      where: { id: req.params.id as string, organizationId: user.organizationId, deletedAt: null },
+    });
+    if (!sourceFY) { res.status(404).json({ error: "Fiscal year not found" }); return; }
+    if (sourceFY.status !== "CLOSED") {
+      res.status(400).json({ error: `Fiscal year must be CLOSED before it can be rolled over. Current status: ${sourceFY.status}.` });
+      return;
+    }
+
+    // ── 2. Prevent duplicate rollovers ──────────────────────────────────────────
+    const existingNext = await prisma.fiscalYear.findFirst({
+      where: { previousFiscalYearId: sourceFY.id, deletedAt: null },
+    });
+    if (existingNext) {
+      res.status(400).json({ error: "This fiscal year has already been rolled over." });
+      return;
+    }
+
+    // ── 3. Compute new fiscal year dates & names (auto-derived if not provided) ─
+    const { nameEn, nameAr, startDate, endDate } = req.body ?? {};
+
+    const newStartDate = startDate ? new Date(startDate) : (() => {
+      const d = new Date(sourceFY.endDate);
+      d.setDate(d.getDate() + 1);
+      return d;
+    })();
+    const newEndDate = endDate ? new Date(endDate) : (() => {
+      const d = new Date(newStartDate);
+      d.setFullYear(d.getFullYear() + 1);
+      d.setDate(d.getDate() - 1);
+      return d;
+    })();
+    const newYearLabel = newStartDate.getFullYear();
+    const newNameEn = nameEn || `FY ${newYearLabel}`;
+    const newNameAr = nameAr || `السنة المالية ${newYearLabel}`;
+
+    // ── 4. Duplicate fiscal year window guard ───────────────────────────────────
+    const overlapping = await prisma.fiscalYear.findFirst({
+      where: {
+        organizationId: user.organizationId,
+        deletedAt: null,
+        startDate: newStartDate,
+        endDate:   newEndDate,
+      },
+    });
+    if (overlapping) {
+      res.status(400).json({ error: "A fiscal year with these dates already exists." });
+      return;
+    }
+
+    // ── 5. Aggregate cumulative POSTED balances for BALANCE SHEET accounts ─────
+    const postedLines = await prisma.journalEntryLine.findMany({
+      where: {
+        journalEntry: {
+          organizationId: user.organizationId,
+          status:  "POSTED",
+          entryDate: { lte: sourceFY.endDate },
+          deletedAt: null,
+        },
+        account: { type: { in: ["ASSET", "LIABILITY", "EQUITY"] }, organizationId: user.organizationId },
+      },
+      include: {
+        account: { select: { id: true, code: true, nameEn: true, nameAr: true, type: true, nature: true } },
+      },
+    });
+
+    // ── 6. Group by account ─────────────────────────────────────────────────────
+    const accountMap = new Map<string, { accountId: string; totalDebit: number; totalCredit: number }>();
+    for (const line of postedLines) {
+      const existing = accountMap.get(line.accountId);
+      if (existing) {
+        existing.totalDebit  += Number(line.debit);
+        existing.totalCredit += Number(line.credit);
+      } else {
+        accountMap.set(line.accountId, {
+          accountId:   line.accountId,
+          totalDebit:  Number(line.debit),
+          totalCredit: Number(line.credit),
+        });
+      }
+    }
+
+    // ── 7. Build opening entry lines (carry forward each account's balance) ────
+    const openingLines: { accountId: string; lineNumber: number; debit: number; credit: number }[] = [];
+    let lineNumber = 1;
+    let totalOpeningDebits  = 0;
+    let totalOpeningCredits = 0;
+
+    for (const acc of accountMap.values()) {
+      const netDebit = acc.totalDebit - acc.totalCredit;
+      if (netDebit === 0) continue;
+      if (netDebit > 0) {
+        openingLines.push({ accountId: acc.accountId, lineNumber: lineNumber++, debit: netDebit, credit: 0 });
+        totalOpeningDebits += netDebit;
+      } else {
+        openingLines.push({ accountId: acc.accountId, lineNumber: lineNumber++, debit: 0, credit: -netDebit });
+        totalOpeningCredits += -netDebit;
+      }
+    }
+
+    if (openingLines.length === 0) {
+      res.status(400).json({ error: "No balance sheet account balances found to roll forward." });
+      return;
+    }
+
+    // ── 8. Create new fiscal year + opening JE — all in one transaction ────────
+    const result = await prisma.$transaction(async (tx) => {
+      const newFY = await tx.fiscalYear.create({
+        data: {
+          organizationId:       user.organizationId!,
+          nameEn:               newNameEn,
+          nameAr:               newNameAr,
+          startDate:            newStartDate,
+          endDate:              newEndDate,
+          status:               "OPEN",
+          previousFiscalYearId: sourceFY.id,
+          rolledOverAt:         new Date(),
+        },
+      });
+
+      const number = await generateJournalNumberUtil(user.organizationId!, newStartDate.getFullYear(), tx as any);
+
+      const openingEntry = await tx.journalEntry.create({
+        data: {
+          organizationId:  user.organizationId!,
+          fiscalYearId:    newFY.id,
+          number,
+          entryDate:       newStartDate,
+          type:            "OPENING",
+          status:          "POSTED",
+          currencyCode:    "SAR",
+          exchangeRate:    1,
+          totalDebit:      totalOpeningDebits,
+          totalCredit:     totalOpeningCredits,
+          descriptionEn:   `Opening balances rolled over from ${sourceFY.nameEn}`,
+          descriptionAr:   `أرصدة افتتاحية مرحّلة من ${sourceFY.nameAr}`,
+          postedAt:        new Date(),
+          postedByUserId:  user.id,
+          createdByUserId: user.id,
+          lines: {
+            create: openingLines.map((l) => ({
+              accountId:    l.accountId,
+              lineNumber:   l.lineNumber,
+              debit:        l.debit,
+              credit:       l.credit,
+              debitBase:    l.debit,
+              creditBase:   l.credit,
+              descriptionEn: `Opening balance`,
+              descriptionAr: `رصيد افتتاحي`,
+            })),
+          },
+        },
+      });
+
+      return { newFY, openingEntry };
+    });
+
+    res.status(201).json({
+      fiscalYearId:          result.newFY.id,
+      previousFiscalYearId:  sourceFY.id,
+      status:                "OPEN",
+      openingJournalEntryId: result.openingEntry.id,
+      startDate:             result.newFY.startDate,
+      endDate:               result.newFY.endDate,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to roll over fiscal year" });
+  }
+});
+
 export default router;

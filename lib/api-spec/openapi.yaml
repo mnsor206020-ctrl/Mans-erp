@@ -552,6 +552,42 @@ paths:
         "404":
           description: Fiscal year not found
 
+  /fiscal-years/{id}/rollover:
+    post:
+      operationId: rolloverFiscalYear
+      tags: [fiscal-years]
+      summary: Roll a closed fiscal year forward into a new fiscal year with opening balances
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RolloverFiscalYearInput"
+      responses:
+        "201":
+          description: New fiscal year created with opening balances
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RolloverFiscalYearResult"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error: { type: string }
+        "404":
+          description: Fiscal year not found
+
   /cost-centers:
     get:
       operationId: listCostCenters
@@ -3063,6 +3099,49 @@ components:
         - closingJournalEntryId
         - netIncome
         - closedAt
+
+    RolloverFiscalYearInput:
+      type: object
+      properties:
+        nameEn:
+          type: string
+        nameAr:
+          type: string
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+
+    RolloverFiscalYearResult:
+      type: object
+      properties:
+        fiscalYearId:
+          type: string
+          format: uuid
+        previousFiscalYearId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [OPEN]
+        openingJournalEntryId:
+          type: string
+          format: uuid
+        startDate:
+          type: string
+          format: date-time
+        endDate:
+          type: string
+          format: date-time
+      required:
+        - fiscalYearId
+        - previousFiscalYearId
+        - status
+        - openingJournalEntryId
+        - startDate
+        - endDate
 
     CostCenter:
       type: object

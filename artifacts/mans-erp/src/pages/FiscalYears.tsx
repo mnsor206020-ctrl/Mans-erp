@@ -4,6 +4,7 @@ import {
   useListFiscalYears,
   useListChartOfAccounts,
   useCloseFiscalYear,
+  useRolloverFiscalYear,
 } from "@workspace/api-client-react";
 import type { FiscalYear } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
@@ -29,7 +30,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { CalendarRange, Lock } from "lucide-react";
+import { CalendarRange, Lock, RotateCw } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 
 function formatDate(d: string | Date): string {
@@ -58,6 +59,8 @@ export default function FiscalYears() {
   const [closingFY, setClosingFY]               = useState<FiscalYear | null>(null);
   const [retainedEarningsId, setRetainedEarningsId] = useState("");
   const [isSubmitting, setIsSubmitting]          = useState(false);
+  const [rollingOverFY, setRollingOverFY]        = useState<FiscalYear | null>(null);
+  const [isRollingOver, setIsRollingOver]        = useState(false);
 
   const { data: fiscalYears, isLoading } = useListFiscalYears();
 
@@ -68,7 +71,14 @@ export default function FiscalYears() {
   });
   const equityAccounts = (accountsPage?.data ?? []).filter((a) => a.type === "EQUITY");
 
-  const closeMutation = useCloseFiscalYear();
+  const closeMutation    = useCloseFiscalYear();
+  const rolloverMutation = useRolloverFiscalYear();
+
+  const rolledOverSourceIds = new Set(
+    (fiscalYears ?? [])
+      .map((fy) => (fy as FiscalYear & { previousFiscalYearId?: string | null }).previousFiscalYearId)
+      .filter((id): id is string => !!id)
+  );
 
   function openCloseDialog(fy: FiscalYear) {
     setRetainedEarningsId("");
@@ -78,6 +88,33 @@ export default function FiscalYears() {
   function cancelClose() {
     setClosingFY(null);
     setRetainedEarningsId("");
+  }
+
+  function openRolloverDialog(fy: FiscalYear) {
+    setRollingOverFY(fy);
+  }
+
+  function cancelRollover() {
+    setRollingOverFY(null);
+  }
+
+  async function confirmRollover() {
+    if (!rollingOverFY) return;
+    setIsRollingOver(true);
+    try {
+      await rolloverMutation.mutateAsync({ id: rollingOverFY.id, data: {} });
+      toast({ title: t("fiscalYears.rolloverSuccess") });
+      await queryClient.invalidateQueries();
+      setRollingOverFY(null);
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message :
+        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
+        t("fiscalYears.rolloverError");
+      toast({ title: t("fiscalYears.rolloverError"), description: message, variant: "destructive" });
+    } finally {
+      setIsRollingOver(false);
+    }
   }
 
   async function confirmClose() {
@@ -190,6 +227,22 @@ export default function FiscalYears() {
                             {t("fiscalYears.close")}
                           </Button>
                         )}
+                        {fy.status === "CLOSED" && (
+                          rolledOverSourceIds.has(fy.id) ? (
+                            <Badge variant="outline" className="text-xs">
+                              {t("fiscalYears.alreadyRolledOver")}
+                            </Badge>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openRolloverDialog(fy)}
+                            >
+                              <RotateCw className="w-4 h-4 me-2" />
+                              {t("fiscalYears.rollover")}
+                            </Button>
+                          )
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -245,6 +298,30 @@ export default function FiscalYears() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {isSubmitting ? "…" : t("fiscalYears.close")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Roll Forward Fiscal Year confirmation dialog */}
+      <AlertDialog open={!!rollingOverFY} onOpenChange={(open) => { if (!open) cancelRollover(); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("fiscalYears.rolloverConfirmTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("fiscalYears.rolloverConfirmDesc")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={cancelRollover} disabled={isRollingOver}>
+              {t("common.cancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmRollover}
+              disabled={isRollingOver}
+            >
+              {isRollingOver ? "…" : t("fiscalYears.rollover")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

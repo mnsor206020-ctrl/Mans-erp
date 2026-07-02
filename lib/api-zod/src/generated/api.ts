@@ -552,6 +552,30 @@ export const CloseFiscalYearResponse = zod.object({
 
 
 /**
+ * @summary Roll a closed fiscal year forward into a new fiscal year with opening balances
+ */
+export const RolloverFiscalYearParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const RolloverFiscalYearBody = zod.object({
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional(),
+  "startDate": zod.coerce.date().optional(),
+  "endDate": zod.coerce.date().optional()
+})
+
+export const RolloverFiscalYearResponse = zod.object({
+  "fiscalYearId": zod.string().uuid(),
+  "previousFiscalYearId": zod.string().uuid(),
+  "status": zod.enum(['OPEN']),
+  "openingJournalEntryId": zod.string().uuid(),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date()
+})
+
+
+/**
  * @summary List cost centers
  */
 export const ListCostCentersQueryParams = zod.object({
