@@ -8,9 +8,9 @@ import {
   useVoidReceipt,
   getListReceiptsQueryKey,
 } from "@workspace/api-client-react";
+import type { Receipt } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
@@ -46,15 +46,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ReceiptFormDialog } from "@/components/banking/ReceiptFormDialog";
 import {
   Plus,
   Search,
-  Receipt,
+  Receipt as ReceiptIcon,
   MoreHorizontal,
   CheckCircle,
   XCircle,
   Trash2,
   RefreshCw,
+  Pencil,
 } from "lucide-react";
 
 const STATUS_OPTIONS = ["DRAFT", "CONFIRMED", "RECONCILED", "VOIDED"] as const;
@@ -75,17 +77,22 @@ export default function Receipts() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // ── Filters ──────────────────────────────────────────────────────────────────
   const [search, setSearch]             = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [methodFilter, setMethodFilter] = useState("ALL");
 
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; number: string } | null>(null);
-  const [confirmTarget, setConfirmTarget] = useState<{ id: string; number: string } | null>(null);
-  const [voidTarget, setVoidTarget]     = useState<{ id: string; number: string } | null>(null);
-  const [voidReason, setVoidReason]     = useState("");
+  // ── Dialog state ─────────────────────────────────────────────────────────────
+  const [formOpen, setFormOpen]             = useState(false);
+  const [editReceipt, setEditReceipt]       = useState<Receipt | null>(null);
+  const [deleteTarget, setDeleteTarget]     = useState<{ id: string; number: string } | null>(null);
+  const [confirmTarget, setConfirmTarget]   = useState<{ id: string; number: string } | null>(null);
+  const [voidTarget, setVoidTarget]         = useState<{ id: string; number: string } | null>(null);
+  const [voidReason, setVoidReason]         = useState("");
 
   const handleSearchChange = useCallback((val: string) => setSearch(val), []);
 
+  // ── Query ─────────────────────────────────────────────────────────────────────
   const queryParams: Record<string, any> = {};
   if (statusFilter !== "ALL") queryParams.status = statusFilter;
   if (methodFilter !== "ALL") queryParams.paymentMethod = methodFilter;
@@ -105,6 +112,7 @@ export default function Receipts() {
       })
     : allReceipts;
 
+  // ── Mutations ─────────────────────────────────────────────────────────────────
   const deleteMutation  = useDeleteReceipt();
   const confirmMutation = useConfirmReceipt();
   const voidMutation    = useVoidReceipt();
@@ -118,7 +126,7 @@ export default function Receipts() {
       { id: deleteTarget.id },
       {
         onSuccess: () => {
-          toast({ title: t("common.deleted") });
+          toast({ title: t("common.deleted") ?? (lang === "ar" ? "تم الحذف" : "Deleted") });
           setDeleteTarget(null);
           invalidate();
         },
@@ -166,13 +174,23 @@ export default function Receipts() {
     );
   };
 
+  const openCreate = () => {
+    setEditReceipt(null);
+    setFormOpen(true);
+  };
+
+  const openEdit = (r: any) => {
+    setEditReceipt(r as Receipt);
+    setFormOpen(true);
+  };
+
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <Receipt className="w-6 h-6 text-primary" />
+            <ReceiptIcon className="w-6 h-6 text-primary" />
             {t("banking.receipts.title")}
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">{t("banking.receipts.subtitle")}</p>
@@ -181,7 +199,7 @@ export default function Receipts() {
           <Button variant="outline" size="sm" onClick={() => refetch()}>
             <RefreshCw className="w-4 h-4" />
           </Button>
-          <Button size="sm" disabled>
+          <Button size="sm" onClick={openCreate}>
             <Plus className="w-4 h-4 me-2" />
             {t("banking.receipts.new")}
           </Button>
@@ -195,7 +213,7 @@ export default function Receipts() {
           <Input
             value={search}
             onChange={(e) => handleSearchChange(e.target.value)}
-            placeholder={lang === "ar" ? "بحث..." : "Search by number, payer, reference..."}
+            placeholder={lang === "ar" ? "بحث برقم المقبوضة، المانح، المرجع..." : "Search by number, payer, reference..."}
             className="ps-9"
           />
         </div>
@@ -234,7 +252,9 @@ export default function Receipts() {
             <table className="w-full text-sm">
               <thead className="bg-muted/50 border-b">
                 <tr>
-                  <th className="text-start font-semibold py-3 px-4 whitespace-nowrap">{lang === "ar" ? "رقم المقبوضة" : "Number"}</th>
+                  <th className="text-start font-semibold py-3 px-4 whitespace-nowrap">
+                    {lang === "ar" ? "رقم المقبوضة" : "Number"}
+                  </th>
                   <th className="text-start font-semibold py-3 px-4 whitespace-nowrap">{t("banking.date")}</th>
                   <th className="text-start font-semibold py-3 px-4 whitespace-nowrap">{t("banking.paymentMethod")}</th>
                   <th className="text-start font-semibold py-3 px-4 whitespace-nowrap">{t("banking.payer")}</th>
@@ -247,7 +267,7 @@ export default function Receipts() {
                 {filtered.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="text-center py-12 text-muted-foreground">
-                      <Receipt className="w-8 h-8 mx-auto mb-3 opacity-30" />
+                      <ReceiptIcon className="w-8 h-8 mx-auto mb-3 opacity-30" />
                       <p className="font-medium">{t("banking.receipts.empty")}</p>
                       <p className="text-xs mt-1">{t("banking.receipts.empty.desc")}</p>
                     </td>
@@ -294,6 +314,10 @@ export default function Receipts() {
                             <DropdownMenuContent align="end">
                               {r.status === "DRAFT" && (
                                 <>
+                                  <DropdownMenuItem onClick={() => openEdit(r)}>
+                                    <Pencil className="w-4 h-4 me-2" />
+                                    {t("common.edit")}
+                                  </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => setConfirmTarget({ id: r.id, number: r.number })}>
                                     <CheckCircle className="w-4 h-4 me-2 text-green-600" />
                                     {t("banking.confirm")}
@@ -332,6 +356,14 @@ export default function Receipts() {
         )}
       </Card>
 
+      {/* Create / Edit Dialog */}
+      <ReceiptFormDialog
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        receipt={editReceipt}
+        onSuccess={invalidate}
+      />
+
       {/* Delete Dialog */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
         <AlertDialogContent>
@@ -359,8 +391,8 @@ export default function Receipts() {
             <AlertDialogTitle>{t("banking.confirm")}</AlertDialogTitle>
             <AlertDialogDescription>
               {lang === "ar"
-                ? `سيتم تأكيد المقبوضة ${confirmTarget?.number} وتحديث الرصيد.`
-                : `Receipt ${confirmTarget?.number} will be confirmed and the account balance updated.`}
+                ? `سيتم تأكيد المقبوضة ${confirmTarget?.number} وتحديث الرصيد وإنشاء قيد محاسبي تلقائياً.`
+                : `Receipt ${confirmTarget?.number} will be confirmed, the account balance updated, and a journal entry created automatically.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
