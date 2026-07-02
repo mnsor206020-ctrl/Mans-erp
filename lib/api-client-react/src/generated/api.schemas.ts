@@ -336,6 +336,25 @@ export interface CreateFiscalYearInput {
   isDefault?: boolean;
 }
 
+export interface CloseFiscalYearInput {
+  retainedEarningsAccountId: string;
+}
+
+export type CloseFiscalYearResultStatus = typeof CloseFiscalYearResultStatus[keyof typeof CloseFiscalYearResultStatus];
+
+
+export const CloseFiscalYearResultStatus = {
+  CLOSED: 'CLOSED',
+} as const;
+
+export interface CloseFiscalYearResult {
+  fiscalYearId: string;
+  status: CloseFiscalYearResultStatus;
+  closingJournalEntryId: string;
+  netIncome: number;
+  closedAt: string;
+}
+
 export interface CostCenter {
   id: string;
   organizationId: string;
@@ -1541,6 +1560,10 @@ export const ListFiscalYearsStatus = {
   CLOSED: 'CLOSED',
   LOCKED: 'LOCKED',
 } as const;
+
+export type CloseFiscalYear400 = {
+  error?: string;
+};
 
 export type ListCostCentersParams = {
 organizationId?: string;

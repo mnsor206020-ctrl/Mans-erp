@@ -83,4 +83,7 @@ export type {
   IncomeStatement,
   IncomeStatementAccount,
   GetIncomeStatementParams,
+  CloseFiscalYearInput,
+  CloseFiscalYearResult,
+  CloseFiscalYearResultStatus,
 } from "./generated/types";

@@ -532,6 +532,26 @@ export const CreateFiscalYearResponse = zod.object({
 
 
 /**
+ * @summary Close a fiscal year (create closing entries)
+ */
+export const CloseFiscalYearParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const CloseFiscalYearBody = zod.object({
+  "retainedEarningsAccountId": zod.string().uuid()
+})
+
+export const CloseFiscalYearResponse = zod.object({
+  "fiscalYearId": zod.string().uuid(),
+  "status": zod.enum(['CLOSED']),
+  "closingJournalEntryId": zod.string().uuid(),
+  "netIncome": zod.number(),
+  "closedAt": zod.coerce.date()
+})
+
+
+/**
  * @summary List cost centers
  */
 export const ListCostCentersQueryParams = zod.object({

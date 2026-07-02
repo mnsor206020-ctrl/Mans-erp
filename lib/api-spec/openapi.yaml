@@ -516,6 +516,42 @@ paths:
               schema:
                 $ref: "#/components/schemas/FiscalYear"
 
+  /fiscal-years/{id}/close:
+    post:
+      operationId: closeFiscalYear
+      tags: [fiscal-years]
+      summary: Close a fiscal year (create closing entries)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CloseFiscalYearInput"
+      responses:
+        "200":
+          description: Fiscal year closed successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CloseFiscalYearResult"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error: { type: string }
+        "404":
+          description: Fiscal year not found
+
   /cost-centers:
     get:
       operationId: listCostCenters
@@ -2994,6 +3030,39 @@ components:
         - nameAr
         - startDate
         - endDate
+
+    CloseFiscalYearInput:
+      type: object
+      properties:
+        retainedEarningsAccountId:
+          type: string
+          format: uuid
+      required:
+        - retainedEarningsAccountId
+
+    CloseFiscalYearResult:
+      type: object
+      properties:
+        fiscalYearId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [CLOSED]
+        closingJournalEntryId:
+          type: string
+          format: uuid
+        netIncome:
+          type: number
+        closedAt:
+          type: string
+          format: date-time
+      required:
+        - fiscalYearId
+        - status
+        - closingJournalEntryId
+        - netIncome
+        - closedAt
 
     CostCenter:
       type: object

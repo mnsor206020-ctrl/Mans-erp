@@ -32,6 +32,7 @@ import TrialBalance from "@/pages/TrialBalance";
 import AccountLedger from "@/pages/AccountLedger";
 import BalanceSheet from "@/pages/BalanceSheet";
 import IncomeStatement from "@/pages/IncomeStatement";
+import FiscalYears from "@/pages/FiscalYears";
 import NotFound from "@/pages/not-found";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 
@@ -270,6 +271,10 @@ function ClerkProviderWithRoutes() {
 
           <Route path="/reports/income-statement">
             <ProtectedRoute component={IncomeStatement} />
+          </Route>
+
+          <Route path="/fiscal-years">
+            <ProtectedRoute component={FiscalYears} />
           </Route>
 
           <Route component={NotFound} />

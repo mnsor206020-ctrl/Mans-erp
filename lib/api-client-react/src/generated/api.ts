@@ -35,6 +35,9 @@ import type {
   ChartOfAccount,
   ChartOfAccountDetail,
   ChartOfAccountNode,
+  CloseFiscalYear400,
+  CloseFiscalYearInput,
+  CloseFiscalYearResult,
   CopyJournalEntryBody,
   CostCenter,
   CreateChartOfAccountInput,
@@ -1645,6 +1648,77 @@ export const useCreateFiscalYear = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getCreateFiscalYearMutationOptions(options));
+    }
+
+export const getCloseFiscalYearUrl = (id: string,) => {
+
+
+
+
+  return `/api/fiscal-years/${id}/close`
+}
+
+/**
+ * @summary Close a fiscal year (create closing entries)
+ */
+export const closeFiscalYear = async (id: string,
+    closeFiscalYearInput: CloseFiscalYearInput, options?: RequestInit): Promise<CloseFiscalYearResult> => {
+
+  return customFetch<CloseFiscalYearResult>(getCloseFiscalYearUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(closeFiscalYearInput)
+  }
+);}
+
+
+
+
+export const getCloseFiscalYearMutationOptions = <TError = ErrorType<CloseFiscalYear400 | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof closeFiscalYear>>, TError,{id: string;data: BodyType<CloseFiscalYearInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof closeFiscalYear>>, TError,{id: string;data: BodyType<CloseFiscalYearInput>}, TContext> => {
+
+const mutationKey = ['closeFiscalYear'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof closeFiscalYear>>, {id: string;data: BodyType<CloseFiscalYearInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  closeFiscalYear(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CloseFiscalYearMutationResult = NonNullable<Awaited<ReturnType<typeof closeFiscalYear>>>
+    export type CloseFiscalYearMutationBody = BodyType<CloseFiscalYearInput>
+    export type CloseFiscalYearMutationError = ErrorType<CloseFiscalYear400 | void>
+
+    /**
+ * @summary Close a fiscal year (create closing entries)
+ */
+export const useCloseFiscalYear = <TError = ErrorType<CloseFiscalYear400 | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof closeFiscalYear>>, TError,{id: string;data: BodyType<CloseFiscalYearInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof closeFiscalYear>>,
+        TError,
+        {id: string;data: BodyType<CloseFiscalYearInput>},
+        TContext
+      > => {
+      return useMutation(getCloseFiscalYearMutationOptions(options));
     }
 
 export const getListCostCentersUrl = (params?: ListCostCentersParams,) => {
