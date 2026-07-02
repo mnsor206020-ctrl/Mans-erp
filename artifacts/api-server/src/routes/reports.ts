@@ -341,4 +341,145 @@ router.get("/balance-sheet", requireAuth(), async (req, res): Promise<void> => {
   }
 });
 
+// ─── GET /reports/income-statement ────────────────────────────────────────────
+
+router.get("/income-statement", requireAuth(), async (req, res): Promise<void> => {
+  try {
+    const { userId } = getAuth(req);
+    if (!userId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    const user = await prisma.user.findFirst({ where: { clerkId: userId, deletedAt: null } });
+    if (!user) {
+      res.status(401).json({ error: "User not found" });
+      return;
+    }
+    if (!user.organizationId) {
+      res.status(400).json({ error: "User has no organization" });
+      return;
+    }
+
+    const { fiscalYearId, from, to } = req.query as Record<string, string>;
+    if (!fiscalYearId || !from || !to) {
+      res.status(400).json({ error: "fiscalYearId, from, and to are required" });
+      return;
+    }
+
+    const fiscalYear = await prisma.fiscalYear.findFirst({
+      where: { id: fiscalYearId, organizationId: user.organizationId, deletedAt: null },
+    });
+    if (!fiscalYear) {
+      res.status(404).json({ error: "Fiscal year not found" });
+      return;
+    }
+
+    const lines = await prisma.journalEntryLine.findMany({
+      where: {
+        account: {
+          type:           { in: ["REVENUE", "EXPENSE"] },
+          organizationId: user.organizationId,
+          deletedAt:      null,
+        },
+        journalEntry: {
+          fiscalYearId,
+          status:    "POSTED",
+          deletedAt: null,
+          entryDate: { gte: new Date(from), lte: new Date(to) },
+        },
+      },
+      include: {
+        account: {
+          select: {
+            id:     true,
+            code:   true,
+            nameEn: true,
+            nameAr: true,
+            type:   true,
+            nature: true,
+          },
+        },
+      },
+    });
+
+    // Aggregate debit/credit per account
+    const accountMap = new Map<string, {
+      accountId:     string;
+      accountCode:   string;
+      accountNameEn: string;
+      accountNameAr: string;
+      type:          string;
+      nature:        string;
+      totalDebit:    number;
+      totalCredit:   number;
+    }>();
+
+    for (const line of lines) {
+      const key      = line.accountId;
+      const existing = accountMap.get(key);
+      if (existing) {
+        existing.totalDebit  += Number(line.debit);
+        existing.totalCredit += Number(line.credit);
+      } else {
+        accountMap.set(key, {
+          accountId:     line.accountId,
+          accountCode:   line.account.code,
+          accountNameEn: line.account.nameEn,
+          accountNameAr: line.account.nameAr,
+          type:          line.account.type,
+          nature:        line.account.nature,
+          totalDebit:    Number(line.debit),
+          totalCredit:   Number(line.credit),
+        });
+      }
+    }
+
+    // Balance per nature: CREDIT → credit − debit; DEBIT → debit − credit
+    const revenue:  { accountId: string; accountCode: string; accountNameEn: string; accountNameAr: string; balance: number }[] = [];
+    const expenses: typeof revenue = [];
+
+    for (const acc of accountMap.values()) {
+      const balance =
+        acc.nature === "CREDIT"
+          ? acc.totalCredit - acc.totalDebit
+          : acc.totalDebit - acc.totalCredit;
+
+      const row = {
+        accountId:     acc.accountId,
+        accountCode:   acc.accountCode,
+        accountNameEn: acc.accountNameEn,
+        accountNameAr: acc.accountNameAr,
+        balance,
+      };
+
+      if      (acc.type === "REVENUE") revenue.push(row);
+      else if (acc.type === "EXPENSE") expenses.push(row);
+    }
+
+    // Sort each section by account code
+    const byCode = (a: { accountCode: string }, b: { accountCode: string }) =>
+      a.accountCode.localeCompare(b.accountCode);
+    revenue.sort(byCode);
+    expenses.sort(byCode);
+
+    const totalRevenue  = revenue.reduce((s, r) => s + r.balance, 0);
+    const totalExpenses = expenses.reduce((s, r) => s + r.balance, 0);
+    const netIncome     = totalRevenue - totalExpenses;
+
+    res.json({
+      fiscalYearId,
+      from,
+      to,
+      revenue,
+      expenses,
+      totalRevenue,
+      totalExpenses,
+      netIncome,
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to generate income statement" });
+  }
+});
+
 export default router;

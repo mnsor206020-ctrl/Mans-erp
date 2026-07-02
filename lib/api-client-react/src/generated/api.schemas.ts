@@ -1466,6 +1466,25 @@ export interface BalanceSheet {
   isBalanced: boolean;
 }
 
+export interface IncomeStatementAccount {
+  accountId: string;
+  accountCode: string;
+  accountNameEn: string;
+  accountNameAr: string;
+  balance: number;
+}
+
+export interface IncomeStatement {
+  fiscalYearId: string;
+  from: string;
+  to: string;
+  revenue: IncomeStatementAccount[];
+  expenses: IncomeStatementAccount[];
+  totalRevenue: number;
+  totalExpenses: number;
+  netIncome: number;
+}
+
 export type GetChartOfAccountsTreeParams = {
 organizationId?: string;
 };
@@ -1820,5 +1839,20 @@ fiscalYearId: string;
  * Report date — include entries on or before this date (ISO 8601)
  */
 asOf: string;
+};
+
+export type GetIncomeStatementParams = {
+/**
+ * UUID of the fiscal year
+ */
+fiscalYearId: string;
+/**
+ * Start date (ISO 8601, inclusive)
+ */
+from: string;
+/**
+ * End date (ISO 8601, inclusive)
+ */
+to: string;
 };
 

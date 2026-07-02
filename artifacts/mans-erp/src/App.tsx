@@ -31,6 +31,7 @@ import PettyCash from "@/pages/PettyCash";
 import TrialBalance from "@/pages/TrialBalance";
 import AccountLedger from "@/pages/AccountLedger";
 import BalanceSheet from "@/pages/BalanceSheet";
+import IncomeStatement from "@/pages/IncomeStatement";
 import NotFound from "@/pages/not-found";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 
@@ -265,6 +266,10 @@ function ClerkProviderWithRoutes() {
 
           <Route path="/reports/balance-sheet">
             <ProtectedRoute component={BalanceSheet} />
+          </Route>
+
+          <Route path="/reports/income-statement">
+            <ProtectedRoute component={IncomeStatement} />
           </Route>
 
           <Route component={NotFound} />

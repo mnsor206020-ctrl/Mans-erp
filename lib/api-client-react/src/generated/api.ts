@@ -51,9 +51,11 @@ import type {
   GetAccountLedgerParams,
   GetBalanceSheetParams,
   GetChartOfAccountsTreeParams,
+  GetIncomeStatementParams,
   GetTrialBalanceParams,
   GetUnreadNotifications200,
   HealthStatus,
+  IncomeStatement,
   JournalEntry,
   JournalEntryApprovalRecord,
   JournalEntryAttachment,
@@ -6337,6 +6339,91 @@ export function useGetBalanceSheet<TData = Awaited<ReturnType<typeof getBalanceS
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetBalanceSheetQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetIncomeStatementUrl = (params: GetIncomeStatementParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/reports/income-statement?${stringifiedParams}` : `/api/reports/income-statement`
+}
+
+/**
+ * Returns aggregated revenue and expense account balances for all POSTED journal entries within the given fiscal year and date range. netIncome = totalRevenue − totalExpenses.
+ * @summary Get Income Statement report
+ */
+export const getIncomeStatement = async (params: GetIncomeStatementParams, options?: RequestInit): Promise<IncomeStatement> => {
+
+  return customFetch<IncomeStatement>(getGetIncomeStatementUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetIncomeStatementQueryKey = (params?: GetIncomeStatementParams,) => {
+    return [
+    `/api/reports/income-statement`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetIncomeStatementQueryOptions = <TData = Awaited<ReturnType<typeof getIncomeStatement>>, TError = ErrorType<void>>(params: GetIncomeStatementParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getIncomeStatement>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetIncomeStatementQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getIncomeStatement>>> = ({ signal }) => getIncomeStatement(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getIncomeStatement>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetIncomeStatementQueryResult = NonNullable<Awaited<ReturnType<typeof getIncomeStatement>>>
+export type GetIncomeStatementQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get Income Statement report
+ */
+
+export function useGetIncomeStatement<TData = Awaited<ReturnType<typeof getIncomeStatement>>, TError = ErrorType<void>>(
+ params: GetIncomeStatementParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getIncomeStatement>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetIncomeStatementQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

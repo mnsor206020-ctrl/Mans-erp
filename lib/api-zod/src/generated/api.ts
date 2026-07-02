@@ -3725,3 +3725,37 @@ export const GetBalanceSheetResponse = zod.object({
 })
 
 
+/**
+ * Returns aggregated revenue and expense account balances for all POSTED journal entries within the given fiscal year and date range. netIncome = totalRevenue − totalExpenses.
+ * @summary Get Income Statement report
+ */
+export const GetIncomeStatementQueryParams = zod.object({
+  "fiscalYearId": zod.coerce.string().uuid().describe('UUID of the fiscal year'),
+  "from": zod.date().describe('Start date (ISO 8601, inclusive)'),
+  "to": zod.date().describe('End date (ISO 8601, inclusive)')
+})
+
+export const GetIncomeStatementResponse = zod.object({
+  "fiscalYearId": zod.string().uuid(),
+  "from": zod.coerce.date(),
+  "to": zod.coerce.date(),
+  "revenue": zod.array(zod.object({
+  "accountId": zod.string().uuid(),
+  "accountCode": zod.string(),
+  "accountNameEn": zod.string(),
+  "accountNameAr": zod.string(),
+  "balance": zod.number()
+})),
+  "expenses": zod.array(zod.object({
+  "accountId": zod.string().uuid(),
+  "accountCode": zod.string(),
+  "accountNameEn": zod.string(),
+  "accountNameAr": zod.string(),
+  "balance": zod.number()
+})),
+  "totalRevenue": zod.number(),
+  "totalExpenses": zod.number(),
+  "netIncome": zod.number()
+})
+
+

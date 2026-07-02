@@ -80,4 +80,7 @@ export type {
   BalanceSheet,
   BalanceSheetAccount,
   GetBalanceSheetParams,
+  IncomeStatement,
+  IncomeStatementAccount,
+  GetIncomeStatementParams,
 } from "./generated/types";
