@@ -34,6 +34,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { PettyCashFormDialog } from "@/components/banking/PettyCashFormDialog";
 import {
   Plus,
   Search,
@@ -61,6 +62,7 @@ export default function PettyCash() {
   const [search, setSearch]         = useState("");
   const [typeFilter, setTypeFilter] = useState("ALL");
 
+  const [formOpen, setFormOpen]         = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; descriptionEn: string } | null>(null);
 
   const handleSearchChange = useCallback((val: string) => setSearch(val), []);
@@ -121,7 +123,7 @@ export default function PettyCash() {
           <Button variant="outline" size="sm" onClick={() => refetch()}>
             <RefreshCw className="w-4 h-4" />
           </Button>
-          <Button size="sm" disabled>
+          <Button size="sm" onClick={() => setFormOpen(true)}>
             <Plus className="w-4 h-4 me-2" />
             {t("banking.pettyCash.new")}
           </Button>
@@ -234,6 +236,13 @@ export default function PettyCash() {
           </div>
         )}
       </Card>
+
+      {/* Create Dialog */}
+      <PettyCashFormDialog
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        onSuccess={invalidate}
+      />
 
       {/* Delete Dialog */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
