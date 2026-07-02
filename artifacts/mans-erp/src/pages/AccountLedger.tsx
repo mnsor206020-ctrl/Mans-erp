@@ -17,7 +17,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { BookText, RefreshCw } from "lucide-react";
+import { BookText, RefreshCw, FileDown } from "lucide-react";
+import { buildCsv, downloadCsv, generateFilename } from "@/lib/csv";
 
 function formatAmount(n: number): string {
   return n.toLocaleString("en-SA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -59,6 +60,31 @@ export default function AccountLedger() {
     setLoadParams({ accountId, from, to });
   }
 
+  function handleExport() {
+    if (!ledger) return;
+    const headers = [
+      t("reports.accountLedger.date"),
+      t("reports.accountLedger.journalNumber"),
+      t("reports.accountLedger.reference"),
+      t("reports.accountLedger.description"),
+      t("reports.accountLedger.debit"),
+      t("reports.accountLedger.credit"),
+      t("reports.accountLedger.balance"),
+    ];
+    const rows = ledger.lines.map((line: AccountLedgerLine) => [
+      line.entryDate,
+      line.journalNumber,
+      line.reference ?? "",
+      lang === "ar"
+        ? (line.descriptionAr ?? line.descriptionEn ?? "")
+        : (line.descriptionEn ?? line.descriptionAr ?? ""),
+      line.debit > 0 ? line.debit : "",
+      line.credit > 0 ? line.credit : "",
+      line.runningBalance,
+    ]);
+    downloadCsv(generateFilename("account-ledger"), buildCsv(headers, rows));
+  }
+
   const canLoad = !!accountId && !!from && !!to && !accsLoading;
 
   return (
@@ -70,10 +96,16 @@ export default function AccountLedger() {
           <p className="text-muted-foreground mt-1">{t("reports.accountLedger.subtitle")}</p>
         </div>
         {loadParams && (
-          <Button variant="outline" size="sm" onClick={() => refetch()}>
-            <RefreshCw className="w-4 h-4 me-2" />
-            {t("common.refresh")}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => refetch()}>
+              <RefreshCw className="w-4 h-4 me-2" />
+              {t("common.refresh")}
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleExport} disabled={!ledger}>
+              <FileDown className="w-4 h-4 me-2" />
+              {t("common.exportCsv")}
+            </Button>
+          </div>
         )}
       </div>
 

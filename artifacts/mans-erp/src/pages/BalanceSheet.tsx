@@ -18,7 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Scale, RefreshCw } from "lucide-react";
+import { Scale, RefreshCw, FileDown } from "lucide-react";
+import { buildCsv, downloadCsv, generateFilename } from "@/lib/csv";
 
 function formatAmount(n: number): string {
   return n.toLocaleString("en-SA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -120,6 +121,29 @@ export default function BalanceSheet() {
     setLoadParams({ fiscalYearId, asOf });
   }
 
+  function handleExport() {
+    if (!report) return;
+    const headers = [
+      t("reports.balanceSheet.section"),
+      t("reports.balanceSheet.accountCode"),
+      t("reports.balanceSheet.accountName"),
+      t("reports.balanceSheet.balance"),
+    ];
+    const toRows = (accounts: BalanceSheetAccount[], sectionLabel: string) =>
+      accounts.map((acc) => [
+        sectionLabel,
+        acc.accountCode,
+        lang === "ar" ? acc.accountNameAr : acc.accountNameEn,
+        acc.balance,
+      ]);
+    const rows = [
+      ...toRows(report.assets,      t("reports.balanceSheet.assets")),
+      ...toRows(report.liabilities, t("reports.balanceSheet.liabilities")),
+      ...toRows(report.equity,      t("reports.balanceSheet.equity")),
+    ];
+    downloadCsv(generateFilename("balance-sheet"), buildCsv(headers, rows));
+  }
+
   const canLoad = !!fiscalYearId && !!asOf && !fyLoading;
 
   const commonSectionProps = {
@@ -139,10 +163,16 @@ export default function BalanceSheet() {
           <p className="text-muted-foreground mt-1">{t("reports.balanceSheet.subtitle")}</p>
         </div>
         {loadParams && (
-          <Button variant="outline" size="sm" onClick={() => refetch()}>
-            <RefreshCw className="w-4 h-4 me-2" />
-            {t("common.refresh")}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => refetch()}>
+              <RefreshCw className="w-4 h-4 me-2" />
+              {t("common.refresh")}
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleExport} disabled={!report}>
+              <FileDown className="w-4 h-4 me-2" />
+              {t("common.exportCsv")}
+            </Button>
+          </div>
         )}
       </div>
 

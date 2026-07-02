@@ -17,7 +17,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { BarChart3, RefreshCw } from "lucide-react";
+import { BarChart3, RefreshCw, FileDown } from "lucide-react";
+import { buildCsv, downloadCsv, generateFilename } from "@/lib/csv";
 
 function formatAmount(n: number): string {
   return n.toLocaleString("en-SA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -45,6 +46,25 @@ export default function TrialBalance() {
     setLoadParams(params);
   }
 
+  function handleExport() {
+    if (!report) return;
+    const headers = [
+      t("reports.trialBalance.accountCode"),
+      t("reports.trialBalance.accountName"),
+      t("reports.trialBalance.debit"),
+      t("reports.trialBalance.credit"),
+      t("reports.trialBalance.balance"),
+    ];
+    const rows = report.lines.map((line: TrialBalanceLine) => [
+      line.accountCode,
+      lang === "ar" ? line.accountNameAr : line.accountNameEn,
+      line.totalDebit,
+      line.totalCredit,
+      line.balance,
+    ]);
+    downloadCsv(generateFilename("trial-balance"), buildCsv(headers, rows));
+  }
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       {/* Header */}
@@ -54,10 +74,16 @@ export default function TrialBalance() {
           <p className="text-muted-foreground mt-1">{t("reports.trialBalance.subtitle")}</p>
         </div>
         {loadParams && (
-          <Button variant="outline" size="sm" onClick={() => refetch()}>
-            <RefreshCw className="w-4 h-4 me-2" />
-            {t("common.refresh")}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => refetch()}>
+              <RefreshCw className="w-4 h-4 me-2" />
+              {t("common.refresh")}
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleExport} disabled={!report}>
+              <FileDown className="w-4 h-4 me-2" />
+              {t("common.exportCsv")}
+            </Button>
+          </div>
         )}
       </div>
 

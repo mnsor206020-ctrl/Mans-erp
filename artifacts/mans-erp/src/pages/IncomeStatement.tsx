@@ -18,7 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { TrendingUp, RefreshCw } from "lucide-react";
+import { TrendingUp, RefreshCw, FileDown } from "lucide-react";
+import { buildCsv, downloadCsv, generateFilename } from "@/lib/csv";
 
 function formatAmount(n: number): string {
   return n.toLocaleString("en-SA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -122,6 +123,28 @@ export default function IncomeStatement() {
     setLoadParams({ fiscalYearId, from, to });
   }
 
+  function handleExport() {
+    if (!report) return;
+    const headers = [
+      t("reports.incomeStatement.section"),
+      t("reports.incomeStatement.accountCode"),
+      t("reports.incomeStatement.accountName"),
+      t("reports.incomeStatement.balance"),
+    ];
+    const toRows = (accounts: IncomeStatementAccount[], sectionLabel: string) =>
+      accounts.map((acc) => [
+        sectionLabel,
+        acc.accountCode,
+        lang === "ar" ? acc.accountNameAr : acc.accountNameEn,
+        acc.balance,
+      ]);
+    const rows = [
+      ...toRows(report.revenue,  t("reports.incomeStatement.revenue")),
+      ...toRows(report.expenses, t("reports.incomeStatement.expenses")),
+    ];
+    downloadCsv(generateFilename("income-statement"), buildCsv(headers, rows));
+  }
+
   const canLoad = !!fiscalYearId && !!from && !!to && !fyLoading;
   const isLoss  = report && report.netIncome < 0;
 
@@ -142,10 +165,16 @@ export default function IncomeStatement() {
           <p className="text-muted-foreground mt-1">{t("reports.incomeStatement.subtitle")}</p>
         </div>
         {loadParams && (
-          <Button variant="outline" size="sm" onClick={() => refetch()}>
-            <RefreshCw className="w-4 h-4 me-2" />
-            {t("common.refresh")}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => refetch()}>
+              <RefreshCw className="w-4 h-4 me-2" />
+              {t("common.refresh")}
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleExport} disabled={!report}>
+              <FileDown className="w-4 h-4 me-2" />
+              {t("common.exportCsv")}
+            </Button>
+          </div>
         )}
       </div>
 
