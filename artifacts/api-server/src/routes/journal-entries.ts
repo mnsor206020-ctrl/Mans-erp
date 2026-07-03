@@ -746,44 +746,48 @@ router.post("/:id/reverse", requireAuth(), requirePermission("journal_entries", 
     const reversalNumber = await generateJournalNumber(entry.organizationId, entryYear);
     const exchangeRate = parseFloat(entry.exchangeRate.toString());
 
-    const reversal = await prisma.journalEntry.create({
-      data: {
-        organizationId:    entry.organizationId,
-        fiscalYearId:      entry.fiscalYearId,
-        number:            reversalNumber,
-        entryDate:         reversalDate,
-        type:              "ADJUSTMENT",
-        status:            "DRAFT",
-        currencyCode:      entry.currencyCode,
-        exchangeRate:      entry.exchangeRate,
-        totalDebit:        entry.totalCredit,
-        totalCredit:       entry.totalDebit,
-        descriptionEn:     `Reversal of ${entry.number}${reason ? `: ${reason}` : ""}`,
-        descriptionAr:     `عكس قيد ${entry.number}${reason ? `: ${reason}` : ""}`,
-        reference:         entry.number,
-        createdByUserId:   user.id,
-        isReversal:        true,
-        reversalOfEntryId: entry.id,
-        lines: {
-          create: entry.lines.map((l) => ({
-            accountId:     l.accountId,
-            costCenterId:  l.costCenterId,
-            lineNumber:    l.lineNumber,
-            descriptionEn: l.descriptionEn,
-            descriptionAr: l.descriptionAr,
-            debit:         l.credit,
-            credit:        l.debit,
-            debitBase:     parseFloat(l.credit.toString()) * exchangeRate,
-            creditBase:    parseFloat(l.debit.toString())  * exchangeRate,
-            reference:     l.reference,
-          })),
+    const reversal = await prisma.$transaction(async (tx) => {
+      const createdReversal = await tx.journalEntry.create({
+        data: {
+          organizationId:    entry.organizationId,
+          fiscalYearId:      entry.fiscalYearId,
+          number:            reversalNumber,
+          entryDate:         reversalDate,
+          type:              "ADJUSTMENT",
+          status:            "DRAFT",
+          currencyCode:      entry.currencyCode,
+          exchangeRate:      entry.exchangeRate,
+          totalDebit:        entry.totalCredit,
+          totalCredit:       entry.totalDebit,
+          descriptionEn:     `Reversal of ${entry.number}${reason ? `: ${reason}` : ""}`,
+          descriptionAr:     `عكس قيد ${entry.number}${reason ? `: ${reason}` : ""}`,
+          reference:         entry.number,
+          createdByUserId:   user.id,
+          isReversal:        true,
+          reversalOfEntryId: entry.id,
+          lines: {
+            create: entry.lines.map((l) => ({
+              accountId:     l.accountId,
+              costCenterId:  l.costCenterId,
+              lineNumber:    l.lineNumber,
+              descriptionEn: l.descriptionEn,
+              descriptionAr: l.descriptionAr,
+              debit:         l.credit,
+              credit:        l.debit,
+              debitBase:     parseFloat(l.credit.toString()) * exchangeRate,
+              creditBase:    parseFloat(l.debit.toString())  * exchangeRate,
+              reference:     l.reference,
+            })),
+          },
         },
-      },
-    });
+      });
 
-    await prisma.journalEntry.update({
-      where: { id: req.params.id },
-      data: { status: "REVERSED", reversedByEntryId: reversal.id },
+      await tx.journalEntry.update({
+        where: { id: req.params.id },
+        data: { status: "REVERSED", reversedByEntryId: createdReversal.id },
+      });
+
+      return createdReversal;
     });
 
     await writeApprovalRecord({
@@ -893,9 +897,11 @@ router.post("/:id/void", requireAuth(), requirePermission("journal_entries", "vo
     const { reason } = req.body;
     if (!reason) return res.status(400).json({ error: "Void reason is required" });
 
-    const updated = await prisma.journalEntry.update({
-      where: { id: req.params.id },
-      data: { status: "VOIDED", voidedAt: new Date(), voidedByUserId: user.id, voidReason: reason },
+    const updated = await prisma.$transaction(async (tx) => {
+      return tx.journalEntry.update({
+        where: { id: req.params.id },
+        data: { status: "VOIDED", voidedAt: new Date(), voidedByUserId: user.id, voidReason: reason },
+      });
     });
     await writeApprovalRecord({
       journalEntryId: req.params.id,

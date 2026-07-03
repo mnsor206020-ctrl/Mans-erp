@@ -19,20 +19,23 @@ router.get("/me", requireAuth(), async (req, res) => {
       // Bootstrap: the very first user in a fresh system becomes Super Admin
       // so there is always someone able to assign roles to everyone else.
       const existingUserCount = await prisma.user.count();
-      user = await prisma.user.create({
-        data: { clerkId: userId, email: "" },
-      });
+      const superAdminRole = existingUserCount === 0
+        ? await prisma.role.findFirst({ where: { nameEn: "Super Admin", deletedAt: null } })
+        : null;
 
-      if (existingUserCount === 0) {
-        const superAdminRole = await prisma.role.findFirst({
-          where: { nameEn: "Super Admin", deletedAt: null },
+      user = await prisma.$transaction(async (tx) => {
+        const createdUser = await tx.user.create({
+          data: { clerkId: userId, email: "" },
         });
+
         if (superAdminRole) {
-          await prisma.userRole.create({
-            data: { userId: user.id, roleId: superAdminRole.id },
+          await tx.userRole.create({
+            data: { userId: createdUser.id, roleId: superAdminRole.id },
           });
         }
-      }
+
+        return createdUser;
+      });
     }
 
     const userWithRoles = await getCurrentUserWithRoles(userId);

@@ -1,12 +1,37 @@
 import { Router } from "express";
 import { requireAuth, getAuth } from "@clerk/express";
 import { prisma } from "@workspace/prisma";
+import { z } from "zod";
 import {
   generateJournalNumber as generateJournalNumberUtil,
 } from "../lib/journal-entry-utils";
 import { requirePermission } from "../lib/authorize";
 
 const router = Router();
+
+const isoDate = z.string().refine((v) => !isNaN(new Date(v).getTime()), {
+  message: "must be a valid date",
+});
+
+const createSchema = z.object({
+  organizationId: z.string().min(1).optional(),
+  nameEn:         z.string().min(1),
+  nameAr:         z.string().min(1),
+  startDate:      isoDate,
+  endDate:        isoDate,
+  isDefault:      z.boolean().optional(),
+});
+
+const closeSchema = z.object({
+  retainedEarningsAccountId: z.string().min(1),
+});
+
+const rolloverSchema = z.object({
+  nameEn:    z.string().min(1).optional(),
+  nameAr:    z.string().min(1).optional(),
+  startDate: isoDate.optional(),
+  endDate:   isoDate.optional(),
+});
 
 async function getUser(clerkId: string) {
   return prisma.user.findFirst({ where: { clerkId, deletedAt: null } });
@@ -43,10 +68,15 @@ router.post("/", requireAuth(), requirePermission("fiscal_years", "create"), asy
     const user = await getUser(userId!);
     if (!user) return res.status(401).json({ error: "User not found" });
 
-    const { organizationId, nameEn, nameAr, startDate, endDate, isDefault } = req.body;
+    const parsed = createSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Validation failed", details: parsed.error.flatten() });
+    }
+
+    const { organizationId, nameEn, nameAr, startDate, endDate, isDefault } = parsed.data;
     const orgId = organizationId || user.organizationId;
-    if (!orgId || !nameEn || !nameAr || !startDate || !endDate) {
-      return res.status(400).json({ error: "organizationId, nameEn, nameAr, startDate, endDate are required" });
+    if (!orgId) {
+      return res.status(400).json({ error: "organizationId is required" });
     }
 
     const fy = await prisma.fiscalYear.create({
@@ -76,11 +106,15 @@ router.post("/:id/close", requireAuth(), requirePermission("fiscal_years", "upda
     if (!user) { res.status(401).json({ error: "User not found" }); return; }
     if (!user.organizationId) { res.status(400).json({ error: "User has no organization" }); return; }
 
-    const { retainedEarningsAccountId } = req.body;
-    if (!retainedEarningsAccountId) {
-      res.status(400).json({ error: "retainedEarningsAccountId is required" });
+    const parsedClose = closeSchema.safeParse(req.body);
+    if (!parsedClose.success) {
+      res.status(400).json({
+        error: parsedClose.error.issues.map((i) => `${i.path.join(".")} ${i.message}`).join("; ") || "retainedEarningsAccountId is required",
+        details: parsedClose.error.flatten(),
+      });
       return;
     }
+    const { retainedEarningsAccountId } = parsedClose.data;
 
     // ── 1. Resolve and guard the fiscal year ──────────────────────────────────
     const fy = await prisma.fiscalYear.findFirst({
@@ -285,7 +319,12 @@ router.post("/:id/rollover", requireAuth(), requirePermission("fiscal_years", "u
     }
 
     // ── 3. Compute new fiscal year dates & names (auto-derived if not provided) ─
-    const { nameEn, nameAr, startDate, endDate } = req.body ?? {};
+    const parsedRollover = rolloverSchema.safeParse(req.body ?? {});
+    if (!parsedRollover.success) {
+      res.status(400).json({ error: "Validation failed", details: parsedRollover.error.flatten() });
+      return;
+    }
+    const { nameEn, nameAr, startDate, endDate } = parsedRollover.data;
 
     const newStartDate = startDate ? new Date(startDate) : (() => {
       const d = new Date(sourceFY.endDate);
