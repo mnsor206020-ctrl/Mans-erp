@@ -1,0 +1,110 @@
+name: CI
+
+# Runs on every push/PR. This workflow only validates the codebase and
+# builds artifacts (including Docker images) for verification purposes.
+# It does NOT deploy or push images anywhere.
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch: {}
+
+env:
+  # Dummy, non-secret values for CI-only steps (typecheck/build/test) that
+  # read env vars but don't need real credentials to run.
+  DATABASE_URL: "postgresql://ci:ci@localhost:5432/ci"
+  CLERK_SECRET_KEY: "sk_test_ci_placeholder_0000000000000000000000"
+  CLERK_PUBLISHABLE_KEY: "pk_test_ci_placeholder_0000000000000000000000"
+  VITE_CLERK_PUBLISHABLE_KEY: "pk_test_ci_placeholder_0000000000000000000000"
+  VITE_CLERK_PROXY_URL: "/api/__clerk"
+  BASE_PATH: "/"
+  PORT: "8080"
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.26.1
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Prisma generate
+        run: pnpm --filter @workspace/prisma run generate
+
+      - name: Apply migrations (CI database)
+        run: pnpm --filter @workspace/prisma run migrate:deploy
+
+      - name: Typecheck
+        run: pnpm run typecheck
+
+      - name: Run tests — api-server
+        run: pnpm --filter @workspace/api-server run test
+
+      - name: Run tests — mans-erp
+        run: pnpm --filter @workspace/mans-erp run test
+
+      - name: Build — api-server
+        run: pnpm --filter @workspace/api-server run build
+
+      - name: Build — mans-erp
+        run: pnpm --filter @workspace/mans-erp run build
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image — api-server
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: artifacts/api-server/Dockerfile
+          push: false
+          tags: mans-erp-api-server:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build Docker image — mans-erp
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: artifacts/mans-erp/Dockerfile
+          push: false
+          tags: mans-erp-web:ci
+          build-args: |
+            BASE_PATH=/
+            PORT=8081
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # NOTE: intentionally no deploy/push step here. This workflow only
+      # validates and builds — deployment is a separate, manual process
+      # (see deployment.md).
