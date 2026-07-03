@@ -1,5 +1,6 @@
 import express, { type Express } from "express";
 import cors from "cors";
+import helmet from "helmet";
 import pinoHttp from "pino-http";
 import { clerkMiddleware } from "@clerk/express";
 import { publishableKeyFromHost } from "@clerk/shared/keys";
@@ -8,10 +9,17 @@ import {
   clerkProxyMiddleware,
   getClerkProxyHost,
 } from "./middlewares/clerkProxyMiddleware";
+import { generalLimiter, sensitiveLimiter, writeLimiter } from "./middlewares/rateLimiter";
+import { errorHandler } from "./middlewares/errorHandler";
 import router from "./routes";
 import { logger } from "./lib/logger";
 
 const app: Express = express();
+
+// Required for express-rate-limit (and correct client IP logging) to read
+// the real client IP from X-Forwarded-For — requests arrive via Replit's
+// proxy, so Express must be told to trust the first hop.
+app.set("trust proxy", 1);
 
 app.use(
   pinoHttp({
@@ -34,6 +42,15 @@ app.use(
 );
 
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
+
+app.use(
+  helmet({
+    // JSON-only API: no HTML is served, so CSP's script/style directives
+    // aren't relevant here and would only add noise/breakage risk.
+    contentSecurityPolicy: false,
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  }),
+);
 
 const allowedOrigins = (
   process.env.CORS_ALLOWED_ORIGINS ??
@@ -70,6 +87,11 @@ app.use(
   })),
 );
 
+app.use("/api", generalLimiter, writeLimiter);
+app.use("/api/users/me", sensitiveLimiter);
+
 app.use("/api", router);
+
+app.use(errorHandler);
 
 export default app;

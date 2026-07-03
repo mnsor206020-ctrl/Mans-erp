@@ -17,6 +17,7 @@ vi.mock("@workspace/prisma", () => ({
       create:    vi.fn(),
       update:    vi.fn(),
       findFirst: vi.fn(),
+      findMany:  vi.fn(),
     },
   },
 }));
@@ -167,5 +168,34 @@ describe("Organizations API — cross-organization access scoping", () => {
       .send({ nameEn: "Renamed" });
 
     expect(res.status).toBe(200);
+  });
+
+  it("GET / — regular user only sees their own organization, scoped in the query", async () => {
+    (prisma.user.findFirst as any).mockResolvedValue(mockRegularUser);
+    (prisma.organization.findMany as any).mockResolvedValue([{ id: OWN_ORG_ID, nameEn: "My Org" }]);
+
+    const res = await request(app).get("/api/organizations");
+
+    expect(res.status).toBe(200);
+    expect(prisma.organization.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ id: OWN_ORG_ID, deletedAt: null }),
+      }),
+    );
+  });
+
+  it("GET / — Super Admin sees all organizations, no id filter applied", async () => {
+    (prisma.user.findFirst as any).mockResolvedValue(mockSuperAdminUser);
+    (prisma.organization.findMany as any).mockResolvedValue([
+      { id: OWN_ORG_ID, nameEn: "My Org" },
+      { id: OTHER_ORG_ID, nameEn: "Other Org" },
+    ]);
+
+    const res = await request(app).get("/api/organizations");
+
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(2);
+    const whereArg = (prisma.organization.findMany as any).mock.calls[0][0].where;
+    expect(whereArg).not.toHaveProperty("id");
   });
 });

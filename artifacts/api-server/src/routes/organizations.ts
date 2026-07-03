@@ -30,13 +30,24 @@ const updateSchema = z.object({
 
 router.get("/", requireAuth(), async (req, res) => {
   try {
+    const { userId } = getAuth(req);
+    const currentUser = await getCurrentUserWithRoles(userId!);
+    if (!currentUser) return res.status(401).json({ error: "User not found" });
+
+    if (!isPlatformAdmin(currentUser) && !currentUser.organizationId) {
+      return res.json([]);
+    }
+
     const orgs = await prisma.organization.findMany({
-      where:   { deletedAt: null },
+      where: {
+        deletedAt: null,
+        ...(isPlatformAdmin(currentUser) ? {} : { id: currentUser.organizationId! }),
+      },
       orderBy: { createdAt: "asc" },
     });
-    res.json(orgs);
+    return res.json(orgs);
   } catch (err) {
-    res.status(500).json({ error: "Failed to fetch organizations" });
+    return res.status(500).json({ error: "Failed to fetch organizations" });
   }
 });
 
