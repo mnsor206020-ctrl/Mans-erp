@@ -169,7 +169,7 @@ router.get("/:id", requireAuth(), async (req, res) => {
     if (!user) return res.status(401).json({ error: "User not found" });
 
     const entry = await prisma.journalEntry.findFirst({
-      where: { id: req.params.id, deletedAt: null },
+      where: { id: req.params.id, organizationId: user.organizationId, deletedAt: null },
       include: {
         createdBy:   { select: { id: true, firstNameEn: true, lastNameEn: true, email: true } },
         submittedBy: { select: { id: true, firstNameEn: true, lastNameEn: true, email: true } },

@@ -14,8 +14,9 @@ vi.mock("@workspace/prisma", () => ({
       findFirst: vi.fn(),
     },
     organization: {
-      create: vi.fn(),
-      update: vi.fn(),
+      create:    vi.fn(),
+      update:    vi.fn(),
+      findFirst: vi.fn(),
     },
   },
 }));
@@ -24,11 +25,27 @@ import organizationsRouter from "../routes/organizations";
 import { prisma } from "@workspace/prisma";
 import { userRolesGrantingAll } from "./helpers/rbac";
 
+const OWN_ORG_ID   = "org-own";
+const OTHER_ORG_ID = "org-other";
+
 const mockUser = {
   id:        "user-1",
   clerkId:   "test-clerk-id",
   deletedAt: null,
   userRoles: userRolesGrantingAll("organizations"),
+};
+
+const mockRegularUser = {
+  ...mockUser,
+  organizationId: OWN_ORG_ID,
+};
+
+const mockSuperAdminUser = {
+  ...mockUser,
+  organizationId: OWN_ORG_ID,
+  userRoles: [
+    { role: { nameEn: "Super Admin", rolePermissions: userRolesGrantingAll("organizations")[0].role.rolePermissions } },
+  ],
 };
 
 const app = express();
@@ -74,8 +91,10 @@ describe("Organizations API — validation", () => {
   });
 
   it("PATCH /:id returns 400 when type is invalid", async () => {
+    (prisma.user.findFirst as any).mockResolvedValue(mockRegularUser);
+
     const res = await request(app)
-      .patch("/api/organizations/org-1")
+      .patch(`/api/organizations/${OWN_ORG_ID}`)
       .send({ type: "NOT_A_TYPE" });
 
     expect(res.status).toBe(400);
@@ -83,14 +102,70 @@ describe("Organizations API — validation", () => {
   });
 
   it("PATCH /:id updates the organization when the body is valid", async () => {
-    const updated = { id: "org-1", nameEn: "Updated Org" };
+    (prisma.user.findFirst as any).mockResolvedValue(mockRegularUser);
+    const updated = { id: OWN_ORG_ID, nameEn: "Updated Org" };
     (prisma.organization.update as any).mockResolvedValue(updated);
 
     const res = await request(app)
-      .patch("/api/organizations/org-1")
+      .patch(`/api/organizations/${OWN_ORG_ID}`)
       .send({ nameEn: "Updated Org" });
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual(updated);
+  });
+});
+
+describe("Organizations API — cross-organization access scoping", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("GET /:id — regular user requesting their own organization → 200", async () => {
+    (prisma.user.findFirst as any).mockResolvedValue(mockRegularUser);
+    (prisma.organization.findFirst as any).mockResolvedValue({ id: OWN_ORG_ID, nameEn: "My Org" });
+
+    const res = await request(app).get(`/api/organizations/${OWN_ORG_ID}`);
+
+    expect(res.status).toBe(200);
+  });
+
+  it("GET /:id — regular user requesting a different organization → 404, no DB lookup performed", async () => {
+    (prisma.user.findFirst as any).mockResolvedValue(mockRegularUser);
+
+    const res = await request(app).get(`/api/organizations/${OTHER_ORG_ID}`);
+
+    expect(res.status).toBe(404);
+    expect(prisma.organization.findFirst).not.toHaveBeenCalled();
+  });
+
+  it("GET /:id — Super Admin requesting a different organization → 200 (platform admin bypass)", async () => {
+    (prisma.user.findFirst as any).mockResolvedValue(mockSuperAdminUser);
+    (prisma.organization.findFirst as any).mockResolvedValue({ id: OTHER_ORG_ID, nameEn: "Other Org" });
+
+    const res = await request(app).get(`/api/organizations/${OTHER_ORG_ID}`);
+
+    expect(res.status).toBe(200);
+  });
+
+  it("PATCH /:id — regular user modifying a different organization → 404, no update performed", async () => {
+    (prisma.user.findFirst as any).mockResolvedValue(mockRegularUser);
+
+    const res = await request(app)
+      .patch(`/api/organizations/${OTHER_ORG_ID}`)
+      .send({ nameEn: "Hacked Name" });
+
+    expect(res.status).toBe(404);
+    expect(prisma.organization.update).not.toHaveBeenCalled();
+  });
+
+  it("PATCH /:id — Super Admin modifying a different organization → 200 (platform admin bypass)", async () => {
+    (prisma.user.findFirst as any).mockResolvedValue(mockSuperAdminUser);
+    (prisma.organization.update as any).mockResolvedValue({ id: OTHER_ORG_ID, nameEn: "Renamed" });
+
+    const res = await request(app)
+      .patch(`/api/organizations/${OTHER_ORG_ID}`)
+      .send({ nameEn: "Renamed" });
+
+    expect(res.status).toBe(200);
   });
 });

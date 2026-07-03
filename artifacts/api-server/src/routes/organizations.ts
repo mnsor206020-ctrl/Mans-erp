@@ -1,8 +1,8 @@
 import { Router } from "express";
-import { requireAuth } from "@clerk/express";
+import { requireAuth, getAuth } from "@clerk/express";
 import { prisma } from "@workspace/prisma";
 import { z } from "zod";
-import { requirePermission } from "../lib/authorize";
+import { getCurrentUserWithRoles, isPlatformAdmin, requirePermission } from "../lib/authorize";
 
 const router = Router();
 
@@ -58,18 +58,30 @@ router.post("/", requireAuth(), requirePermission("organizations", "create"), as
 
 router.get("/:id", requireAuth(), async (req, res) => {
   try {
+    const { userId } = getAuth(req);
+    const currentUser = await getCurrentUserWithRoles(userId!);
+    if (!currentUser) return res.status(401).json({ error: "User not found" });
+
+    if (!isPlatformAdmin(currentUser) && currentUser.organizationId !== req.params.id) {
+      return res.status(404).json({ error: "Not found" });
+    }
+
     const org = await prisma.organization.findFirst({
       where: { id: req.params.id, deletedAt: null },
     });
     if (!org) return res.status(404).json({ error: "Not found" });
-    res.json(org);
+    return res.json(org);
   } catch (err) {
-    res.status(500).json({ error: "Failed to fetch organization" });
+    return res.status(500).json({ error: "Failed to fetch organization" });
   }
 });
 
 router.patch("/:id", requireAuth(), requirePermission("organizations", "update"), async (req, res) => {
   try {
+    if (!isPlatformAdmin(req.currentUser) && req.currentUser?.organizationId !== req.params.id) {
+      return res.status(404).json({ error: "Not found" });
+    }
+
     const parsed = updateSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({ error: "Validation failed", details: parsed.error.flatten() });

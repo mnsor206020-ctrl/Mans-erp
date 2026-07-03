@@ -217,7 +217,7 @@ router.get("/:id", requireAuth(), async (req, res) => {
     if (!user) return res.status(401).json({ error: "User not found" });
 
     const account = await prisma.chartOfAccount.findFirst({
-      where: { id: req.params.id, deletedAt: null },
+      where: { id: req.params.id, organizationId: user.organizationId, deletedAt: null },
       include: {
         parent: { select: { id: true, code: true, nameEn: true, nameAr: true } },
         children: {

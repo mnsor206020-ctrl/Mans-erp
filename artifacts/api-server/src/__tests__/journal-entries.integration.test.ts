@@ -391,4 +391,21 @@ describe("Journal Entries API — Integration", () => {
     expect(res.body.lines[0].account).toHaveProperty("code", "1001");
     expect(res.body.lines[1].account).toHaveProperty("code", "4001");
   });
+
+  it("I-22: GET /:id — entry belongs to a different organization → 404, org-scoped in query", async () => {
+    // The DB is the source of truth for org scoping: it only returns a row
+    // when the where-clause's organizationId matches. A route that forgot to
+    // scope by organizationId would still pass id+deletedAt through and get
+    // a false positive here.
+    (prisma.journalEntry.findFirst as any).mockResolvedValue(null);
+
+    const res = await request(app).get(`/api/journal-entries/${ENTRY_ID}`);
+
+    expect(res.status).toBe(404);
+    expect(prisma.journalEntry.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ id: ENTRY_ID, organizationId: ORG_ID, deletedAt: null }),
+      }),
+    );
+  });
 });

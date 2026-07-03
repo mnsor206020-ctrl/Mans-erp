@@ -66,6 +66,17 @@ export function hasPermission(
 }
 
 /**
+ * Platform admins (Super Admin role) are not scoped to a single
+ * organization and may read/manage all organizations. Everyone else may
+ * only access their own organization's record.
+ */
+export function isPlatformAdmin(
+  user: Pick<UserWithRoles, "userRoles"> | null | undefined,
+): boolean {
+  return (user?.userRoles ?? []).some((userRole) => userRole.role.nameEn === "Super Admin");
+}
+
+/**
  * Express middleware factory enforcing that the authenticated user has the
  * given `resource:action` permission (granted via one of their roles).
  * Must be used after `requireAuth()`. On success, attaches the loaded user
