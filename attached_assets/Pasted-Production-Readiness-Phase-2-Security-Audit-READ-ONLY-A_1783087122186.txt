@@ -1,0 +1,92 @@
+Production Readiness — Phase 2 (Security Audit)
+
+READ-ONLY AUDIT.
+
+Do not modify any code.
+Do not generate patches.
+Do not refactor.
+
+Audit the entire project for production security.
+
+Verify the following:
+
+1. Authentication
+- Every protected endpoint requires Clerk authentication.
+- No accidental anonymous access.
+
+2. Authorization
+- RBAC is enforced on every mutation endpoint.
+- No privilege escalation paths.
+
+3. IDOR (Insecure Direct Object Reference)
+- Users cannot access or modify resources belonging to another organization or another user.
+- Verify organization scoping everywhere.
+
+4. Input Validation
+- Every mutation validates input.
+- No missing validation on critical endpoints.
+
+5. SQL Injection
+- Review every Prisma query.
+- Review every $queryRaw / $executeRaw usage.
+- Ensure parameterization is used correctly.
+
+6. XSS
+- Verify user-generated content is safely handled.
+- Check any dangerouslySetInnerHTML usage.
+
+7. File Upload Security
+- Verify attachment endpoints.
+- File name validation.
+- MIME validation.
+- Path traversal protection.
+
+8. Secrets
+- Ensure no secrets, API keys, passwords or tokens exist in the repository.
+
+9. Error Handling
+- No stack traces exposed.
+- No sensitive information leaked.
+
+10. CORS
+- Verify production-safe configuration.
+
+11. Rate Limiting
+- Check whether authentication and sensitive endpoints are protected against abuse.
+
+12. Security Headers
+- Check Helmet or equivalent.
+- CSP if implemented.
+
+13. Session Security
+- Clerk integration review.
+- Cookie/token handling.
+
+14. Logging
+- Ensure logs never expose secrets or sensitive financial data.
+
+15. Dependency Risks
+- Look for obviously outdated or unsafe patterns already present in the codebase.
+- Do not perform internet lookups.
+
+Output only:
+
+Critical
+High
+Medium
+Low
+
+For each finding include:
+
+- file
+- reason
+- severity
+- recommended fix
+
+Maximum 15 findings.
+
+If something is already implemented correctly,
+state it briefly instead of inventing issues.
+
+No code.
+Read-only audit only.
