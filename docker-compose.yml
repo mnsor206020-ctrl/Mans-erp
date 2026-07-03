@@ -1,0 +1,112 @@
+# Compose spec version 3.9+ syntax (the `version:` key is obsolete in
+# modern Compose and intentionally omitted to avoid the deprecation warning).
+#
+# Production-oriented Compose stack for Mans ERP.
+#
+# Usage:
+#   cp .env.example .env   # fill in real values, never commit .env
+#   docker compose build
+#   docker compose up -d
+#
+# No secrets or passwords are hardcoded here — everything is sourced from
+# the environment (.env file or the host's environment).
+
+services:
+  # ---------------------------------------------------------------------------
+  # PostgreSQL 16 — primary datastore for the API server (via Prisma).
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      # Named volume so data survives container recreation/restarts.
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - mans-erp-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    # No ports published to the host by default — only api-server (on the
+    # internal network) needs to reach Postgres. Uncomment to expose for
+    # local debugging with an external DB client:
+    # ports:
+    #   - "5432:5432"
+
+  # ---------------------------------------------------------------------------
+  # api-server — Express/Prisma backend API.
+  # ---------------------------------------------------------------------------
+  api-server:
+    build:
+      context: .
+      dockerfile: artifacts/api-server/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # Overrides/derives values that must reference the Compose network's
+      # internal DNS name rather than whatever is in .env for local/host use.
+      PORT: ${API_PORT}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - mans-erp-net
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"require('http').get('http://localhost:' + (process.env.PORT || 8080) + '/api/healthz', res => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))\"",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    # Only the port the API actually needs to be reached on is exposed.
+    ports:
+      - "${API_PORT}:${API_PORT}"
+
+  # ---------------------------------------------------------------------------
+  # mans-erp — React/Vite frontend, served via the project's existing
+  # production preview server.
+  # ---------------------------------------------------------------------------
+  mans-erp:
+    build:
+      context: .
+      dockerfile: artifacts/mans-erp/Dockerfile
+      args:
+        BASE_PATH: ${BASE_PATH}
+        PORT: ${WEB_PORT}
+    restart: unless-stopped
+    environment:
+      PORT: ${WEB_PORT}
+      BASE_PATH: ${BASE_PATH}
+    depends_on:
+      - api-server
+    networks:
+      - mans-erp-net
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"require('http').get('http://localhost:' + (process.env.PORT || 8081) + '/', res => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))\"",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    ports:
+      - "${WEB_PORT}:${WEB_PORT}"
+
+networks:
+  mans-erp-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
