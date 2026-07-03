@@ -1,0 +1,77 @@
+Sprint 2.14 — Milestone 1 (Production Docker)
+
+Phase 0 — Repository Audit. No code until the audit is complete.
+
+Audit the monorepo and produce a concise report (maximum 10 bullets) covering:
+
+- Workspace/package manager structure (pnpm workspace)
+- Build outputs for:
+  - artifacts/api-server
+  - artifacts/mans-erp
+- Prisma/client generation requirements
+- Static asset requirements
+- Existing production build commands
+- Existing environment variable usage
+- Any Docker-related files already present
+- Any blockers for containerization
+
+Do NOT modify anything during the audit.
+
+After the audit, implement the production Docker setup.
+
+Requirements:
+
+- Multi-stage Docker builds.
+- Node LTS.
+- pnpm with frozen lockfile.
+- Production images only.
+- Run as a non-root user.
+- Do not copy unnecessary files.
+- Add proper .dockerignore files.
+- Do not bake .env files or secrets into images.
+- Keep the current monorepo structure.
+- No behavior changes.
+- No API changes.
+- No frontend changes.
+- No OpenAPI changes.
+- No Prisma schema changes.
+- No feature work.
+
+Backend image:
+
+- Install dependencies.
+- Generate Prisma client if required.
+- Build TypeScript.
+- Ship only runtime artifacts.
+- Start production server.
+
+Frontend image:
+
+- Install dependencies.
+- Build production assets.
+- Serve production build using the project's existing production approach.
+- Ship only required runtime artifacts.
+
+Do not introduce unnecessary dependencies unless absolutely required for production.
+
+Verification:
+
+- Build both Docker images successfully.
+- Verify startup commands.
+- Run TypeScript checks.
+- Ensure backend baseline errors do not increase.
+- Ensure frontend remains at zero TypeScript errors.
+- Confirm no tests regress.
+
+Final report must include:
+
+- Files created.
+- Files modified.
+- Docker build commands.
+- Docker run commands.
+- Image entrypoints.
+- Image size optimization techniques used.
+- Security practices applied.
+- TypeScript status.
+- Test status.
+- Confirmation that runtime behavior is unchanged.
