@@ -112,6 +112,7 @@ async function main() {
     "banks", "bank_accounts", "cash_boxes",
     "receipts", "payments", "petty_cash",
     "attachments", "audit_logs", "reports",
+    "invitations",
   ];
   const actions = ["create", "read", "update", "delete", "export", "approve", "void"];
 
@@ -174,6 +175,18 @@ async function main() {
   await prisma.rolePermission.createMany({
     skipDuplicates: true,
     data: financeManagerPerms.map((p) => ({ roleId: financeManagerRole.id, permissionId: p.id })),
+  });
+
+  // Grant Organization Admin user + invitation management
+  const orgAdminRole = roles[1]; // "Organization Admin"
+  const orgAdminPerms = allPermissions.filter(
+    (p) =>
+      (["users", "invitations"].includes(p.resource) && ["create", "read", "update"].includes(p.action)) ||
+      (p.resource === "roles" && p.action === "read"),
+  );
+  await prisma.rolePermission.createMany({
+    skipDuplicates: true,
+    data: orgAdminPerms.map((p) => ({ roleId: orgAdminRole.id, permissionId: p.id })),
   });
 
   // ── Bootstrap: preserve access for any users that already exist ──

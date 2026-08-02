@@ -33,6 +33,9 @@ import AccountLedger from "@/pages/AccountLedger";
 import BalanceSheet from "@/pages/BalanceSheet";
 import IncomeStatement from "@/pages/IncomeStatement";
 import FiscalYears from "@/pages/FiscalYears";
+import Users from "@/pages/Users";
+import UserDetail from "@/pages/UserDetail";
+import AcceptInvitation from "@/pages/AcceptInvitation";
 import NotFound from "@/pages/not-found";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 
@@ -276,6 +279,19 @@ function ClerkProviderWithRoutes() {
           <Route path="/fiscal-years">
             <ProtectedRoute component={FiscalYears} />
           </Route>
+
+          <Route path="/users">
+            <ProtectedRoute component={Users} />
+          </Route>
+          <Route path="/users/:id">
+            {(params) => (
+              <DashboardLayout>
+                <UserDetail params={params as { id: string }} />
+              </DashboardLayout>
+            )}
+          </Route>
+
+          <Route path="/accept-invitation" component={AcceptInvitation} />
 
           <Route component={NotFound} />
         </Switch>

@@ -5,9 +5,12 @@
  * Mans ERP API - Cloud ERP for nonprofit organizations in Saudi Arabia
  * OpenAPI spec version: 0.1.0
  */
+import type { UserProfileOrganization } from './userProfileOrganization';
+import type { UserProfileStatus } from './userProfileStatus';
+import type { UserProfileUserRolesItem } from './userProfileUserRolesItem';
 
 export interface UserProfile {
-  id: number;
+  id: string;
   clerkId: string;
   email: string;
   /** @nullable */
@@ -18,8 +21,15 @@ export interface UserProfile {
   firstNameAr?: string | null;
   /** @nullable */
   lastNameAr?: string | null;
-  role: string;
+  /** @nullable */
+  phone?: string | null;
+  status: UserProfileStatus;
+  /** @nullable */
+  organizationId?: string | null;
   /** @nullable */
   avatarUrl?: string | null;
   createdAt: Date;
+  userRoles?: UserProfileUserRolesItem[];
+  /** @nullable */
+  organization?: UserProfileOrganization;
 }

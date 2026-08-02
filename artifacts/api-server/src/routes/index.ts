@@ -19,6 +19,7 @@ import receiptsRouter from "./receipts";
 import paymentsRouter from "./payments";
 import pettyCashRouter from "./petty-cash";
 import reportsRouter from "./reports";
+import invitationsRouter from "./invitations";
 
 const router: IRouter = Router();
 
@@ -42,5 +43,6 @@ router.use("/receipts", receiptsRouter);
 router.use("/payments", paymentsRouter);
 router.use("/petty-cash", pettyCashRouter);
 router.use("/reports", reportsRouter);
+router.use("/invitations", invitationsRouter);
 
 export default router;

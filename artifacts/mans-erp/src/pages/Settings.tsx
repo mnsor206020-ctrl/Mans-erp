@@ -116,7 +116,9 @@ export default function Settings() {
             </div>
             <div className="flex-1">
               <p className="text-sm font-medium text-muted-foreground">{t('settings.role')}</p>
-              <p className="text-base font-semibold capitalize">{user?.role}</p>
+              <p className="text-base font-semibold capitalize">
+                {user?.userRoles?.map((ur) => ur.role.nameEn).join(", ") ?? "—"}
+              </p>
             </div>
           </div>
 

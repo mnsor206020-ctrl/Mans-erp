@@ -1,7 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { useLanguage } from "@/lib/language-provider";
 import { useTheme } from "@/components/theme-provider";
-import { LayoutDashboard, Building2, Settings, Bell, Sun, Moon, LogOut, Menu, BookOpen, FileText, Landmark, Wallet, Receipt, CreditCard, Wallet2, BarChart3, BookText, Scale, TrendingUp, CalendarRange } from "lucide-react";
+import { LayoutDashboard, Building2, Settings, Bell, Sun, Moon, LogOut, Menu, BookOpen, FileText, Landmark, Wallet, Receipt, CreditCard, Wallet2, BarChart3, BookText, Scale, TrendingUp, CalendarRange, Users } from "lucide-react";
 import { useUser, useClerk } from "@clerk/react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -34,6 +34,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     { name: t('nav.balanceSheet'), href: '/reports/balance-sheet', icon: Scale },
     { name: t('nav.incomeStatement'), href: '/reports/income-statement', icon: TrendingUp },
     { name: t('nav.fiscalYears'), href: '/fiscal-years', icon: CalendarRange },
+    { name: t('nav.users'), href: '/users', icon: Users },
     { name: t('nav.settings'), href: '/settings', icon: Settings },
   ];
 

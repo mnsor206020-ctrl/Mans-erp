@@ -45,7 +45,7 @@ const mockAdmin = {
   userRoles: userRolesGrantingAll("users"),
 };
 
-const mockTargetUser = { id: TARGET_ID, clerkId: "target-clerk-id", deletedAt: null };
+const mockTargetUser = { id: TARGET_ID, clerkId: "target-clerk-id", deletedAt: null, userRoles: [] };
 const mockRole       = { id: ROLE_ID, nameEn: "Accountant", deletedAt: null };
 
 const app = express();
@@ -108,11 +108,11 @@ describe("PATCH /users/:id/roles — Integration", () => {
     expect(res.status).toBe(400);
   });
 
-  it("returns 400 on invalid request body", async () => {
+  it("returns 422 on invalid request body", async () => {
     const res = await request(app)
       .patch(`/api/users/${TARGET_ID}/roles`)
       .send({ roleIds: "not-an-array" });
 
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(422);
   });
 });

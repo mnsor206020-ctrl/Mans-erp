@@ -129,6 +129,13 @@ enum AuditAction {
   POST
 }
 
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+  EXPIRED
+}
+
 // ============================================================
 // CORE: USERS, ROLES, PERMISSIONS
 // ============================================================
@@ -167,6 +174,7 @@ model User {
   payments                Payment[]
   auditLogs               AuditLog[]
   attachments             Attachment[]
+  sentInvitations         Invitation[]             @relation("InvitationInvitedBy")
 
   @@index([clerkId])
   @@index([email])
@@ -188,6 +196,7 @@ model Role {
 
   userRoles       UserRole[]
   rolePermissions RolePermission[]
+  invitations     Invitation[]
 
   @@index([isSystem])
   @@index([deletedAt])
@@ -276,6 +285,7 @@ model Organization {
   journalEntries        JournalEntry[]
   journalEntryTemplates JournalEntryTemplate[]
   notifications         Notification[]
+  invitations           Invitation[]
 
   @@index([status])
   @@index([type])
@@ -986,4 +996,34 @@ model AuditLog {
   @@index([entityType, entityId])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+// ============================================================
+// INVITATIONS
+// ============================================================
+
+model Invitation {
+  id              String           @id @default(uuid()) @db.Uuid
+  email           String
+  organizationId  String           @map("organization_id") @db.Uuid
+  roleId          String           @map("role_id") @db.Uuid
+  invitedByUserId String           @map("invited_by_user_id") @db.Uuid
+  token           String           @unique @default(uuid()) @db.Uuid
+  status          InvitationStatus @default(PENDING)
+  expiresAt       DateTime         @map("expires_at")
+  acceptedAt      DateTime?        @map("accepted_at")
+  revokedAt       DateTime?        @map("revoked_at")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  role         Role         @relation(fields: [roleId],         references: [id], onDelete: Restrict)
+  invitedBy    User         @relation("InvitationInvitedBy",    fields: [invitedByUserId], references: [id])
+
+  @@index([email])
+  @@index([organizationId])
+  @@index([token])
+  @@index([status])
+  @@index([expiresAt])
+  @@map("invitations")
 }

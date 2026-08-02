@@ -173,16 +173,31 @@ export const UpdateOrganizationResponse = zod.object({
  * @summary Get current authenticated user profile
  */
 export const GetCurrentUserResponse = zod.object({
-  "id": zod.number(),
+  "id": zod.string().uuid(),
   "clerkId": zod.string(),
   "email": zod.string(),
   "firstNameEn": zod.string().nullish(),
   "lastNameEn": zod.string().nullish(),
   "firstNameAr": zod.string().nullish(),
   "lastNameAr": zod.string().nullish(),
-  "role": zod.string(),
+  "phone": zod.string().nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED']),
+  "organizationId": zod.string().uuid().nullish(),
   "avatarUrl": zod.string().nullish(),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "userRoles": zod.array(zod.object({
+  "roleId": zod.string().uuid(),
+  "role": zod.object({
+  "id": zod.string().uuid(),
+  "nameEn": zod.string(),
+  "nameAr": zod.string()
+})
+})).optional(),
+  "organization": zod.object({
+  "id": zod.string().uuid().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional()
+}).nullish()
 })
 
 
@@ -198,39 +213,164 @@ export const UpdateCurrentUserBody = zod.object({
 })
 
 export const UpdateCurrentUserResponse = zod.object({
-  "id": zod.number(),
+  "id": zod.string().uuid(),
   "clerkId": zod.string(),
   "email": zod.string(),
   "firstNameEn": zod.string().nullish(),
   "lastNameEn": zod.string().nullish(),
   "firstNameAr": zod.string().nullish(),
   "lastNameAr": zod.string().nullish(),
-  "role": zod.string(),
+  "phone": zod.string().nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED']),
+  "organizationId": zod.string().uuid().nullish(),
   "avatarUrl": zod.string().nullish(),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "userRoles": zod.array(zod.object({
+  "roleId": zod.string().uuid(),
+  "role": zod.object({
+  "id": zod.string().uuid(),
+  "nameEn": zod.string(),
+  "nameAr": zod.string()
+})
+})).optional(),
+  "organization": zod.object({
+  "id": zod.string().uuid().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional()
+}).nullish()
 })
 
 
 /**
- * @summary List users in the organization
+ * @summary List users in the organization (paginated)
  */
-export const ListUsersResponseItem = zod.object({
-  "id": zod.number(),
+export const listUsersQueryPageDefault = 1;
+
+export const listUsersQueryLimitDefault = 20;
+export const listUsersQueryLimitMax = 100;
+
+
+
+export const ListUsersQueryParams = zod.object({
+  "search": zod.coerce.string().optional(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED']).optional(),
+  "roleId": zod.coerce.string().uuid().optional(),
+  "page": zod.coerce.number().min(1).default(listUsersQueryPageDefault),
+  "limit": zod.coerce.number().min(1).max(listUsersQueryLimitMax).default(listUsersQueryLimitDefault)
+})
+
+export const ListUsersResponse = zod.object({
+  "data": zod.array(zod.object({
+  "id": zod.string().uuid(),
   "clerkId": zod.string(),
   "email": zod.string(),
   "firstNameEn": zod.string().nullish(),
   "lastNameEn": zod.string().nullish(),
   "firstNameAr": zod.string().nullish(),
   "lastNameAr": zod.string().nullish(),
-  "role": zod.string(),
+  "phone": zod.string().nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED']),
+  "organizationId": zod.string().uuid().nullish(),
   "avatarUrl": zod.string().nullish(),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "userRoles": zod.array(zod.object({
+  "roleId": zod.string().uuid(),
+  "role": zod.object({
+  "id": zod.string().uuid(),
+  "nameEn": zod.string(),
+  "nameAr": zod.string()
 })
-export const ListUsersResponse = zod.array(ListUsersResponseItem)
+})).optional(),
+  "organization": zod.object({
+  "id": zod.string().uuid().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional()
+}).nullish()
+})),
+  "total": zod.number(),
+  "page": zod.number(),
+  "limit": zod.number()
+})
 
 
 /**
- * @summary Assign roles to a user (Super Admin only)
+ * @summary Get a user by ID
+ */
+export const GetUserParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const GetUserResponse = zod.object({
+  "id": zod.string().uuid(),
+  "clerkId": zod.string(),
+  "email": zod.string(),
+  "firstNameEn": zod.string().nullish(),
+  "lastNameEn": zod.string().nullish(),
+  "firstNameAr": zod.string().nullish(),
+  "lastNameAr": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED']),
+  "organizationId": zod.string().uuid().nullish(),
+  "avatarUrl": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "userRoles": zod.array(zod.object({
+  "roleId": zod.string().uuid(),
+  "role": zod.object({
+  "id": zod.string().uuid(),
+  "nameEn": zod.string(),
+  "nameAr": zod.string()
+})
+})).optional(),
+  "organization": zod.object({
+  "id": zod.string().uuid().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional()
+}).nullish()
+})
+
+
+/**
+ * @summary Activate or deactivate a user
+ */
+export const UpdateUserStatusParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const UpdateUserStatusBody = zod.object({
+  "status": zod.enum(['ACTIVE', 'INACTIVE'])
+})
+
+export const UpdateUserStatusResponse = zod.object({
+  "id": zod.string().uuid(),
+  "clerkId": zod.string(),
+  "email": zod.string(),
+  "firstNameEn": zod.string().nullish(),
+  "lastNameEn": zod.string().nullish(),
+  "firstNameAr": zod.string().nullish(),
+  "lastNameAr": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED']),
+  "organizationId": zod.string().uuid().nullish(),
+  "avatarUrl": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "userRoles": zod.array(zod.object({
+  "roleId": zod.string().uuid(),
+  "role": zod.object({
+  "id": zod.string().uuid(),
+  "nameEn": zod.string(),
+  "nameAr": zod.string()
+})
+})).optional(),
+  "organization": zod.object({
+  "id": zod.string().uuid().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional()
+}).nullish()
+})
+
+
+/**
+ * @summary Replace all roles for a user
  */
 export const UpdateUserRolesParams = zod.object({
   "id": zod.coerce.string().uuid()
@@ -241,16 +381,238 @@ export const UpdateUserRolesBody = zod.object({
 })
 
 export const UpdateUserRolesResponse = zod.object({
-  "id": zod.number(),
+  "id": zod.string().uuid(),
   "clerkId": zod.string(),
   "email": zod.string(),
   "firstNameEn": zod.string().nullish(),
   "lastNameEn": zod.string().nullish(),
   "firstNameAr": zod.string().nullish(),
   "lastNameAr": zod.string().nullish(),
-  "role": zod.string(),
+  "phone": zod.string().nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED']),
+  "organizationId": zod.string().uuid().nullish(),
   "avatarUrl": zod.string().nullish(),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "userRoles": zod.array(zod.object({
+  "roleId": zod.string().uuid(),
+  "role": zod.object({
+  "id": zod.string().uuid(),
+  "nameEn": zod.string(),
+  "nameAr": zod.string()
+})
+})).optional(),
+  "organization": zod.object({
+  "id": zod.string().uuid().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional()
+}).nullish()
+})
+
+
+/**
+ * @summary Assign a single role to a user
+ */
+export const AssignUserRoleParams = zod.object({
+  "id": zod.coerce.string().uuid(),
+  "roleId": zod.coerce.string().uuid()
+})
+
+export const AssignUserRoleResponse = zod.object({
+  "id": zod.string().uuid(),
+  "clerkId": zod.string(),
+  "email": zod.string(),
+  "firstNameEn": zod.string().nullish(),
+  "lastNameEn": zod.string().nullish(),
+  "firstNameAr": zod.string().nullish(),
+  "lastNameAr": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED']),
+  "organizationId": zod.string().uuid().nullish(),
+  "avatarUrl": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "userRoles": zod.array(zod.object({
+  "roleId": zod.string().uuid(),
+  "role": zod.object({
+  "id": zod.string().uuid(),
+  "nameEn": zod.string(),
+  "nameAr": zod.string()
+})
+})).optional(),
+  "organization": zod.object({
+  "id": zod.string().uuid().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional()
+}).nullish()
+})
+
+
+/**
+ * @summary Remove a single role from a user
+ */
+export const RemoveUserRoleParams = zod.object({
+  "id": zod.coerce.string().uuid(),
+  "roleId": zod.coerce.string().uuid()
+})
+
+export const RemoveUserRoleResponse = zod.object({
+  "id": zod.string().uuid(),
+  "clerkId": zod.string(),
+  "email": zod.string(),
+  "firstNameEn": zod.string().nullish(),
+  "lastNameEn": zod.string().nullish(),
+  "firstNameAr": zod.string().nullish(),
+  "lastNameAr": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED']),
+  "organizationId": zod.string().uuid().nullish(),
+  "avatarUrl": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "userRoles": zod.array(zod.object({
+  "roleId": zod.string().uuid(),
+  "role": zod.object({
+  "id": zod.string().uuid(),
+  "nameEn": zod.string(),
+  "nameAr": zod.string()
+})
+})).optional(),
+  "organization": zod.object({
+  "id": zod.string().uuid().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional()
+}).nullish()
+})
+
+
+/**
+ * @summary List invitations for the organization
+ */
+export const ListInvitationsResponseItem = zod.object({
+  "id": zod.string().uuid(),
+  "email": zod.string().email(),
+  "organizationId": zod.string().uuid(),
+  "roleId": zod.string().uuid(),
+  "invitedByUserId": zod.string().uuid().optional(),
+  "token": zod.string().uuid(),
+  "status": zod.enum(['PENDING', 'ACCEPTED', 'REVOKED', 'EXPIRED']),
+  "expiresAt": zod.coerce.date(),
+  "acceptedAt": zod.coerce.date().nullish(),
+  "revokedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "role": zod.object({
+  "id": zod.string().uuid(),
+  "nameEn": zod.string(),
+  "nameAr": zod.string()
+}).optional(),
+  "invitedBy": zod.object({
+  "id": zod.string().uuid().optional(),
+  "email": zod.string().optional(),
+  "firstNameEn": zod.string().nullish(),
+  "lastNameEn": zod.string().nullish()
+}).optional()
+})
+export const ListInvitationsResponse = zod.array(ListInvitationsResponseItem)
+
+
+/**
+ * @summary Send an invitation by email
+ */
+export const CreateInvitationBody = zod.object({
+  "email": zod.string().email(),
+  "roleId": zod.string().uuid()
+})
+
+export const CreateInvitationResponse = zod.object({
+  "id": zod.string().uuid(),
+  "email": zod.string().email(),
+  "organizationId": zod.string().uuid(),
+  "roleId": zod.string().uuid(),
+  "invitedByUserId": zod.string().uuid().optional(),
+  "token": zod.string().uuid(),
+  "status": zod.enum(['PENDING', 'ACCEPTED', 'REVOKED', 'EXPIRED']),
+  "expiresAt": zod.coerce.date(),
+  "acceptedAt": zod.coerce.date().nullish(),
+  "revokedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "role": zod.object({
+  "id": zod.string().uuid(),
+  "nameEn": zod.string(),
+  "nameAr": zod.string()
+}).optional(),
+  "invitedBy": zod.object({
+  "id": zod.string().uuid().optional(),
+  "email": zod.string().optional(),
+  "firstNameEn": zod.string().nullish(),
+  "lastNameEn": zod.string().nullish()
+}).optional()
+})
+
+
+/**
+ * @summary Revoke a pending invitation
+ */
+export const RevokeInvitationParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const RevokeInvitationResponse = zod.object({
+  "id": zod.string().uuid(),
+  "email": zod.string().email(),
+  "organizationId": zod.string().uuid(),
+  "roleId": zod.string().uuid(),
+  "invitedByUserId": zod.string().uuid().optional(),
+  "token": zod.string().uuid(),
+  "status": zod.enum(['PENDING', 'ACCEPTED', 'REVOKED', 'EXPIRED']),
+  "expiresAt": zod.coerce.date(),
+  "acceptedAt": zod.coerce.date().nullish(),
+  "revokedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "role": zod.object({
+  "id": zod.string().uuid(),
+  "nameEn": zod.string(),
+  "nameAr": zod.string()
+}).optional(),
+  "invitedBy": zod.object({
+  "id": zod.string().uuid().optional(),
+  "email": zod.string().optional(),
+  "firstNameEn": zod.string().nullish(),
+  "lastNameEn": zod.string().nullish()
+}).optional()
+})
+
+
+/**
+ * @summary Accept an invitation (authenticated user email must match)
+ */
+export const AcceptInvitationParams = zod.object({
+  "token": zod.coerce.string()
+})
+
+export const AcceptInvitationResponse = zod.object({
+  "id": zod.string().uuid(),
+  "clerkId": zod.string(),
+  "email": zod.string(),
+  "firstNameEn": zod.string().nullish(),
+  "lastNameEn": zod.string().nullish(),
+  "firstNameAr": zod.string().nullish(),
+  "lastNameAr": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED']),
+  "organizationId": zod.string().uuid().nullish(),
+  "avatarUrl": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "userRoles": zod.array(zod.object({
+  "roleId": zod.string().uuid(),
+  "role": zod.object({
+  "id": zod.string().uuid(),
+  "nameEn": zod.string(),
+  "nameAr": zod.string()
+})
+})).optional(),
+  "organization": zod.object({
+  "id": zod.string().uuid().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional()
+}).nullish()
 })
 
 

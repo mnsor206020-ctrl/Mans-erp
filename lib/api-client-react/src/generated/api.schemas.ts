@@ -91,8 +91,37 @@ export interface Role {
   createdAt: string;
 }
 
+export type UserProfileStatus = typeof UserProfileStatus[keyof typeof UserProfileStatus];
+
+
+export const UserProfileStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  SUSPENDED: 'SUSPENDED',
+} as const;
+
+export type UserProfileUserRolesItemRole = {
+  id: string;
+  nameEn: string;
+  nameAr: string;
+};
+
+export type UserProfileUserRolesItem = {
+  roleId: string;
+  role: UserProfileUserRolesItemRole;
+};
+
+/**
+ * @nullable
+ */
+export type UserProfileOrganization = {
+  id?: string;
+  nameEn?: string;
+  nameAr?: string;
+} | null;
+
 export interface UserProfile {
-  id: number;
+  id: string;
   clerkId: string;
   email: string;
   /** @nullable */
@@ -103,10 +132,84 @@ export interface UserProfile {
   firstNameAr?: string | null;
   /** @nullable */
   lastNameAr?: string | null;
-  role: string;
+  /** @nullable */
+  phone?: string | null;
+  status: UserProfileStatus;
+  /** @nullable */
+  organizationId?: string | null;
   /** @nullable */
   avatarUrl?: string | null;
   createdAt: string;
+  userRoles?: UserProfileUserRolesItem[];
+  /** @nullable */
+  organization?: UserProfileOrganization;
+}
+
+export interface UserListResponse {
+  data: UserProfile[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export type UserStatusUpdateBodyStatus = typeof UserStatusUpdateBodyStatus[keyof typeof UserStatusUpdateBodyStatus];
+
+
+export const UserStatusUpdateBodyStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface UserStatusUpdateBody {
+  status: UserStatusUpdateBodyStatus;
+}
+
+export type InvitationStatus = typeof InvitationStatus[keyof typeof InvitationStatus];
+
+
+export const InvitationStatus = {
+  PENDING: 'PENDING',
+  ACCEPTED: 'ACCEPTED',
+  REVOKED: 'REVOKED',
+  EXPIRED: 'EXPIRED',
+} as const;
+
+export type InvitationRole = {
+  id: string;
+  nameEn: string;
+  nameAr: string;
+};
+
+export type InvitationInvitedBy = {
+  id?: string;
+  email?: string;
+  /** @nullable */
+  firstNameEn?: string | null;
+  /** @nullable */
+  lastNameEn?: string | null;
+};
+
+export interface Invitation {
+  id: string;
+  email: string;
+  organizationId: string;
+  roleId: string;
+  invitedByUserId?: string;
+  token: string;
+  status: InvitationStatus;
+  expiresAt: string;
+  /** @nullable */
+  acceptedAt?: string | null;
+  /** @nullable */
+  revokedAt?: string | null;
+  createdAt: string;
+  role?: InvitationRole;
+  invitedBy?: InvitationInvitedBy;
+}
+
+export interface InvitationInput {
+  email: string;
+  roleId: string;
 }
 
 export interface UserProfileUpdate {
@@ -1550,6 +1653,30 @@ export interface IncomeStatement {
   totalExpenses: number;
   netIncome: number;
 }
+
+export type ListUsersParams = {
+search?: string;
+status?: ListUsersStatus;
+roleId?: string;
+/**
+ * @minimum 1
+ */
+page?: number;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+};
+
+export type ListUsersStatus = typeof ListUsersStatus[keyof typeof ListUsersStatus];
+
+
+export const ListUsersStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  SUSPENDED: 'SUSPENDED',
+} as const;
 
 export type UpdateUserRolesBody = {
   roleIds: string[];
