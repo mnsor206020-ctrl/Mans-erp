@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { requireAuth, getAuth } from "@clerk/express";
+import { getAuth } from "@clerk/express";
 import { prisma } from "@workspace/prisma";
 import { z } from "zod";
 import { isPlatformAdmin, requirePermission } from "../lib/authorize";
@@ -49,7 +49,7 @@ const invitationInclude = {
 
 // ── GET /invitations ──────────────────────────────────────────────────────────
 
-router.get("/", requireAuth(), requirePermission("invitations", "read"), async (req, res) => {
+router.get("/", requirePermission("invitations", "read"), async (req, res) => {
   try {
     const actor = req.currentUser!;
     if (!isPlatformAdmin(actor) && !actor.organizationId) {
@@ -81,7 +81,6 @@ const createSchema = z.object({
 
 router.post(
   "/",
-  requireAuth(),
   requirePermission("invitations", "create"),
   async (req, res) => {
     try {
@@ -165,7 +164,6 @@ router.post(
 
 router.delete(
   "/:id",
-  requireAuth(),
   requirePermission("invitations", "delete"),
   async (req, res) => {
     try {
@@ -208,7 +206,7 @@ router.delete(
 
 // ── POST /invitations/:token/accept ──────────────────────────────────────────
 
-router.post("/:token/accept", requireAuth(), async (req, res) => {
+router.post("/:token/accept", async (req, res) => {
   try {
     // This endpoint does NOT use requirePermission, so we load the user directly.
     const { userId: clerkId } = getAuth(req);
