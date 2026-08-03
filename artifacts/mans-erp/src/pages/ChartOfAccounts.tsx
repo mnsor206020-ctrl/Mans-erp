@@ -527,11 +527,13 @@ export default function ChartOfAccounts() {
     const q = search.toLowerCase();
     return allAccounts.filter(
       (a) =>
-        a.code.toLowerCase().includes(q) ||
-        a.nameEn.toLowerCase().includes(q) ||
-        a.nameAr.includes(q)
+        (a.code.toLowerCase().includes(q) ||
+          a.nameEn.toLowerCase().includes(q) ||
+          a.nameAr.includes(q)) &&
+        (typeFilter === "__all__" || a.type === typeFilter) &&
+        (statusFilter === "__all__" || (statusFilter === "active" ? a.isActive : !a.isActive))
     );
-  }, [search, allAccounts]);
+  }, [search, allAccounts, typeFilter, statusFilter]);
 
   // Filtered tree (by type/status) — for tree view
   const filteredTree = useMemo(() => {

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { requireAuth, getAuth } from "@clerk/express";
+import { getAuth } from "@clerk/express";
 import { prisma } from "@workspace/prisma";
 import { z } from "zod";
 import { requirePermission } from "../lib/authorize";
@@ -8,7 +8,8 @@ const router = Router();
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
-async function getCurrentUser(clerkId: string) {
+async function getCurrentUser(clerkId: string | null | undefined) {
+  if (!clerkId) return null;
   return prisma.user.findFirst({
     where: { clerkId, deletedAt: null },
     include: {
@@ -118,7 +119,7 @@ const updateSchema = z.object({
 
 // ── GET /tree ────────────────────────────────────────────────────────────────
 
-router.get("/tree", requireAuth(), async (req, res) => {
+router.get("/tree", async (req, res) => {
   try {
     const { userId } = getAuth(req);
     const user = await getCurrentUser(userId!);
@@ -142,7 +143,7 @@ router.get("/tree", requireAuth(), async (req, res) => {
 
 // ── GET / (flat, paginated) ──────────────────────────────────────────────────
 
-router.get("/", requireAuth(), async (req, res) => {
+router.get("/", async (req, res) => {
   try {
     const { userId } = getAuth(req);
     const user = await getCurrentUser(userId!);
@@ -210,7 +211,7 @@ router.get("/", requireAuth(), async (req, res) => {
 
 // ── GET /:id ─────────────────────────────────────────────────────────────────
 
-router.get("/:id", requireAuth(), async (req, res) => {
+router.get("/:id", async (req, res) => {
   try {
     const { userId } = getAuth(req);
     const user = await getCurrentUser(userId!);
@@ -241,7 +242,7 @@ router.get("/:id", requireAuth(), async (req, res) => {
 
 // ── POST / ───────────────────────────────────────────────────────────────────
 
-router.post("/", requireAuth(), requirePermission("chart_of_accounts", "create"), async (req, res) => {
+router.post("/", requirePermission("chart_of_accounts", "create"), async (req, res) => {
   try {
     const { userId } = getAuth(req);
     const user = await getCurrentUser(userId!);
@@ -322,7 +323,7 @@ router.post("/", requireAuth(), requirePermission("chart_of_accounts", "create")
 
 // ── PATCH /:id ───────────────────────────────────────────────────────────────
 
-router.patch("/:id", requireAuth(), requirePermission("chart_of_accounts", "update"), async (req, res) => {
+router.patch("/:id", requirePermission("chart_of_accounts", "update"), async (req, res) => {
   try {
     const { userId } = getAuth(req);
     const user = await getCurrentUser(userId!);
@@ -427,7 +428,7 @@ router.patch("/:id", requireAuth(), requirePermission("chart_of_accounts", "upda
 
 // ── DELETE /:id ──────────────────────────────────────────────────────────────
 
-router.delete("/:id", requireAuth(), requirePermission("chart_of_accounts", "delete"), async (req, res) => {
+router.delete("/:id", requirePermission("chart_of_accounts", "delete"), async (req, res) => {
   try {
     const { userId } = getAuth(req);
     const user = await getCurrentUser(userId!);
@@ -481,7 +482,7 @@ router.delete("/:id", requireAuth(), requirePermission("chart_of_accounts", "del
 
 // ── POST /:id/toggle-active ──────────────────────────────────────────────────
 
-router.post("/:id/toggle-active", requireAuth(), requirePermission("chart_of_accounts", "update"), async (req, res) => {
+router.post("/:id/toggle-active", requirePermission("chart_of_accounts", "update"), async (req, res) => {
   try {
     const { userId } = getAuth(req);
     const user = await getCurrentUser(userId!);
