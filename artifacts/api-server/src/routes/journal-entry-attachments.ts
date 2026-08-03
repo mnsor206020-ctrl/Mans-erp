@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { requireAuth, getAuth } from "@clerk/express";
+import { getAuth } from "@clerk/express";
 import { prisma } from "@workspace/prisma";
 import multer from "multer";
 import { createHash, randomUUID } from "crypto";
@@ -57,7 +57,8 @@ function runUpload(
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-async function getUser(clerkId: string) {
+async function getUser(clerkId: string | null | undefined) {
+  if (!clerkId) return null;
   return prisma.user.findFirst({ where: { clerkId, deletedAt: null } });
 }
 
@@ -74,7 +75,7 @@ function parsePrivateObjectDir(): { bucketName: string; prefix: string } {
 
 // ── POST /api/journal-entries/:id/attachments ──────────────────────────────────
 
-router.post("/", requireAuth(), requirePermission("attachments", "create"), async (req, res) => {
+router.post("/", requirePermission("attachments", "create"), async (req, res) => {
   // ── Parse multipart ───────────────────────────────────────────────────────
   try {
     await runUpload(req, res);
@@ -178,7 +179,7 @@ router.post("/", requireAuth(), requirePermission("attachments", "create"), asyn
 
 // ── GET /api/journal-entries/:id/attachments ──────────────────────────────────
 
-router.get("/", requireAuth(), async (req, res) => {
+router.get("/", async (req, res) => {
   try {
     const { userId } = getAuth(req);
     const user = await getUser(userId!);
@@ -211,7 +212,7 @@ router.get("/", requireAuth(), async (req, res) => {
 
 // ── DELETE /api/journal-entries/:id/attachments/:attachmentId ─────────────────
 
-router.delete("/:attachmentId", requireAuth(), requirePermission("attachments", "delete"), async (req, res) => {
+router.delete("/:attachmentId", requirePermission("attachments", "delete"), async (req, res) => {
   try {
     const { userId } = getAuth(req);
     const user = await getUser(userId!);
@@ -255,7 +256,7 @@ router.delete("/:attachmentId", requireAuth(), requirePermission("attachments", 
 
 // ── PATCH /api/journal-entries/:id/attachments/:attachmentId ──────────────────
 
-router.patch("/:attachmentId", requireAuth(), requirePermission("attachments", "update"), async (req, res) => {
+router.patch("/:attachmentId", requirePermission("attachments", "update"), async (req, res) => {
   try {
     const { userId } = getAuth(req);
     const user = await getUser(userId!);
@@ -328,7 +329,7 @@ router.patch("/:attachmentId", requireAuth(), requirePermission("attachments", "
 
 const DOWNLOAD_TTL_SEC = 900; // 15 minutes
 
-router.get("/:attachmentId/download", requireAuth(), async (req, res) => {
+router.get("/:attachmentId/download", async (req, res) => {
   try {
     const { userId } = getAuth(req);
     const user = await getUser(userId!);

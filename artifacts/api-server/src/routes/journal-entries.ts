@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { requireAuth, getAuth } from "@clerk/express";
+import { getAuth } from "@clerk/express";
 import { prisma } from "@workspace/prisma";
 import { computeIntegrityHash } from "../services/integrity-hash";
 import {
@@ -20,7 +20,8 @@ const router = Router();
 
 router.use("/:id/attachments", attachmentsRouter);
 
-async function getUser(clerkId: string) {
+async function getUser(clerkId: string | null | undefined) {
+  if (!clerkId) return null;
   return prisma.user.findFirst({ where: { clerkId, deletedAt: null } });
 }
 
@@ -105,7 +106,7 @@ async function emitNotification(params: {
 }
 
 // ── LIST ──────────────────────────────────────────────────────────────────────
-router.get("/", requireAuth(), async (req, res) => {
+router.get("/", async (req, res) => {
   try {
     const { userId } = getAuth(req);
     const user = await getUser(userId!);
@@ -162,7 +163,7 @@ router.get("/", requireAuth(), async (req, res) => {
 });
 
 // ── GET ONE ─────────────────────────────────────────────────────────────────
-router.get("/:id", requireAuth(), async (req, res) => {
+router.get("/:id", async (req, res) => {
   try {
     const { userId } = getAuth(req);
     const user = await getUser(userId!);
@@ -202,7 +203,7 @@ router.get("/:id", requireAuth(), async (req, res) => {
 });
 
 // ── CREATE ───────────────────────────────────────────────────────────────────
-router.post("/", requireAuth(), requirePermission("journal_entries", "create"), async (req, res) => {
+router.post("/", requirePermission("journal_entries", "create"), async (req, res) => {
   try {
     const { userId } = getAuth(req);
     const user = await getUser(userId!);
@@ -287,7 +288,7 @@ router.post("/", requireAuth(), requirePermission("journal_entries", "create"), 
 });
 
 // ── UPDATE ───────────────────────────────────────────────────────────────────
-router.patch("/:id", requireAuth(), requirePermission("journal_entries", "update"), async (req, res) => {
+router.patch("/:id", requirePermission("journal_entries", "update"), async (req, res) => {
   try {
     const { userId } = getAuth(req);
     const user = await getUser(userId!);
@@ -377,7 +378,7 @@ router.patch("/:id", requireAuth(), requirePermission("journal_entries", "update
 });
 
 // ── DELETE ───────────────────────────────────────────────────────────────────
-router.delete("/:id", requireAuth(), requirePermission("journal_entries", "delete"), async (req, res) => {
+router.delete("/:id", requirePermission("journal_entries", "delete"), async (req, res) => {
   try {
     const { userId } = getAuth(req);
     const user = await getUser(userId!);
@@ -405,7 +406,7 @@ router.delete("/:id", requireAuth(), requirePermission("journal_entries", "delet
 });
 
 // ── SUBMIT (DRAFT → UNDER_REVIEW) ──────────────────────────────────────────
-router.post("/:id/submit", requireAuth(), requirePermission("journal_entries", "update"), async (req, res) => {
+router.post("/:id/submit", requirePermission("journal_entries", "update"), async (req, res) => {
   try {
     const { userId } = getAuth(req);
     const user = await getUser(userId!);
@@ -463,7 +464,7 @@ router.post("/:id/submit", requireAuth(), requirePermission("journal_entries", "
 });
 
 // ── APPROVE (UNDER_REVIEW → APPROVED) ────────────────────────────────────
-router.post("/:id/approve", requireAuth(), requirePermission("journal_entries", "approve"), async (req, res) => {
+router.post("/:id/approve", requirePermission("journal_entries", "approve"), async (req, res) => {
   try {
     const { userId } = getAuth(req);
     const user = await getUser(userId!);
@@ -514,7 +515,7 @@ router.post("/:id/approve", requireAuth(), requirePermission("journal_entries", 
 });
 
 // ── REJECT (UNDER_REVIEW|APPROVED → DRAFT) ───────────────────────────────
-router.post("/:id/reject", requireAuth(), requirePermission("journal_entries", "approve"), async (req, res) => {
+router.post("/:id/reject", requirePermission("journal_entries", "approve"), async (req, res) => {
   try {
     const bodyParse = rejectCommentSchema.safeParse(req.body);
     if (!bodyParse.success) {
@@ -580,7 +581,7 @@ router.post("/:id/reject", requireAuth(), requirePermission("journal_entries", "
 });
 
 // ── POST (APPROVED → POSTED) ──────────────────────────────────────────────
-router.post("/:id/post", requireAuth(), requirePermission("journal_entries", "approve"), async (req, res) => {
+router.post("/:id/post", requirePermission("journal_entries", "approve"), async (req, res) => {
   try {
     const { userId } = getAuth(req);
     const user = await getUser(userId!);
@@ -680,7 +681,7 @@ router.post("/:id/post", requireAuth(), requirePermission("journal_entries", "ap
 });
 
 // ── LOCK (POSTED → LOCKED) ────────────────────────────────────────────────
-router.post("/:id/lock", requireAuth(), requirePermission("journal_entries", "approve"), async (req, res) => {
+router.post("/:id/lock", requirePermission("journal_entries", "approve"), async (req, res) => {
   try {
     const { userId } = getAuth(req);
     const user = await getUser(userId!);
@@ -722,7 +723,7 @@ router.post("/:id/lock", requireAuth(), requirePermission("journal_entries", "ap
 });
 
 // ── REVERSE (create reversal + mark REVERSED) ────────────────────────────
-router.post("/:id/reverse", requireAuth(), requirePermission("journal_entries", "void"), async (req, res) => {
+router.post("/:id/reverse", requirePermission("journal_entries", "void"), async (req, res) => {
   try {
     const { userId } = getAuth(req);
     const user = await getUser(userId!);
@@ -827,7 +828,7 @@ router.post("/:id/reverse", requireAuth(), requirePermission("journal_entries", 
 });
 
 // ── COPY ─────────────────────────────────────────────────────────────────
-router.post("/:id/copy", requireAuth(), requirePermission("journal_entries", "create"), async (req, res) => {
+router.post("/:id/copy", requirePermission("journal_entries", "create"), async (req, res) => {
   try {
     const { userId } = getAuth(req);
     const user = await getUser(userId!);
@@ -884,7 +885,7 @@ router.post("/:id/copy", requireAuth(), requirePermission("journal_entries", "cr
 });
 
 // ── VOID (POSTED → VOIDED with reason) ──────────────────────────────────
-router.post("/:id/void", requireAuth(), requirePermission("journal_entries", "void"), async (req, res) => {
+router.post("/:id/void", requirePermission("journal_entries", "void"), async (req, res) => {
   try {
     const { userId } = getAuth(req);
     const user = await getUser(userId!);
@@ -941,7 +942,7 @@ router.post("/:id/void", requireAuth(), requirePermission("journal_entries", "vo
 
 // ── GET /:id/approvals — ordered approval history ─────────────────────────
 // ── VERIFY HASH ───────────────────────────────────────────────────────────────
-router.get("/:id/verify-hash", requireAuth(), async (req, res) => {
+router.get("/:id/verify-hash", async (req, res) => {
   try {
     const { userId } = getAuth(req);
     const user = await getUser(userId!);
@@ -988,7 +989,7 @@ router.get("/:id/verify-hash", requireAuth(), async (req, res) => {
   }
 });
 
-router.get("/:id/approvals", requireAuth(), async (req, res) => {
+router.get("/:id/approvals", async (req, res) => {
   try {
     const { userId } = getAuth(req);
     const user = await getUser(userId!);
