@@ -86,7 +86,7 @@ router.post(
     try {
       const actor = req.currentUser!;
 
-      if (!actor.organizationId && !isPlatformAdmin(actor)) {
+      if (!actor.organizationId) {
         return res
           .status(422)
           .json({ error: "You must belong to an organization to send invitations" });
