@@ -4,7 +4,15 @@ import {
   useListChartOfAccounts,
   useGetAccountLedger,
 } from "@workspace/api-client-react";
-import type { AccountLedgerLine } from "@workspace/api-client-react";
+import type { AccountLedger, AccountLedgerLine } from "@workspace/api-client-react";
+
+// Backend returns additional computed fields not yet in the generated type
+type AccountLedgerFull = AccountLedger & {
+  beginningBalance: number;
+  totalDebit:       number;
+  totalCredit:      number;
+  endingBalance:    number;
+};
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -49,11 +57,12 @@ export default function AccountLedger() {
   });
   const accounts = accountsPage?.data ?? [];
 
-  const { data: ledger, isLoading: ledgerLoading, refetch } = useGetAccountLedger(
+  const { data: ledgerRaw, isLoading: ledgerLoading, refetch } = useGetAccountLedger(
     loadParams ?? { accountId: "", from: "", to: "" },
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     { query: { enabled: !!loadParams } as any },
   );
+  const ledger = ledgerRaw as AccountLedgerFull | undefined;
 
   function handleLoad() {
     if (!accountId || !from || !to) return;
@@ -219,6 +228,19 @@ export default function AccountLedger() {
                   </tr>
                 </thead>
                 <tbody className="divide-y">
+                  {/* Beginning balance row */}
+                  <tr className="bg-muted/30 font-medium">
+                    <td className="px-4 py-3 text-xs text-muted-foreground font-mono">—</td>
+                    <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{ledger.from}</td>
+                    <td className="px-4 py-3 text-muted-foreground italic" colSpan={2}>
+                      {t("reports.accountLedger.beginningBalance")}
+                    </td>
+                    <td className="px-4 py-3" />
+                    <td className="px-4 py-3" />
+                    <td className={`px-4 py-3 text-end font-mono tabular-nums ${balanceClass(ledger.beginningBalance)}`}>
+                      {formatAmount(ledger.beginningBalance)}
+                    </td>
+                  </tr>
                   {ledger.lines.length === 0 ? (
                     <tr>
                       <td colSpan={7} className="px-4 py-10 text-center text-muted-foreground">
@@ -255,6 +277,16 @@ export default function AccountLedger() {
                     ))
                   )}
                 </tbody>
+                <tfoot className="border-t-2 bg-muted/50">
+                  <tr className="font-semibold">
+                    <td className="px-4 py-3" colSpan={4}>{t("reports.accountLedger.totals")}</td>
+                    <td className="px-4 py-3 text-end font-mono tabular-nums">{formatAmount(ledger.totalDebit)}</td>
+                    <td className="px-4 py-3 text-end font-mono tabular-nums">{formatAmount(ledger.totalCredit)}</td>
+                    <td className={`px-4 py-3 text-end font-mono tabular-nums ${balanceClass(ledger.endingBalance)}`}>
+                      {formatAmount(ledger.endingBalance)}
+                    </td>
+                  </tr>
+                </tfoot>
               </table>
             </div>
           </CardContent>

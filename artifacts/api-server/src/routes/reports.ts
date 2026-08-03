@@ -1,12 +1,12 @@
 import { Router } from "express";
-import { requireAuth, getAuth } from "@clerk/express";
+import { getAuth } from "@clerk/express";
 import { prisma } from "@workspace/prisma";
 
 const router = Router();
 
 // ─── GET /reports/trial-balance ───────────────────────────────────────────────
 
-router.get("/trial-balance", requireAuth(), async (req, res): Promise<void> => {
+router.get("/trial-balance", async (req, res): Promise<void> => {
   try {
     const { userId } = getAuth(req);
     if (!userId) {
@@ -102,7 +102,7 @@ router.get("/trial-balance", requireAuth(), async (req, res): Promise<void> => {
 
 // ─── GET /reports/account-ledger ──────────────────────────────────────────────
 
-router.get("/account-ledger", requireAuth(), async (req, res): Promise<void> => {
+router.get("/account-ledger", async (req, res): Promise<void> => {
   try {
     const { userId } = getAuth(req);
     if (!userId) {
@@ -134,6 +134,24 @@ router.get("/account-ledger", requireAuth(), async (req, res): Promise<void> => 
       return;
     }
 
+    // Beginning balance: sum all POSTED lines for this account strictly before `from`
+    const priorLines = await prisma.journalEntryLine.findMany({
+      where: {
+        accountId,
+        journalEntry: {
+          organizationId: user.organizationId,
+          status:         "POSTED",
+          deletedAt:      null,
+          entryDate:      { lt: new Date(from) },
+        },
+      },
+      select: { debit: true, credit: true },
+    });
+    const beginningBalance = priorLines.reduce(
+      (sum, l) => sum + Number(l.debit) - Number(l.credit),
+      0,
+    );
+
     const lines = await prisma.journalEntryLine.findMany({
       where: {
         accountId,
@@ -163,10 +181,14 @@ router.get("/account-ledger", requireAuth(), async (req, res): Promise<void> => 
       ],
     });
 
-    let runningBalance = 0;
+    let runningBalance = beginningBalance;
+    let totalDebit     = 0;
+    let totalCredit    = 0;
     const rows = lines.map((line) => {
       const debit  = Number(line.debit);
       const credit = Number(line.credit);
+      totalDebit  += debit;
+      totalCredit += credit;
       runningBalance += debit - credit;
       return {
         journalEntryId: line.journalEntryId,
@@ -183,12 +205,16 @@ router.get("/account-ledger", requireAuth(), async (req, res): Promise<void> => 
 
     res.json({
       accountId,
-      accountCode:   account.code,
-      accountNameEn: account.nameEn,
-      accountNameAr: account.nameAr,
+      accountCode:      account.code,
+      accountNameEn:    account.nameEn,
+      accountNameAr:    account.nameAr,
       from,
       to,
-      lines: rows,
+      beginningBalance,
+      totalDebit,
+      totalCredit,
+      endingBalance:    beginningBalance + totalDebit - totalCredit,
+      lines:            rows,
     });
   } catch (err) {
     res.status(500).json({ error: "Failed to generate account ledger" });
@@ -197,7 +223,7 @@ router.get("/account-ledger", requireAuth(), async (req, res): Promise<void> => 
 
 // ─── GET /reports/balance-sheet ───────────────────────────────────────────────
 
-router.get("/balance-sheet", requireAuth(), async (req, res): Promise<void> => {
+router.get("/balance-sheet", async (req, res): Promise<void> => {
   try {
     const { userId } = getAuth(req);
     if (!userId) {
@@ -343,7 +369,7 @@ router.get("/balance-sheet", requireAuth(), async (req, res): Promise<void> => {
 
 // ─── GET /reports/income-statement ────────────────────────────────────────────
 
-router.get("/income-statement", requireAuth(), async (req, res): Promise<void> => {
+router.get("/income-statement", async (req, res): Promise<void> => {
   try {
     const { userId } = getAuth(req);
     if (!userId) {

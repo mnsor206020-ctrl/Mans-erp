@@ -150,7 +150,9 @@ describe("GET /reports/account-ledger", () => {
   it("calculates running balance correctly across lines", async () => {
     prismaUserMock.findFirst.mockResolvedValue(mockUser);
     prismaAccountMock.findFirst.mockResolvedValue(mockAccount);
-    prismaLineMock.findMany.mockResolvedValue(mockLines);
+    // call 0 = prior-period beginning balance query (empty → beginningBalance = 0)
+    // call 1 = period lines query
+    prismaLineMock.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce(mockLines);
 
     const res = await request(app)
       .get("/reports/account-ledger")
@@ -233,7 +235,8 @@ describe("GET /reports/account-ledger", () => {
       .get("/reports/account-ledger")
       .query({ accountId: "acc-1", from: "2025-03-01", to: "2025-03-31" });
 
-    const callArgs = prismaLineMock.findMany.mock.calls[0][0];
+    // call 0 = prior-period query (lt); call 1 = period query (gte/lte)
+    const callArgs = prismaLineMock.findMany.mock.calls[1][0];
     const dateRange = callArgs.where.journalEntry.entryDate;
     expect(dateRange.gte).toEqual(new Date("2025-03-01"));
     expect(dateRange.lte).toEqual(new Date("2025-03-31"));
@@ -248,7 +251,8 @@ describe("GET /reports/account-ledger", () => {
       .get("/reports/account-ledger")
       .query({ accountId: "acc-1", from: "2025-01-01", to: "2025-12-31" });
 
-    const callArgs = prismaLineMock.findMany.mock.calls[0][0];
+    // call 0 = prior-period query (no orderBy); call 1 = period query (has orderBy)
+    const callArgs = prismaLineMock.findMany.mock.calls[1][0];
     const orderBy  = callArgs.orderBy as { journalEntry?: { entryDate?: string; number?: string }; lineNumber?: string }[];
     expect(orderBy[0]?.journalEntry?.entryDate).toBe("asc");
     expect(orderBy[1]?.journalEntry?.number).toBe("asc");
