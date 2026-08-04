@@ -52,7 +52,7 @@ async function assertRoleRemovalSafe(
     const remainingAdminRoles = await prisma.userRole.count({
       where: {
         userId: targetUserId,
-        roleId: { not: roleId },
+        roleId: { not: role.id },
         role: { nameEn: { in: ["Super Admin", "Organization Admin"] } },
       },
     });
@@ -104,7 +104,7 @@ async function assertRoleRemovalSafe(
 
 // ── GET /users/me ─────────────────────────────────────────────────────────────
 
-router.get("/me", requireAuth(), async (req, res) => {
+router.get("/me", async (req, res) => {
   try {
     const { userId } = getAuth(req);
     if (!userId) return res.status(401).json({ error: "Unauthorized" });
@@ -137,7 +137,7 @@ router.get("/me", requireAuth(), async (req, res) => {
 
 // ── PATCH /users/me ───────────────────────────────────────────────────────────
 
-router.patch("/me", requireAuth(), async (req, res) => {
+router.patch("/me", async (req, res) => {
   try {
     const { userId } = getAuth(req);
     if (!userId) return res.status(401).json({ error: "Unauthorized" });
@@ -165,7 +165,6 @@ const listQuerySchema = z.object({
 
 router.get(
   "/",
-  requireAuth(),
   requirePermission("users", "read"),
   async (req, res) => {
     try {
@@ -221,7 +220,7 @@ router.get(
 
 // ── GET /users/:id — user detail ──────────────────────────────────────────────
 
-router.get("/:id", requireAuth(), requirePermission("users", "read"), async (req, res) => {
+router.get("/:id", requirePermission("users", "read"), async (req, res) => {
   try {
     const actor = req.currentUser!;
     const orgFilter = isPlatformAdmin(actor) ? {} : { organizationId: actor.organizationId };
@@ -249,7 +248,6 @@ const statusSchema = z.object({
 
 router.patch(
   "/:id/status",
-  requireAuth(),
   requirePermission("users", "update"),
   async (req, res) => {
     try {
@@ -304,7 +302,6 @@ const assignRolesSchema = z.object({
 
 router.patch(
   "/:id/roles",
-  requireAuth(),
   requirePermission("users", "update"),
   async (req, res) => {
     try {
@@ -382,7 +379,6 @@ router.patch(
 
 router.post(
   "/:id/roles/:roleId",
-  requireAuth(),
   requirePermission("users", "update"),
   async (req, res) => {
     try {
@@ -428,7 +424,6 @@ router.post(
 
 router.delete(
   "/:id/roles/:roleId",
-  requireAuth(),
   requirePermission("users", "update"),
   async (req, res) => {
     try {
