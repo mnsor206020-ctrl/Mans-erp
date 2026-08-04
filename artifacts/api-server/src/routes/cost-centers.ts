@@ -8,14 +8,16 @@ async function getUser(clerkId: string) {
   return prisma.user.findFirst({ where: { clerkId, deletedAt: null } });
 }
 
-router.get("/", requireAuth(), async (req, res) => {
+router.get("/", async (req, res) => {
   try {
-    const { userId } = getAuth(req);
-    const user = await getUser(userId!);
+    const { userId: clerkId } = getAuth(req);
+    if (!clerkId) return res.status(401).json({ error: "Unauthenticated" });
+
+    const user = await getUser(clerkId);
     if (!user) return res.status(401).json({ error: "User not found" });
 
-    const { organizationId, isActive } = req.query;
-    const orgId = (organizationId as string) || user.organizationId || undefined;
+    const { isActive } = req.query;
+    const orgId = user.organizationId || undefined;
 
     const centers = await prisma.costCenter.findMany({
       where: {
