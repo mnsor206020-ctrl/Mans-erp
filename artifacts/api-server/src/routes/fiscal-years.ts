@@ -37,9 +37,10 @@ async function getUser(clerkId: string) {
   return prisma.user.findFirst({ where: { clerkId, deletedAt: null } });
 }
 
-router.get("/", requireAuth(), async (req, res) => {
+router.get("/", async (req, res) => {
   try {
     const { userId } = getAuth(req);
+    if (!userId) return res.status(401).json({ error: "Unauthorized" });
     const user = await getUser(userId!);
     if (!user) return res.status(401).json({ error: "User not found" });
 
@@ -62,7 +63,7 @@ router.get("/", requireAuth(), async (req, res) => {
   }
 });
 
-router.post("/", requireAuth(), requirePermission("fiscal_years", "create"), async (req, res) => {
+router.post("/", requirePermission("fiscal_years", "create"), async (req, res) => {
   try {
     const { userId } = getAuth(req);
     const user = await getUser(userId!);
@@ -99,7 +100,7 @@ router.post("/", requireAuth(), requirePermission("fiscal_years", "create"), asy
 });
 
 // ── POST /:id/close — create closing entries and mark fiscal year CLOSED ───────
-router.post("/:id/close", requireAuth(), requirePermission("fiscal_years", "update"), async (req, res): Promise<void> => {
+router.post("/:id/close", requirePermission("fiscal_years", "update"), async (req, res): Promise<void> => {
   try {
     const { userId } = getAuth(req);
     const user = await getUser(userId!);
@@ -292,7 +293,7 @@ router.post("/:id/close", requireAuth(), requirePermission("fiscal_years", "upda
 });
 
 // ── POST /:id/rollover — create next fiscal year with opening balances ────────
-router.post("/:id/rollover", requireAuth(), requirePermission("fiscal_years", "update"), async (req, res): Promise<void> => {
+router.post("/:id/rollover", requirePermission("fiscal_years", "update"), async (req, res): Promise<void> => {
   try {
     const { userId } = getAuth(req);
     const user = await getUser(userId!);

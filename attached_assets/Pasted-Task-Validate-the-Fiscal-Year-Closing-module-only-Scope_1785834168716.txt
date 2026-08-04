@@ -1,0 +1,58 @@
+Task: Validate the Fiscal Year Closing module only.
+
+Scope:
+- Fiscal Year Closing only.
+- Do not inspect or modify unrelated modules.
+- Do not refactor.
+- Do not add features.
+- Do not update OpenAPI, documentation, translations, or memory.
+- If a shared issue directly blocks this module, apply only the smallest possible fix.
+
+Validate the complete year-end closing workflow:
+
+1. Open the Fiscal Years page.
+2. Create a new fiscal year (if supported).
+3. Edit fiscal year details (if supported).
+4. Open an existing fiscal year.
+5. Close a fiscal year.
+6. Re-open a fiscal year (if supported).
+7. Verify closing restrictions.
+8. Verify opening balance generation.
+9. Verify retained earnings handling.
+10. Verify current-year profit/loss closing.
+11. Verify closing journal entries (if implemented).
+12. Verify new fiscal year opening balances.
+13. Verify journal entry restrictions after closing.
+14. Verify report consistency after closing.
+15. Verify permissions.
+16. Verify API responses.
+17. Verify UI behavior.
+18. Verify audit logging.
+
+Independently verify:
+
+- A fiscal year cannot close if business rules forbid it.
+- Unposted or unapproved journal entries prevent closing (if required by the design).
+- Revenue and expense accounts are handled correctly during closing.
+- Balance Sheet remains balanced after closing.
+- Trial Balance after closing is correct.
+- Opening balances in the next fiscal year exactly equal the ending balances of the previous year according to the system design.
+- Closed fiscal years reject new journal entries and edits.
+- Re-opening (if supported) restores the expected behavior.
+
+If bugs are found:
+
+- Find the exact root cause.
+- Apply the smallest possible fix.
+- Verify the fix.
+- Continue validation.
+
+Do not build missing functionality.
+If the fiscal-year closing feature is not implemented, stop immediately and clearly state which parts are implemented and which are missing.
+
+Return only:
+
+- Bugs found
+- Root cause(s)
+- Files changed
+- Verification summary
