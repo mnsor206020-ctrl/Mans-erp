@@ -80,7 +80,7 @@ async function validateReferences(params: {
 
 // ─── GET /api/payments ────────────────────────────────────────────────────────
 
-router.get("/", requireAuth(), async (req, res) => {
+router.get("/", async (req, res) => {
   try {
     const { userId: clerkId } = getAuth(req);
     if (!clerkId) return res.status(401).json({ error: "Unauthenticated" });
@@ -128,7 +128,7 @@ router.get("/", requireAuth(), async (req, res) => {
 
 // ─── POST /api/payments ───────────────────────────────────────────────────────
 
-router.post("/", requireAuth(), requirePermission("payments", "create"), async (req, res) => {
+router.post("/", requirePermission("payments", "create"), async (req, res) => {
   try {
     const { userId: clerkId } = getAuth(req);
     if (!clerkId) return res.status(401).json({ error: "Unauthenticated" });
@@ -212,7 +212,7 @@ router.post("/", requireAuth(), requirePermission("payments", "create"), async (
 
 // ─── GET /api/payments/:id ────────────────────────────────────────────────────
 
-router.get("/:id", requireAuth(), async (req, res) => {
+router.get("/:id", async (req, res) => {
   try {
     const { userId: clerkId } = getAuth(req);
     if (!clerkId) return res.status(401).json({ error: "Unauthenticated" });
@@ -246,7 +246,7 @@ router.get("/:id", requireAuth(), async (req, res) => {
 
 // ─── PATCH /api/payments/:id ──────────────────────────────────────────────────
 
-router.patch("/:id", requireAuth(), requirePermission("payments", "update"), async (req, res) => {
+router.patch("/:id", requirePermission("payments", "update"), async (req, res) => {
   try {
     const { userId: clerkId } = getAuth(req);
     if (!clerkId) return res.status(401).json({ error: "Unauthenticated" });
@@ -327,7 +327,7 @@ router.patch("/:id", requireAuth(), requirePermission("payments", "update"), asy
 
 // ─── DELETE /api/payments/:id ─────────────────────────────────────────────────
 
-router.delete("/:id", requireAuth(), requirePermission("payments", "delete"), async (req, res) => {
+router.delete("/:id", requirePermission("payments", "delete"), async (req, res) => {
   try {
     const { userId: clerkId } = getAuth(req);
     if (!clerkId) return res.status(401).json({ error: "Unauthenticated" });
@@ -361,7 +361,7 @@ router.delete("/:id", requireAuth(), requirePermission("payments", "delete"), as
 
 // ─── POST /api/payments/:id/confirm ──────────────────────────────────────────
 
-router.post("/:id/confirm", requireAuth(), requirePermission("payments", "approve"), async (req, res) => {
+router.post("/:id/confirm", requirePermission("payments", "approve"), async (req, res) => {
   try {
     const { userId: clerkId } = getAuth(req);
     if (!clerkId) return res.status(401).json({ error: "Unauthenticated" });
@@ -491,7 +491,7 @@ router.post("/:id/confirm", requireAuth(), requirePermission("payments", "approv
 
 // ─── POST /api/payments/:id/void ─────────────────────────────────────────────
 
-router.post("/:id/void", requireAuth(), requirePermission("payments", "void"), async (req, res) => {
+router.post("/:id/void", requirePermission("payments", "void"), async (req, res) => {
   try {
     const { userId: clerkId } = getAuth(req);
     if (!clerkId) return res.status(401).json({ error: "Unauthenticated" });
