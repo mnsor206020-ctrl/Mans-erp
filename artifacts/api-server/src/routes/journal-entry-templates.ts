@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { requireAuth, getAuth } from "@clerk/express";
+import { getAuth } from "@clerk/express";
 import { prisma } from "@workspace/prisma";
 import { z } from "zod";
 import { requirePermission } from "../lib/authorize";
@@ -25,36 +25,53 @@ async function generateJournalNumber(orgId: string, year: number): Promise<strin
 }
 
 const templateLineSchema = z.object({
-  accountId:    z.string().uuid(),
-  costCenterId: z.string().uuid().nullish(),
-  lineNumber:   z.number().int().positive(),
+  accountId:     z.string().uuid(),
+  costCenterId:  z.string().uuid().nullish(),
+  lineNumber:    z.number().int().positive(),
   descriptionEn: z.string().nullish(),
   descriptionAr: z.string().nullish(),
-  debit:        z.number().min(0).default(0),
-  credit:       z.number().min(0).default(0),
+  debit:         z.number().min(0).default(0),
+  credit:        z.number().min(0).default(0),
 });
 
 const createSchema = z.object({
-  organizationId: z.string().uuid().optional(),
-  nameEn:         z.string().min(1),
-  nameAr:         z.string().min(1),
-  descriptionEn:  z.string().nullish(),
-  descriptionAr:  z.string().nullish(),
-  type:           z.enum(["MANUAL", "AUTOMATIC", "OPENING", "CLOSING", "ADJUSTMENT"]).default("MANUAL"),
-  currencyCode:   z.string().default("SAR"),
-  lines:          z.array(templateLineSchema).optional().default([]),
+  nameEn:        z.string().min(1),
+  nameAr:        z.string().min(1),
+  descriptionEn: z.string().nullish(),
+  descriptionAr: z.string().nullish(),
+  type:          z.enum(["MANUAL", "AUTOMATIC", "OPENING", "CLOSING", "ADJUSTMENT"]).default("MANUAL"),
+  currencyCode:  z.string().default("SAR"),
+  lines:         z.array(templateLineSchema).optional().default([]),
 });
 
-router.get("/", requireAuth(), async (req, res) => {
+const updateSchema = z.object({
+  nameEn:        z.string().min(1).optional(),
+  nameAr:        z.string().min(1).optional(),
+  descriptionEn: z.string().nullish(),
+  descriptionAr: z.string().nullish(),
+  type:          z.enum(["MANUAL", "AUTOMATIC", "OPENING", "CLOSING", "ADJUSTMENT"]).optional(),
+  currencyCode:  z.string().optional(),
+  isActive:      z.boolean().optional(),
+  lines:         z.array(templateLineSchema).optional(),
+});
+
+// ─── GET / ─── list templates scoped to user's org ────────────────────────────
+
+router.get("/", async (req, res) => {
   try {
     const { userId } = getAuth(req);
-    const user = await getUser(userId!);
-    if (!user) return res.status(401).json({ error: "User not found" });
+    if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+    const user = await getUser(userId);
+    if (!user) { res.status(401).json({ error: "User not found" }); return; }
 
-    const orgId = user.organizationId || undefined;
+    // If user has no org, return empty list — every template belongs to an org
+    if (!user.organizationId) {
+      res.json([]);
+      return;
+    }
 
     const templates = await prisma.journalEntryTemplate.findMany({
-      where: { deletedAt: null, ...(orgId ? { organizationId: orgId } : {}), isActive: true },
+      where: { organizationId: user.organizationId, deletedAt: null, isActive: true },
       include: {
         lines: {
           orderBy: { lineNumber: "asc" },
@@ -75,10 +92,21 @@ router.get("/", requireAuth(), async (req, res) => {
   }
 });
 
-router.get("/:id", requireAuth(), async (req, res) => {
+// ─── GET /:id ─── fetch single template scoped to user's org ──────────────────
+
+router.get("/:id", async (req, res) => {
   try {
+    const { userId } = getAuth(req);
+    if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+    const user = await getUser(userId);
+    if (!user) { res.status(401).json({ error: "User not found" }); return; }
+
     const template = await prisma.journalEntryTemplate.findFirst({
-      where: { id: req.params.id, deletedAt: null },
+      where: {
+        id:             req.params.id,
+        organizationId: user.organizationId ?? undefined,
+        deletedAt:      null,
+      },
       include: {
         lines: {
           orderBy: { lineNumber: "asc" },
@@ -89,7 +117,7 @@ router.get("/:id", requireAuth(), async (req, res) => {
         },
       },
     });
-    if (!template) return res.status(404).json({ error: "Template not found" });
+    if (!template) { res.status(404).json({ error: "Template not found" }); return; }
     res.json(template);
   } catch (err) {
     console.error(err);
@@ -97,18 +125,21 @@ router.get("/:id", requireAuth(), async (req, res) => {
   }
 });
 
-router.post("/", requireAuth(), requirePermission("journal_entries", "create"), async (req, res) => {
+// ─── POST / ─── create template ───────────────────────────────────────────────
+
+router.post("/", requirePermission("journal_entries", "create"), async (req, res) => {
   try {
-    const { userId } = getAuth(req);
-    const user = await getUser(userId!);
-    if (!user) return res.status(401).json({ error: "User not found" });
+    const user = req.currentUser!;
 
     const parsed = createSchema.safeParse(req.body);
-    if (!parsed.success) return res.status(400).json({ error: "Validation failed", details: parsed.error.flatten() });
+    if (!parsed.success) {
+      res.status(400).json({ error: "Validation failed", details: parsed.error.flatten() });
+      return;
+    }
 
-    const data = parsed.data;
-    const orgId = data.organizationId || user.organizationId;
-    if (!orgId) return res.status(400).json({ error: "organizationId is required" });
+    const data   = parsed.data;
+    const orgId  = user.organizationId;
+    if (!orgId) { res.status(400).json({ error: "User has no organization" }); return; }
 
     const template = await prisma.journalEntryTemplate.create({
       data: {
@@ -120,14 +151,14 @@ router.post("/", requireAuth(), requirePermission("journal_entries", "create"), 
         type:           data.type,
         currencyCode:   data.currencyCode,
         lines: {
-          create: data.lines.map(l => ({
-            accountId:    l.accountId,
-            costCenterId: l.costCenterId || null,
-            lineNumber:   l.lineNumber,
+          create: data.lines.map((l) => ({
+            accountId:     l.accountId,
+            costCenterId:  l.costCenterId || null,
+            lineNumber:    l.lineNumber,
             descriptionEn: l.descriptionEn || null,
             descriptionAr: l.descriptionAr || null,
-            debit:        l.debit,
-            credit:       l.credit,
+            debit:         l.debit,
+            credit:        l.credit,
           })),
         },
       },
@@ -141,26 +172,37 @@ router.post("/", requireAuth(), requirePermission("journal_entries", "create"), 
   }
 });
 
-router.patch("/:id", requireAuth(), requirePermission("journal_entries", "update"), async (req, res) => {
+// ─── PATCH /:id ─── update template ──────────────────────────────────────────
+
+router.patch("/:id", requirePermission("journal_entries", "update"), async (req, res) => {
   try {
-    const { nameEn, nameAr, descriptionEn, descriptionAr, type, currencyCode, isActive, lines } = req.body;
+    const user = req.currentUser!;
 
-    const existing = await prisma.journalEntryTemplate.findFirst({ where: { id: req.params.id, deletedAt: null } });
-    if (!existing) return res.status(404).json({ error: "Template not found" });
+    const parsed = updateSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Validation failed", details: parsed.error.flatten() });
+      return;
+    }
+    const data = parsed.data;
 
-    if (lines !== undefined) {
+    const existing = await prisma.journalEntryTemplate.findFirst({
+      where: { id: req.params.id, organizationId: user.organizationId ?? undefined, deletedAt: null },
+    });
+    if (!existing) { res.status(404).json({ error: "Template not found" }); return; }
+
+    if (data.lines !== undefined) {
       await prisma.journalEntryTemplateLine.deleteMany({ where: { templateId: req.params.id } });
-      if (lines.length > 0) {
+      if (data.lines.length > 0) {
         await prisma.journalEntryTemplateLine.createMany({
-          data: lines.map((l: any) => ({
-            templateId:   req.params.id,
-            accountId:    l.accountId,
-            costCenterId: l.costCenterId || null,
-            lineNumber:   l.lineNumber,
+          data: data.lines.map((l) => ({
+            templateId:    req.params.id,
+            accountId:     l.accountId,
+            costCenterId:  l.costCenterId || null,
+            lineNumber:    l.lineNumber,
             descriptionEn: l.descriptionEn || null,
             descriptionAr: l.descriptionAr || null,
-            debit:        l.debit || 0,
-            credit:       l.credit || 0,
+            debit:         l.debit,
+            credit:        l.credit,
           })),
         });
       }
@@ -169,13 +211,13 @@ router.patch("/:id", requireAuth(), requirePermission("journal_entries", "update
     const updated = await prisma.journalEntryTemplate.update({
       where: { id: req.params.id },
       data: {
-        ...(nameEn !== undefined ? { nameEn } : {}),
-        ...(nameAr !== undefined ? { nameAr } : {}),
-        ...(descriptionEn !== undefined ? { descriptionEn } : {}),
-        ...(descriptionAr !== undefined ? { descriptionAr } : {}),
-        ...(type !== undefined ? { type } : {}),
-        ...(currencyCode !== undefined ? { currencyCode } : {}),
-        ...(isActive !== undefined ? { isActive } : {}),
+        ...(data.nameEn        !== undefined ? { nameEn:        data.nameEn }        : {}),
+        ...(data.nameAr        !== undefined ? { nameAr:        data.nameAr }        : {}),
+        ...(data.descriptionEn !== undefined ? { descriptionEn: data.descriptionEn } : {}),
+        ...(data.descriptionAr !== undefined ? { descriptionAr: data.descriptionAr } : {}),
+        ...(data.type          !== undefined ? { type:          data.type }          : {}),
+        ...(data.currencyCode  !== undefined ? { currencyCode:  data.currencyCode }  : {}),
+        ...(data.isActive      !== undefined ? { isActive:      data.isActive }      : {}),
       },
       include: { lines: { orderBy: { lineNumber: "asc" } } },
     });
@@ -187,11 +229,21 @@ router.patch("/:id", requireAuth(), requirePermission("journal_entries", "update
   }
 });
 
-router.delete("/:id", requireAuth(), requirePermission("journal_entries", "delete"), async (req, res) => {
+// ─── DELETE /:id ─── soft delete ──────────────────────────────────────────────
+
+router.delete("/:id", requirePermission("journal_entries", "delete"), async (req, res) => {
   try {
-    const existing = await prisma.journalEntryTemplate.findFirst({ where: { id: req.params.id, deletedAt: null } });
-    if (!existing) return res.status(404).json({ error: "Template not found" });
-    await prisma.journalEntryTemplate.update({ where: { id: req.params.id }, data: { deletedAt: new Date() } });
+    const user = req.currentUser!;
+
+    const existing = await prisma.journalEntryTemplate.findFirst({
+      where: { id: req.params.id, organizationId: user.organizationId ?? undefined, deletedAt: null },
+    });
+    if (!existing) { res.status(404).json({ error: "Template not found" }); return; }
+
+    await prisma.journalEntryTemplate.update({
+      where: { id: req.params.id },
+      data:  { deletedAt: new Date() },
+    });
     res.json({ success: true });
   } catch (err) {
     console.error(err);
@@ -199,24 +251,30 @@ router.delete("/:id", requireAuth(), requirePermission("journal_entries", "delet
   }
 });
 
-// Create JE from template
-router.post("/:id/use", requireAuth(), requirePermission("journal_entries", "create"), async (req, res) => {
+// ─── POST /:id/use ─── create journal entry from template ────────────────────
+
+router.post("/:id/use", requirePermission("journal_entries", "create"), async (req, res) => {
   try {
-    const { userId } = getAuth(req);
-    const user = await getUser(userId!);
-    if (!user) return res.status(401).json({ error: "User not found" });
+    const user = req.currentUser!;
 
     const template = await prisma.journalEntryTemplate.findFirst({
-      where: { id: req.params.id, deletedAt: null },
+      where: { id: req.params.id, organizationId: user.organizationId ?? undefined, deletedAt: null },
       include: { lines: true },
     });
-    if (!template) return res.status(404).json({ error: "Template not found" });
+    if (!template) { res.status(404).json({ error: "Template not found" }); return; }
+    if (!template.isActive) { res.status(400).json({ error: "Template is inactive" }); return; }
 
     const { fiscalYearId, entryDate, exchangeRate = 1 } = req.body;
-    if (!fiscalYearId) return res.status(400).json({ error: "fiscalYearId is required" });
+    if (!fiscalYearId) { res.status(400).json({ error: "fiscalYearId is required" }); return; }
+
+    // Validate the fiscal year belongs to the user's organisation
+    const fiscalYear = await prisma.fiscalYear.findFirst({
+      where: { id: fiscalYearId, organizationId: user.organizationId ?? undefined, deletedAt: null },
+    });
+    if (!fiscalYear) { res.status(400).json({ error: "Fiscal year not found" }); return; }
 
     const dateObj = entryDate ? new Date(entryDate) : new Date();
-    const number = await generateJournalNumber(template.organizationId, dateObj.getFullYear());
+    const number  = await generateJournalNumber(template.organizationId, dateObj.getFullYear());
 
     const totalDebit  = template.lines.reduce((s, l) => s + parseFloat(l.debit.toString()),  0);
     const totalCredit = template.lines.reduce((s, l) => s + parseFloat(l.credit.toString()), 0);
@@ -237,16 +295,16 @@ router.post("/:id/use", requireAuth(), requirePermission("journal_entries", "cre
         descriptionAr:   `من النموذج: ${template.nameAr}`,
         createdByUserId: user.id,
         lines: {
-          create: template.lines.map(l => ({
-            accountId:    l.accountId,
-            costCenterId: l.costCenterId,
-            lineNumber:   l.lineNumber,
+          create: template.lines.map((l) => ({
+            accountId:     l.accountId,
+            costCenterId:  l.costCenterId,
+            lineNumber:    l.lineNumber,
             descriptionEn: l.descriptionEn,
             descriptionAr: l.descriptionAr,
-            debit:        l.debit,
-            credit:       l.credit,
-            debitBase:    parseFloat(l.debit.toString()) * exchangeRate,
-            creditBase:   parseFloat(l.credit.toString()) * exchangeRate,
+            debit:         l.debit,
+            credit:        l.credit,
+            debitBase:     parseFloat(l.debit.toString())  * exchangeRate,
+            creditBase:    parseFloat(l.credit.toString()) * exchangeRate,
           })),
         },
       },
