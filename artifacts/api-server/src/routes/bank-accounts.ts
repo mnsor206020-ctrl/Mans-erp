@@ -62,7 +62,7 @@ async function validateReferences(params: {
 
 // ─── GET /api/bank-accounts ───────────────────────────────────────────────────
 
-router.get("/", requireAuth(), async (req, res) => {
+router.get("/", async (req, res) => {
   try {
     const { userId: clerkId } = getAuth(req);
     if (!clerkId) return res.status(401).json({ error: "Unauthenticated" });
@@ -99,7 +99,7 @@ router.get("/", requireAuth(), async (req, res) => {
 
 // ─── POST /api/bank-accounts ──────────────────────────────────────────────────
 
-router.post("/", requireAuth(), requirePermission("bank_accounts", "create"), async (req, res) => {
+router.post("/", requirePermission("bank_accounts", "create"), async (req, res) => {
   try {
     const { userId: clerkId } = getAuth(req);
     if (!clerkId) return res.status(401).json({ error: "Unauthenticated" });
@@ -158,7 +158,7 @@ router.post("/", requireAuth(), requirePermission("bank_accounts", "create"), as
 
 // ─── GET /api/bank-accounts/:id ──────────────────────────────────────────────
 
-router.get("/:id", requireAuth(), async (req, res) => {
+router.get("/:id", async (req, res) => {
   try {
     const { userId: clerkId } = getAuth(req);
     if (!clerkId) return res.status(401).json({ error: "Unauthenticated" });
@@ -188,7 +188,7 @@ router.get("/:id", requireAuth(), async (req, res) => {
 
 // ─── PATCH /api/bank-accounts/:id ────────────────────────────────────────────
 
-router.patch("/:id", requireAuth(), requirePermission("bank_accounts", "update"), async (req, res) => {
+router.patch("/:id", requirePermission("bank_accounts", "update"), async (req, res) => {
   try {
     const { userId: clerkId } = getAuth(req);
     if (!clerkId) return res.status(401).json({ error: "Unauthenticated" });
@@ -243,7 +243,7 @@ router.patch("/:id", requireAuth(), requirePermission("bank_accounts", "update")
 
 // ─── DELETE /api/bank-accounts/:id ───────────────────────────────────────────
 
-router.delete("/:id", requireAuth(), requirePermission("bank_accounts", "delete"), async (req, res) => {
+router.delete("/:id", requirePermission("bank_accounts", "delete"), async (req, res) => {
   try {
     const { userId: clerkId } = getAuth(req);
     if (!clerkId) return res.status(401).json({ error: "Unauthenticated" });
@@ -281,7 +281,7 @@ router.delete("/:id", requireAuth(), requirePermission("bank_accounts", "delete"
 
 // ─── POST /api/bank-accounts/:id/toggle-active ───────────────────────────────
 
-router.post("/:id/toggle-active", requireAuth(), requirePermission("bank_accounts", "update"), async (req, res) => {
+router.post("/:id/toggle-active", requirePermission("bank_accounts", "update"), async (req, res) => {
   try {
     const { userId: clerkId } = getAuth(req);
     if (!clerkId) return res.status(401).json({ error: "Unauthenticated" });

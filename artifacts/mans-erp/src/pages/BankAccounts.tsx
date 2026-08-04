@@ -233,7 +233,7 @@ export default function BankAccounts() {
                       <td className="py-3 px-4 text-muted-foreground">{bankName || "—"}</td>
                       <td className="py-3 px-4">
                         <span className="text-xs text-muted-foreground">
-                          {t(`banking.accountType.${account.accountType}`)}
+                          {t(`banking.accountType.${account.type}`)}
                         </span>
                       </td>
                       <td className="py-3 px-4 font-mono text-muted-foreground text-xs">
