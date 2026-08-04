@@ -77,6 +77,25 @@ function buildTree(accounts: object[]): object[] {
   return sortNodes(roots);
 }
 
+/**
+ * Recursively updates the `level` of all descendants when an account is
+ * reparented. Without this, child levels become stale, breaking tree sort
+ * order and the indentation display in the UI.
+ */
+async function updateDescendantLevels(accountId: string, parentLevel: number): Promise<void> {
+  const children = await prisma.chartOfAccount.findMany({
+    where: { parentId: accountId, deletedAt: null },
+    select: { id: true },
+  });
+  for (const child of children) {
+    await prisma.chartOfAccount.update({
+      where: { id: child.id },
+      data: { level: parentLevel + 1 },
+    });
+    await updateDescendantLevels(child.id, parentLevel + 1);
+  }
+}
+
 async function isDescendant(
   targetId: string,
   ancestorId: string
@@ -154,7 +173,6 @@ router.get("/", async (req, res) => {
       type,
       isActive,
       isGroup,
-      organizationId,
       page = "1",
       pageSize = "50",
     } = req.query;
@@ -162,7 +180,7 @@ router.get("/", async (req, res) => {
     const pageNum = Math.max(1, parseInt(page as string, 10));
     const pageSizeNum = Math.min(200, Math.max(1, parseInt(pageSize as string, 10)));
 
-    const orgId = (organizationId as string) || user.organizationId || undefined;
+    const orgId = user.organizationId || undefined;
 
     const where: any = {
       deletedAt: null,
@@ -254,7 +272,7 @@ router.post("/", requirePermission("chart_of_accounts", "create"), async (req, r
     }
 
     const data = parsed.data;
-    const orgId = data.organizationId || user.organizationId;
+    const orgId = user.organizationId;
     if (!orgId) return res.status(400).json({ error: "Organization ID is required" });
 
     // Code uniqueness within org
@@ -330,7 +348,7 @@ router.patch("/:id", requirePermission("chart_of_accounts", "update"), async (re
     if (!user) return res.status(401).json({ error: "User not found" });
 
     const existing = await prisma.chartOfAccount.findFirst({
-      where: { id: req.params.id, deletedAt: null },
+      where: { id: req.params.id, organizationId: user.organizationId, deletedAt: null },
     });
     if (!existing) return res.status(404).json({ error: "Account not found" });
 
@@ -409,6 +427,13 @@ router.patch("/:id", requirePermission("chart_of_accounts", "update"), async (re
       },
     });
 
+    // Cascade level update to all descendants when this account was reparented.
+    // Without this, children retain their old level values, causing incorrect
+    // sort order and indentation in the tree view.
+    if (data.parentId !== undefined) {
+      await updateDescendantLevels(updated.id, updated.level);
+    }
+
     await writeAuditLog({
       userId: user.id,
       userEmail: user.email,
@@ -435,7 +460,7 @@ router.delete("/:id", requirePermission("chart_of_accounts", "delete"), async (r
     if (!user) return res.status(401).json({ error: "User not found" });
 
     const account = await prisma.chartOfAccount.findFirst({
-      where: { id: req.params.id, deletedAt: null },
+      where: { id: req.params.id, organizationId: user.organizationId, deletedAt: null },
     });
     if (!account) return res.status(404).json({ error: "Account not found" });
 
@@ -489,7 +514,7 @@ router.post("/:id/toggle-active", requirePermission("chart_of_accounts", "update
     if (!user) return res.status(401).json({ error: "User not found" });
 
     const account = await prisma.chartOfAccount.findFirst({
-      where: { id: req.params.id, deletedAt: null },
+      where: { id: req.params.id, organizationId: user.organizationId, deletedAt: null },
     });
     if (!account) return res.status(404).json({ error: "Account not found" });
 
