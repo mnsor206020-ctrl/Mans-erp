@@ -4,7 +4,7 @@ export const createSchema = z.object({
   cashBoxId:       z.string().uuid(),
   type:            z.enum(["IN", "OUT"]),
   transactionDate: z.string().min(1),
-  amount:          z.number().min(0),
+  amount:          z.number().positive(),
   descriptionEn:   z.string().min(1),
   descriptionAr:   z.string().min(1),
   reference:       z.string().optional(),
