@@ -8,7 +8,7 @@ async function getUser(clerkId: string) {
   return prisma.user.findFirst({ where: { clerkId, deletedAt: null } });
 }
 
-router.get("/", requireAuth(), async (req, res) => {
+router.get("/", async (req, res) => {
   try {
     const { userId: clerkId } = getAuth(req);
     if (!clerkId) return res.status(401).json({ error: "Unauthenticated" });
