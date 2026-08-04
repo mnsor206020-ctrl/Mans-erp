@@ -80,7 +80,7 @@ async function validateReferences(params: {
 
 // ─── GET /api/receipts ────────────────────────────────────────────────────────
 
-router.get("/", requireAuth(), async (req, res) => {
+router.get("/", async (req, res) => {
   try {
     const { userId: clerkId } = getAuth(req);
     if (!clerkId) return res.status(401).json({ error: "Unauthenticated" });
@@ -128,7 +128,7 @@ router.get("/", requireAuth(), async (req, res) => {
 
 // ─── POST /api/receipts ───────────────────────────────────────────────────────
 
-router.post("/", requireAuth(), requirePermission("receipts", "create"), async (req, res) => {
+router.post("/", requirePermission("receipts", "create"), async (req, res) => {
   try {
     const { userId: clerkId } = getAuth(req);
     if (!clerkId) return res.status(401).json({ error: "Unauthenticated" });
@@ -212,7 +212,7 @@ router.post("/", requireAuth(), requirePermission("receipts", "create"), async (
 
 // ─── GET /api/receipts/:id ────────────────────────────────────────────────────
 
-router.get("/:id", requireAuth(), async (req, res) => {
+router.get("/:id", async (req, res) => {
   try {
     const { userId: clerkId } = getAuth(req);
     if (!clerkId) return res.status(401).json({ error: "Unauthenticated" });
@@ -246,7 +246,7 @@ router.get("/:id", requireAuth(), async (req, res) => {
 
 // ─── PATCH /api/receipts/:id ──────────────────────────────────────────────────
 
-router.patch("/:id", requireAuth(), requirePermission("receipts", "update"), async (req, res) => {
+router.patch("/:id", requirePermission("receipts", "update"), async (req, res) => {
   try {
     const { userId: clerkId } = getAuth(req);
     if (!clerkId) return res.status(401).json({ error: "Unauthenticated" });
@@ -327,7 +327,7 @@ router.patch("/:id", requireAuth(), requirePermission("receipts", "update"), asy
 
 // ─── DELETE /api/receipts/:id ─────────────────────────────────────────────────
 
-router.delete("/:id", requireAuth(), requirePermission("receipts", "delete"), async (req, res) => {
+router.delete("/:id", requirePermission("receipts", "delete"), async (req, res) => {
   try {
     const { userId: clerkId } = getAuth(req);
     if (!clerkId) return res.status(401).json({ error: "Unauthenticated" });
@@ -361,7 +361,7 @@ router.delete("/:id", requireAuth(), requirePermission("receipts", "delete"), as
 
 // ─── POST /api/receipts/:id/confirm ──────────────────────────────────────────
 
-router.post("/:id/confirm", requireAuth(), requirePermission("receipts", "approve"), async (req, res) => {
+router.post("/:id/confirm", requirePermission("receipts", "approve"), async (req, res) => {
   try {
     const { userId: clerkId } = getAuth(req);
     if (!clerkId) return res.status(401).json({ error: "Unauthenticated" });
@@ -491,7 +491,7 @@ router.post("/:id/confirm", requireAuth(), requirePermission("receipts", "approv
 
 // ─── POST /api/receipts/:id/void ─────────────────────────────────────────────
 
-router.post("/:id/void", requireAuth(), requirePermission("receipts", "void"), async (req, res) => {
+router.post("/:id/void", requirePermission("receipts", "void"), async (req, res) => {
   try {
     const { userId: clerkId } = getAuth(req);
     if (!clerkId) return res.status(401).json({ error: "Unauthenticated" });
