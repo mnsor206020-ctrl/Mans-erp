@@ -35,7 +35,7 @@ export default function NewOrganization() {
     defaultValues: {
       nameEn: "",
       nameAr: "",
-      type: "charity",
+      type: "CHARITY",
       registrationNumber: "",
       email: "",
       phone: "",
@@ -132,9 +132,9 @@ export default function NewOrganization() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent dir={dir}>
-                          <SelectItem value="charity">{lang === 'ar' ? 'جمعية خيرية' : 'Charity'}</SelectItem>
-                          <SelectItem value="foundation">{lang === 'ar' ? 'مؤسسة أهلية' : 'Foundation'}</SelectItem>
-                          <SelectItem value="ngo">{lang === 'ar' ? 'منظمة غير ربحية' : 'NGO'}</SelectItem>
+                          <SelectItem value="CHARITY">{lang === 'ar' ? 'جمعية خيرية' : 'Charity'}</SelectItem>
+                          <SelectItem value="FOUNDATION">{lang === 'ar' ? 'مؤسسة أهلية' : 'Foundation'}</SelectItem>
+                          <SelectItem value="NGO">{lang === 'ar' ? 'منظمة غير ربحية' : 'NGO'}</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />

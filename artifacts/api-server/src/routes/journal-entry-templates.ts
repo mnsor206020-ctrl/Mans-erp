@@ -51,7 +51,7 @@ router.get("/", requireAuth(), async (req, res) => {
     const user = await getUser(userId!);
     if (!user) return res.status(401).json({ error: "User not found" });
 
-    const orgId = (req.query.organizationId as string) || user.organizationId || undefined;
+    const orgId = user.organizationId || undefined;
 
     const templates = await prisma.journalEntryTemplate.findMany({
       where: { deletedAt: null, ...(orgId ? { organizationId: orgId } : {}), isActive: true },

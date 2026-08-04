@@ -80,7 +80,7 @@ export default function Organizations() {
                       </TableCell>
                       <TableCell className="text-muted-foreground">{org.city || '-'}</TableCell>
                       <TableCell>
-                        <Badge variant={org.status === 'active' ? 'default' : 'secondary'} className={org.status === 'active' ? 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20' : ''}>
+                        <Badge variant={org.status === 'ACTIVE' ? 'default' : 'secondary'} className={org.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20' : ''}>
                           {org.status}
                         </Badge>
                       </TableCell>

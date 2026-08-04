@@ -125,7 +125,7 @@ router.get("/tree", async (req, res) => {
     const user = await getCurrentUser(userId!);
     if (!user) return res.status(401).json({ error: "User not found" });
 
-    const organizationId = (req.query.organizationId as string) || user.organizationId || undefined;
+    const organizationId = user.organizationId || undefined;
 
     const accounts = await prisma.chartOfAccount.findMany({
       where: {

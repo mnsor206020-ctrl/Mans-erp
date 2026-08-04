@@ -28,10 +28,11 @@ const updateSchema = z.object({
   city:               z.string().nullish(),
 });
 
-router.get("/", requireAuth(), async (req, res) => {
+router.get("/", async (req, res) => {
   try {
-    const { userId } = getAuth(req);
-    const currentUser = await getCurrentUserWithRoles(userId!);
+    const { userId: clerkId } = getAuth(req);
+    if (!clerkId) return res.status(401).json({ error: "Unauthenticated" });
+    const currentUser = await getCurrentUserWithRoles(clerkId);
     if (!currentUser) return res.status(401).json({ error: "User not found" });
 
     if (!isPlatformAdmin(currentUser) && !currentUser.organizationId) {
@@ -51,7 +52,7 @@ router.get("/", requireAuth(), async (req, res) => {
   }
 });
 
-router.post("/", requireAuth(), requirePermission("organizations", "create"), async (req, res) => {
+router.post("/", requirePermission("organizations", "create"), async (req, res) => {
   try {
     const parsed = createSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -67,10 +68,11 @@ router.post("/", requireAuth(), requirePermission("organizations", "create"), as
   }
 });
 
-router.get("/:id", requireAuth(), async (req, res) => {
+router.get("/:id", async (req, res) => {
   try {
-    const { userId } = getAuth(req);
-    const currentUser = await getCurrentUserWithRoles(userId!);
+    const { userId: clerkId } = getAuth(req);
+    if (!clerkId) return res.status(401).json({ error: "Unauthenticated" });
+    const currentUser = await getCurrentUserWithRoles(clerkId);
     if (!currentUser) return res.status(401).json({ error: "User not found" });
 
     if (!isPlatformAdmin(currentUser) && currentUser.organizationId !== req.params.id) {
@@ -87,7 +89,7 @@ router.get("/:id", requireAuth(), async (req, res) => {
   }
 });
 
-router.patch("/:id", requireAuth(), requirePermission("organizations", "update"), async (req, res) => {
+router.patch("/:id", requirePermission("organizations", "update"), async (req, res) => {
   try {
     if (!isPlatformAdmin(req.currentUser) && req.currentUser?.organizationId !== req.params.id) {
       return res.status(404).json({ error: "Not found" });

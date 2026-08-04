@@ -44,8 +44,8 @@ router.get("/", async (req, res) => {
     const user = await getUser(userId!);
     if (!user) return res.status(401).json({ error: "User not found" });
 
-    const { organizationId, status } = req.query;
-    const orgId = (organizationId as string) || user.organizationId || undefined;
+    const { status } = req.query;
+    const orgId = user.organizationId || undefined;
 
     const fiscalYears = await prisma.fiscalYear.findMany({
       where: {
