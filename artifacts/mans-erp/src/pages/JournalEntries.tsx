@@ -117,7 +117,8 @@ export default function JournalEntries() {
 
   const { data, isLoading, refetch } = useListJournalEntries(queryParams as any);
   const entries = (data as any)?.data ?? [];
-  const meta = (data as any)?.meta ?? {};
+  const total = (data as any)?.total ?? 0;
+  const totalPages = (data as any)?.pageCount ?? 1;
 
   const deleteMutation = useDeleteJournalEntry({
     mutation: {
@@ -170,7 +171,6 @@ export default function JournalEntries() {
     { key: "REVERSED", label: t("je.status.REVERSED") },
   ];
 
-  const totalPages = meta.totalPages || 1;
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-6">
@@ -377,10 +377,10 @@ export default function JournalEntries() {
         </div>
 
         {/* Pagination */}
-        {!isLoading && meta.total > 0 && (
+        {!isLoading && total > 0 && (
           <div className="flex items-center justify-between px-4 py-3 border-t bg-muted/20">
             <p className="text-sm text-muted-foreground">
-              Showing {Math.min((page - 1) * pageSize + 1, meta.total)}–{Math.min(page * pageSize, meta.total)} of {meta.total} entries
+              Showing {Math.min((page - 1) * pageSize + 1, total)}–{Math.min(page * pageSize, total)} of {total} entries
             </p>
             <div className="flex items-center gap-1">
               <Button variant="ghost" size="icon" className="w-8 h-8" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>

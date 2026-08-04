@@ -213,7 +213,7 @@ router.post("/", requirePermission("journal_entries", "create"), async (req, res
     if (!parsed.success) return res.status(400).json({ error: "Validation failed", details: parsed.error.flatten() });
 
     const data = parsed.data;
-    const orgId = data.organizationId || user.organizationId;
+    const orgId = user.organizationId;
     if (!orgId) return res.status(400).json({ error: "organizationId is required" });
 
     const fiscalYear = await prisma.fiscalYear.findFirst({
@@ -294,7 +294,7 @@ router.patch("/:id", requirePermission("journal_entries", "update"), async (req,
     const user = await getUser(userId!);
     if (!user) return res.status(401).json({ error: "User not found" });
 
-    const existing = await prisma.journalEntry.findFirst({ where: { id: req.params.id, deletedAt: null } });
+    const existing = await prisma.journalEntry.findFirst({ where: { id: req.params.id, organizationId: user.organizationId, deletedAt: null } });
     if (!existing) return res.status(404).json({ error: "Journal entry not found" });
     if (!["DRAFT", "UNDER_REVIEW"].includes(existing.status)) {
       return res.status(400).json({ error: `Cannot edit a ${existing.status} journal entry` });
@@ -384,7 +384,7 @@ router.delete("/:id", requirePermission("journal_entries", "delete"), async (req
     const user = await getUser(userId!);
     if (!user) return res.status(401).json({ error: "User not found" });
 
-    const entry = await prisma.journalEntry.findFirst({ where: { id: req.params.id, deletedAt: null } });
+    const entry = await prisma.journalEntry.findFirst({ where: { id: req.params.id, organizationId: user.organizationId, deletedAt: null } });
     if (!entry) return res.status(404).json({ error: "Journal entry not found" });
     if (entry.status !== "DRAFT") return res.status(400).json({ error: "Only DRAFT journal entries can be deleted" });
 
@@ -413,7 +413,7 @@ router.post("/:id/submit", requirePermission("journal_entries", "update"), async
     if (!user) return res.status(401).json({ error: "User not found" });
 
     const entry = await prisma.journalEntry.findFirst({
-      where: { id: req.params.id, deletedAt: null },
+      where: { id: req.params.id, organizationId: user.organizationId, deletedAt: null },
       include: { lines: true },
     });
     if (!entry) return res.status(404).json({ error: "Journal entry not found" });
@@ -470,7 +470,7 @@ router.post("/:id/approve", requirePermission("journal_entries", "approve"), asy
     const user = await getUser(userId!);
     if (!user) return res.status(401).json({ error: "User not found" });
 
-    const entry = await prisma.journalEntry.findFirst({ where: { id: req.params.id, deletedAt: null } });
+    const entry = await prisma.journalEntry.findFirst({ where: { id: req.params.id, organizationId: user.organizationId, deletedAt: null } });
     if (!entry) return res.status(404).json({ error: "Journal entry not found" });
     if (entry.status !== "UNDER_REVIEW") return res.status(400).json({ error: `Cannot approve a ${entry.status} entry` });
 
@@ -527,7 +527,7 @@ router.post("/:id/reject", requirePermission("journal_entries", "approve"), asyn
     const user = await getUser(userId!);
     if (!user) return res.status(401).json({ error: "User not found" });
 
-    const entry = await prisma.journalEntry.findFirst({ where: { id: req.params.id, deletedAt: null } });
+    const entry = await prisma.journalEntry.findFirst({ where: { id: req.params.id, organizationId: user.organizationId, deletedAt: null } });
     if (!entry) return res.status(404).json({ error: "Journal entry not found" });
     if (!["UNDER_REVIEW", "APPROVED"].includes(entry.status)) {
       return res.status(400).json({ error: `Cannot reject a ${entry.status} entry` });
@@ -588,7 +588,7 @@ router.post("/:id/post", requirePermission("journal_entries", "approve"), async 
     if (!user) return res.status(401).json({ error: "User not found" });
 
     const entry = await prisma.journalEntry.findFirst({
-      where: { id: req.params.id, deletedAt: null },
+      where: { id: req.params.id, organizationId: user.organizationId, deletedAt: null },
       include: {
         lines: { include: { account: true } },
         fiscalYear: true,
@@ -687,7 +687,7 @@ router.post("/:id/lock", requirePermission("journal_entries", "approve"), async 
     const user = await getUser(userId!);
     if (!user) return res.status(401).json({ error: "User not found" });
 
-    const entry = await prisma.journalEntry.findFirst({ where: { id: req.params.id, deletedAt: null } });
+    const entry = await prisma.journalEntry.findFirst({ where: { id: req.params.id, organizationId: user.organizationId, deletedAt: null } });
     if (!entry) return res.status(404).json({ error: "Journal entry not found" });
     if (entry.status !== "POSTED") return res.status(400).json({ error: "Only POSTED entries can be locked" });
 
@@ -730,7 +730,7 @@ router.post("/:id/reverse", requirePermission("journal_entries", "void"), async 
     if (!user) return res.status(401).json({ error: "User not found" });
 
     const entry = await prisma.journalEntry.findFirst({
-      where: { id: req.params.id, deletedAt: null },
+      where: { id: req.params.id, organizationId: user.organizationId, deletedAt: null },
       include: { lines: true },
     });
     if (!entry) return res.status(404).json({ error: "Journal entry not found" });
@@ -835,7 +835,7 @@ router.post("/:id/copy", requirePermission("journal_entries", "create"), async (
     if (!user) return res.status(401).json({ error: "User not found" });
 
     const entry = await prisma.journalEntry.findFirst({
-      where: { id: req.params.id, deletedAt: null },
+      where: { id: req.params.id, organizationId: user.organizationId, deletedAt: null },
       include: { lines: true },
     });
     if (!entry) return res.status(404).json({ error: "Journal entry not found" });
@@ -891,7 +891,7 @@ router.post("/:id/void", requirePermission("journal_entries", "void"), async (re
     const user = await getUser(userId!);
     if (!user) return res.status(401).json({ error: "User not found" });
 
-    const entry = await prisma.journalEntry.findFirst({ where: { id: req.params.id, deletedAt: null } });
+    const entry = await prisma.journalEntry.findFirst({ where: { id: req.params.id, organizationId: user.organizationId, deletedAt: null } });
     if (!entry) return res.status(404).json({ error: "Journal entry not found" });
     if (entry.status !== "POSTED") return res.status(400).json({ error: "Only POSTED entries can be voided" });
 
