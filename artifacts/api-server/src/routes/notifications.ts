@@ -1,20 +1,21 @@
 import { Router } from "express";
-import { requireAuth, getAuth } from "@clerk/express";
+import { getAuth } from "@clerk/express";
 import { prisma } from "@workspace/prisma";
 import { notificationService } from "../services/notification";
 
 const router = Router();
 
 async function getUser(clerkId: string) {
-  return prisma.user.findFirst({ where: { clerkId } });
+  return prisma.user.findFirst({ where: { clerkId, deletedAt: null } });
 }
 
 // ── GET /api/notifications/unread ────────────────────────────────────────────
-router.get("/unread", requireAuth(), async (req, res) => {
+router.get("/unread", async (req, res) => {
   try {
     const { userId } = getAuth(req);
-    const user = await getUser(userId!);
-    if (!user) return res.status(401).json({ error: "User not found" });
+    if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+    const user = await getUser(userId);
+    if (!user) { res.status(401).json({ error: "User not found" }); return; }
 
     const notifications = await notificationService.getUnread(user.id);
     res.json({ data: notifications });
@@ -26,11 +27,12 @@ router.get("/unread", requireAuth(), async (req, res) => {
 
 // ── PATCH /api/notifications/read-all ────────────────────────────────────────
 // Must be registered before /:id/read to avoid "read-all" matching /:id
-router.patch("/read-all", requireAuth(), async (req, res) => {
+router.patch("/read-all", async (req, res) => {
   try {
     const { userId } = getAuth(req);
-    const user = await getUser(userId!);
-    if (!user) return res.status(401).json({ error: "User not found" });
+    if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+    const user = await getUser(userId);
+    if (!user) { res.status(401).json({ error: "User not found" }); return; }
 
     await notificationService.markAllRead(user.id);
     res.json({ ok: true });
@@ -41,11 +43,12 @@ router.patch("/read-all", requireAuth(), async (req, res) => {
 });
 
 // ── PATCH /api/notifications/:id/read ────────────────────────────────────────
-router.patch("/:id/read", requireAuth(), async (req, res) => {
+router.patch("/:id/read", async (req, res) => {
   try {
     const { userId } = getAuth(req);
-    const user = await getUser(userId!);
-    if (!user) return res.status(401).json({ error: "User not found" });
+    if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+    const user = await getUser(userId);
+    if (!user) { res.status(401).json({ error: "User not found" }); return; }
 
     await notificationService.markRead(req.params.id, user.id);
     res.json({ ok: true });
