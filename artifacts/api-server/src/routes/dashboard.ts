@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { requireAuth, getAuth } from "@clerk/express";
+import { getAuth } from "@clerk/express";
 import { prisma } from "@workspace/prisma";
 
 const router = Router();
@@ -20,7 +20,7 @@ function lastNMonths(n: number): string[] {
 
 // ─── GET /dashboard/stats ────────────────────────────────────────────────────
 
-router.get("/stats", requireAuth(), async (req, res): Promise<void> => {
+router.get("/stats", async (req, res): Promise<void> => {
   try {
     const { userId } = getAuth(req);
     if (!userId) {
@@ -116,7 +116,7 @@ router.get("/stats", requireAuth(), async (req, res): Promise<void> => {
 
 // ─── GET /dashboard/monthly ───────────────────────────────────────────────────
 
-router.get("/monthly", requireAuth(), async (req, res): Promise<void> => {
+router.get("/monthly", async (req, res): Promise<void> => {
   try {
     const { userId } = getAuth(req);
     if (!userId) {
@@ -187,9 +187,31 @@ router.get("/monthly", requireAuth(), async (req, res): Promise<void> => {
 
 // ─── GET /dashboard/activity ─────────────────────────────────────────────────
 
-router.get("/activity", requireAuth(), async (req, res): Promise<void> => {
+router.get("/activity", async (req, res): Promise<void> => {
   try {
+    const { userId } = getAuth(req);
+    if (!userId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    const user = await prisma.user.findFirst({ where: { clerkId: userId, deletedAt: null } });
+    if (!user) {
+      res.status(401).json({ error: "User not found" });
+      return;
+    }
+
+    // Scope audit logs to the authenticated user's organisation by filtering
+    // through the user relation. AuditLog has no organizationId column, so we
+    // resolve org membership via the users table.
+    const orgUsers = await prisma.user.findMany({
+      where:  { organizationId: user.organizationId, deletedAt: null },
+      select: { id: true },
+    });
+    const orgUserIds = orgUsers.map((u) => u.id);
+
     const logs = await prisma.auditLog.findMany({
+      where:   { userId: { in: orgUserIds } },
       orderBy: { createdAt: "desc" },
       take:    20,
       include: { user: { select: { email: true, firstNameEn: true, lastNameEn: true } } },

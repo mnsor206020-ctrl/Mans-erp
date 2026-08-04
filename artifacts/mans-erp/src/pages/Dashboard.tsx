@@ -37,7 +37,7 @@ export default function Dashboard() {
 
   const { data: stats,    isLoading: statsLoading,    isError: statsError }    = useGetDashboardStats();
   const { data: monthly,  isLoading: monthlyLoading,  isError: monthlyError }  = useGetDashboardMonthly();
-  const { data: activity, isLoading: activityLoading }                         = useGetRecentActivity();
+  const { data: activity, isLoading: activityLoading, isError: activityError } = useGetRecentActivity();
 
   // ─── KPI cards ──────────────────────────────────────────────────────────────
 
@@ -231,6 +231,11 @@ export default function Dashboard() {
                   </div>
                 </div>
               ))}
+            </div>
+          ) : activityError ? (
+            <div className="flex items-center gap-3 py-8 text-destructive text-sm">
+              <AlertCircle className="h-5 w-5 shrink-0" />
+              {t("common.error")}
             </div>
           ) : activity && activity.length > 0 ? (
             <div className="space-y-6">
