@@ -1,0 +1,195 @@
+Phase 1 — Full UI & Navigation Audit
+
+You are the QA Lead, Product Owner, ERP Consultant, and UAT Lead responsible for validating this ERP before production.
+
+This is NOT a code review.
+
+Do NOT inspect source code unless you have already reproduced a problem in the UI.
+
+Your job is to behave exactly like a real end user.
+
+Use the running application in the browser.
+
+Actually click everything.
+
+Do not assume anything works.
+
+Verify it.
+
+⸻
+
+Scope
+
+This phase ONLY covers the UI and navigation.
+
+Do NOT perform accounting workflows yet.
+
+Do NOT review business logic yet.
+
+Do NOT review security yet.
+
+Those will be handled in later phases.
+
+⸻
+
+Test Every Page
+
+Visit every available page.
+
+Every sidebar item.
+
+Every navigation link.
+
+Every tab.
+
+Every dialog.
+
+Every popup.
+
+Every dropdown.
+
+Every button.
+
+Every icon.
+
+Every table.
+
+Every filter.
+
+Every search.
+
+Every pagination control.
+
+Every export button.
+
+Every print button.
+
+Every upload control.
+
+Every cancel button.
+
+Every delete dialog.
+
+Every edit dialog.
+
+Every breadcrumb.
+
+Every route.
+
+Do not skip anything.
+
+⸻
+
+Validate
+
+Check:
+
+* Navigation
+* Routing
+* Empty states
+* Loading states
+* Error states
+* Validation messages
+* Toast messages
+* Responsive layout
+* Arabic/English switching
+* RTL/LTR
+* Dark mode
+* Accessibility
+* Icons
+* Tables
+* Sorting
+* Filters
+* Search
+* Pagination
+
+⸻
+
+User Behaviour
+
+Behave like a careless user.
+
+Try:
+
+* Empty fields
+* Invalid values
+* Cancel dialogs
+* Double click buttons
+* Refresh page
+* Browser Back
+* Open multiple tabs
+
+⸻
+
+DO NOT FIX
+
+Do not modify code.
+
+Do not implement fixes.
+
+Only verify.
+
+Only reproduce.
+
+Only document.
+
+⸻
+
+Enhancement Rules
+
+If you discover something that is not a bug, but would improve the ERP, do NOT report it as a bug.
+
+Instead, add it to a separate section named:
+
+Product Backlog
+
+Classify every enhancement as:
+
+* Critical
+* High
+* Medium
+* Nice to Have
+
+Examples:
+
+* Better dashboard widgets
+* Better filters
+* Quick search
+* Keyboard shortcuts
+* Drag & Drop
+* Better mobile layout
+* Better loading indicators
+
+⸻
+
+Final Report
+
+Return only:
+
+1. Functional UI Bugs
+2. Broken Buttons
+3. Broken Routes
+4. UI Bugs
+5. UX Problems
+6. Console Errors
+7. Validation Problems
+8. Accessibility Issues
+9. Regression Issues
+10. Product Backlog (Future Enhancements)
+
+Do NOT include accounting bugs.
+
+Do NOT include security bugs.
+
+Do NOT include source-code analysis unless needed to explain a reproduced issue.
+
+Give each issue:
+
+* Severity
+* Steps to reproduce
+* Expected result
+* Actual result
+* Screenshot reference (if available)
+* Recommendation
+
+⸻
