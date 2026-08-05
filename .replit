@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "web"]
+modules = ["nodejs-24", "web", "postgresql-16"]
 
 [deployment]
 router = "application"
@@ -33,3 +33,10 @@ externalPort = 8081
 [[ports]]
 localPort = 22565
 externalPort = 80
+
+[userenv]
+
+[userenv.shared]
+BASE_PATH = "/"
+CORS_ALLOWED_ORIGINS = "https://b69d6fca-4573-4f1f-8da6-f9977297ddc3-00-1u1ukfpz6jhn.pike.replit.dev"
+LOG_LEVEL = "info"
