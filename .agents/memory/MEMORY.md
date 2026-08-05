@@ -8,3 +8,5 @@
 - [invitation-accept-pattern](invitation-accept-pattern.md) — endpoints using requireAuth() without requirePermission() must load user via getAuth(req) + prisma.user.findFirst; req.currentUser is only set by requirePermission
 - [vitest-mock-hoisting](vitest-mock-hoisting.md) — vi.mock factory cannot reference outer variables (hoisting trap); use inline factory or vi.hoisted()
 - [assert-role-removal-safe](assert-role-removal-safe.md) — takes role object (not roleId) to avoid duplicate DB fetch; 3 safety guards enforced
+- [Reversal report exclusion](reversal-report-exclusion.md) — reports filter POSTED only; REVERSED originals vanish so reversals double-count; include both statuses
+- [Paginated envelope unwrap](paginated-envelope-unwrap.md) — banking list hooks return {data:[...]}; components calling .filter/.map on the envelope crash whole routes
