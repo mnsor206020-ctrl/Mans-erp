@@ -3,14 +3,16 @@ import type { Cell } from "exceljs";
 import { mapChartWorkbook, type ChartWorkbookData, type ChartColumnMapping, type ChartImportField } from "./chart-column-mapping";
 
 const MAX_ROWS = 2000;
-const normalize = (value: string) => value.trim().toLowerCase().replace(/[\s_()[\]-]/g, "");
+const normalize = (value: string) => value.normalize("NFKC").trim().toLowerCase()
+  .replace(/[\u064B-\u065F\u0670\u0640\u200E\u200F\u202A-\u202E\u2066-\u2069]/g, "")
+  .replace(/[أإآٱ]/g, "ا").replace(/ى/g, "ي").replace(/[\s_()[\]-]/g, "");
 const headers: Record<string, keyof ChartImportRow> = {};
 const aliases: Partial<Record<keyof ChartImportRow, string[]>> = {
   code: ["Account Code", "code", "كود الحساب", "رقم الحساب", "الرمز"],
   name: ["Account Name", "name", "اسم الحساب"],
-  nameAr: ["Account Name Arabic", "nameAr", "اسم الحساب عربي", "الاسم بالعربية"],
-  nameEn: ["Account Name English", "nameEn", "اسم الحساب إنجليزي", "اسم الحساب انجليزي", "الاسم بالإنجليزية"],
-  parentCode: ["Parent Account Code", "parentCode", "كود الحساب الأب", "كود الحساب الاب", "رقم الحساب الأب", "رمز الحساب الرئيسي"],
+  nameAr: ["Account Name Arabic", "nameAr", "اسم الحساب عربي", "الاسم بالعربية", "الاسم العربي", "اسم الحساب بالعربية"],
+  nameEn: ["Account Name English", "nameEn", "اسم الحساب إنجليزي", "اسم الحساب انجليزي", "الاسم بالإنجليزية", "الاسم الإنجليزي", "اسم الحساب بالإنجليزية"],
+  parentCode: ["Parent Account Code", "parentCode", "كود الحساب الأب", "كود الحساب الاب", "رقم الحساب الأب", "رمز الحساب الرئيسي", "كود الحساب الرئيسي", "الحساب الأب"],
   type: ["Account Type", "type", "نوع الحساب"],
   nature: ["Account Nature", "nature", "طبيعة الحساب"],
   notes: ["Account Description", "Description", "notes", "وصف الحساب", "الوصف"],
@@ -77,6 +79,42 @@ export function suggestChartMapping(data: ChartWorkbookData): ChartColumnMapping
   }
   ambiguous.forEach((field) => delete mapping[field]);
   return mapping;
+}
+
+const isLevelColumn = (label: string) => ["المستوى", "مستوى الحساب", "Level", "Account Level"].some((name) => normalize(name) === normalize(label));
+
+/** Known headings are deterministic; ambiguous headings still require review. */
+export function automaticChartMapping(data: ChartWorkbookData): ChartColumnMapping {
+  const mapping = suggestChartMapping(data);
+  const hasHeading = (field: ChartImportField) => data.columns.some((column) => headers[normalize(column.label)] === field);
+  if (!hasHeading("nature")) mapping.nature = null;
+  if (!hasHeading("parentCode")) {
+    const level = data.columns.find((column) => isLevelColumn(column.label));
+    const clearlyFlat = level && data.rows.every((row) => !row.cells[level.index]?.error && row.cells[level.index]?.value === "1");
+    const onlyKnownColumns = data.columns.every((column) => !!headers[normalize(column.label)]);
+    // An unknown column could contain parents: do not silently flatten such files.
+    if (clearlyFlat || onlyKnownColumns) mapping.parentCode = null;
+  }
+  return mapping;
+}
+
+export function chartImportNotices(data: ChartWorkbookData, mapping: ChartColumnMapping, previewRows: { rowNumber: number; level: number }[]): string[] {
+  const notices: string[] = [];
+  if (mapping.nature === null)
+    notices.push("الطبيعة تلقائية حسب النوع: الأصول والمصروفات مدين، والباقي دائن. راجع الحسابات العكسية قبل التأكيد؛ يمكنك تحديد طبيعتها من ملفك عبر تعديل المطابقة.");
+  if (mapping.parentCode === null)
+    notices.push("لا يوجد عمود أب محدد؛ ستُستورد الحسابات كحسابات رئيسية.");
+  const level = data.columns.find((column) => isLevelColumn(column.label));
+  if (level) {
+    const actual = new Map(previewRows.map((row) => [row.rowNumber, row.level]));
+    const mismatches = data.rows.filter((row) => {
+      const value = row.cells[level.index]?.value;
+      return value && actual.has(row.rowNumber) && Number(value) !== actual.get(row.rowNumber);
+    }).length;
+    if (mismatches)
+      notices.push(`يوجد ${mismatches} حسابًا يختلف مستوى ملفه عن العلاقة المحددة بالأب. المعاينة تعتمد كود الأب المباشر؛ لا تُنشأ حسابات وسيطة تلقائيًا.`);
+  }
+  return notices;
 }
 
 export async function parseChartWorkbook(buffer: ArrayBuffer): Promise<ChartImportRow[]> {

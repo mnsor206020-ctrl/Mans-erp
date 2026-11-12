@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import ExcelJS from "exceljs";
-import { createChartTemplate, parseChartWorkbook, inspectChartWorkbook, suggestChartMapping } from "@/lib/chart-excel";
-import { chartMappingErrors, mapChartWorkbook } from "@/lib/chart-column-mapping";
+import { createChartTemplate, parseChartWorkbook, inspectChartWorkbook, suggestChartMapping, automaticChartMapping, chartImportNotices } from "@/lib/chart-excel";
+import { assignChartColumn, chartMappingErrors, mapChartWorkbook } from "@/lib/chart-column-mapping";
 
 async function buffer(workbook: ExcelJS.Workbook) {
   return new Uint8Array(await workbook.xlsx.writeBuffer()).slice().buffer;
@@ -115,5 +115,98 @@ describe("Flexible chart column mapping", () => {
     const mapping = { code: 1, name: 2, type: 3, parentCode: null };
     expect(mapChartWorkbook(data, { ...mapping, nature: null }).map((r) => r.nature)).toEqual(["CREDIT", ""]);
     expect(mapChartWorkbook(data, { ...mapping, nature: 4 }).map((r) => r.nature)).toEqual(["", "INVALID"]);
+  });
+});
+
+describe("Automatic chart import", () => {
+  it("prepares the Qoyod layout for preview without any manual selection", async () => {
+    const data = await inspectChartWorkbook(await buffer(workbook(
+      ["الرمز", "الاسم بالعربية", "الاسم بالإنجليزية", "المستوى", "رمز الحساب الرئيسي", "نوع الحساب", "الوصف", "يقبل الدفع والتحصيل"],
+      [["1", "الأصول", "Assets", 1, "", "أصول", "", "لا"],
+        ["0010", "النقدية", "Cash", 3, "1", "أصول", "", "نعم"]],
+    )));
+    const mapping = automaticChartMapping(data);
+    expect(mapping).toEqual({ code: 1, nameAr: 2, nameEn: 3, parentCode: 5, type: 6, notes: 7, nature: null });
+    expect(chartMappingErrors(data, mapping)).toEqual([]);
+    expect(mapChartWorkbook(data, mapping)[1]).toMatchObject({ code: "0010", parentCode: "1", nature: "DEBIT" });
+    expect(new Set(Object.values(mapping).filter((value) => typeof value === "number")).size).toBe(6);
+  });
+  it("uses visible type defaults for all five types in a clearly flat file", async () => {
+    const types = ["ASSET", "LIABILITY", "EQUITY", "REVENUE", "EXPENSE"];
+    const data = await inspectChartWorkbook(await buffer(workbook(
+      ["Account Code", "Account Name", "Account Type"], types.map((type) => [type, type, type]),
+    )));
+    const mapping = automaticChartMapping(data);
+    expect(chartMappingErrors(data, mapping)).toEqual([]);
+    expect(mapping.parentCode).toBeNull();
+    expect(mapChartWorkbook(data, mapping).map((row) => row.nature)).toEqual(["DEBIT", "CREDIT", "CREDIT", "CREDIT", "DEBIT"]);
+    expect(chartImportNotices(data, mapping, []).join(" ")).toContain("راجع الحسابات العكسية");
+  });
+  it("normalizes Arabic variants, diacritics and invisible direction markers", async () => {
+    const data = await inspectChartWorkbook(await buffer(workbook(
+      ["\u200fالرَّمز", "الإسْم بالعربيّة", "الاسم الإنْجليزي", "كود الحساب الرئيسي", "نوع الحساب"],
+      [["a", "الأصول", "Assets", "", "أصول"]],
+    )));
+    const mapping = automaticChartMapping(data);
+    expect(chartMappingErrors(data, mapping)).toEqual([]);
+    expect(mapping).toMatchObject({ code: 1, nameAr: 2, nameEn: 3, parentCode: 4, type: 5 });
+  });
+  it("does not replace an ambiguous nature or parent heading with defaults", async () => {
+    const data = await inspectChartWorkbook(await buffer(workbook(
+      ["Account Code", "Account Name", "Account Type", "Parent Account Code", "parentCode", "Account Nature", "nature"],
+      [["a", "Cash", "ASSET", "", "", "DEBIT", "CREDIT"]],
+    )));
+    const mapping = automaticChartMapping(data);
+    expect(mapping.parentCode).toBeUndefined();
+    expect(mapping.nature).toBeUndefined();
+    expect(chartMappingErrors(data, mapping)).toHaveLength(2);
+  });
+  it("does not invent or flatten parents when an unidentified column may contain them", async () => {
+    const data = await inspectChartWorkbook(await buffer(workbook(
+      ["Account Code", "Account Name", "Account Type", "custom hierarchy"],
+      [["0010", "Cash", "ASSET", "001"]],
+    )));
+    const mapping = automaticChartMapping(data);
+    expect(mapping.parentCode).toBeUndefined();
+    expect(() => mapChartWorkbook(data, mapping)).toThrow("اختر عمود الأب");
+  });
+  it("does not flatten a declared multi-level file with no identifiable parent column", async () => {
+    const data = await inspectChartWorkbook(await buffer(workbook(
+      ["Account Code", "Account Name", "Account Type", "المستوى"],
+      [["0010", "Cash", "ASSET", 3]],
+    )));
+    expect(automaticChartMapping(data).parentCode).toBeUndefined();
+  });
+  it("moves a selected name column rather than allowing duplicate assignments", async () => {
+    const data = await inspectChartWorkbook(await buffer(workbook(
+      ["Account Code", "Account Name", "Account Type"],
+      [["a", "Cash", "ASSET"]],
+    )));
+    const mapping = assignChartColumn(automaticChartMapping(data), "nameAr", 2);
+    expect(mapping.name).toBeUndefined();
+    expect(mapping.nameAr).toBe(2);
+    expect(chartMappingErrors(data, mapping)).toEqual([]);
+    expect(mapChartWorkbook(data, mapping)[0]).toMatchObject({ nameAr: "Cash" });
+    expect(assignChartColumn(mapping, "nameAr", null)).toMatchObject({ nameAr: null, code: 1 });
+  });
+  it("keeps explicit blank and invalid natures for server validation rather than guessing", async () => {
+    const data = await inspectChartWorkbook(await buffer(workbook(
+      ["Account Code", "Account Name", "Account Type", "Account Nature"],
+      [["a", "Cash", "ASSET", ""], ["b", "Other", "ASSET", "invalid"]],
+    )));
+    const mapping = automaticChartMapping(data);
+    expect(mapping.nature).toBe(4);
+    expect(mapChartWorkbook(data, mapping).map((row) => row.nature)).toEqual(["", "INVALID"]);
+  });
+  it("warns about inconsistent source levels without rewriting the parent relationship", async () => {
+    const data = await inspectChartWorkbook(await buffer(workbook(
+      ["Account Code", "Account Name", "Account Type", "Parent Account Code", "المستوى"],
+      [["1", "Assets", "ASSET", "", 1], ["1000", "Cash", "ASSET", "1", 3]],
+    )));
+    const mapping = automaticChartMapping(data);
+    const notices = chartImportNotices(data, mapping, [{ rowNumber: 2, level: 1 }, { rowNumber: 3, level: 2 }]);
+    expect(notices.join(" ")).toContain("يوجد 1 حسابًا");
+    expect(mapChartWorkbook(data, mapping)[1].parentCode).toBe("1");
+    expect(chartImportNotices(data, mapping, []).join(" ")).not.toContain("يختلف مستوى");
   });
 });

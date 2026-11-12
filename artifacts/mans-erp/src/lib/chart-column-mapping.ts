@@ -22,6 +22,17 @@ export const CHART_IMPORT_FIELDS: { key: ChartImportField; label: string }[] = [
   { key: "notes", label: "الوصف" },
 ];
 
+/** A column has one owner; choosing it again moves it instead of creating a conflict. */
+export function assignChartColumn(mapping: ChartColumnMapping, field: ChartImportField, column: number | null | undefined): ChartColumnMapping {
+  const next = { ...mapping };
+  if (typeof column === "number") {
+    for (const key of Object.keys(next) as ChartImportField[])
+      if (key !== field && next[key] === column) delete next[key];
+  }
+  next[field] = column;
+  return next;
+}
+
 export function chartMappingErrors(data: ChartWorkbookData, mapping: ChartColumnMapping): string[] {
   const errors: string[] = [];
   for (const key of ["code", "type"] as const)

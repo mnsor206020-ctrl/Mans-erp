@@ -9,8 +9,8 @@ Treat imported account codes as opaque identifiers. Never infer hierarchy from c
 
 **How to apply:** Preserve textual codes and leading zeros. Import adds new accounts only; conflicts require review rather than automatic overwrites or changes to existing posted accounting data.
 
-Missing account nature requires an explicit user choice: map a nature column or opt into the usual defaults by account type. Never infer nature from hierarchy level or payment/collection flags.
+The default import journey must be upload → automatic column matching → review → confirm. Manual column mapping is optional, except for missing or ambiguous fields that cannot be resolved safely.
 
-**Why:** External templates may omit nature, and defaults cannot identify contra-accounts reliably.
+**Why:** The user explicitly rejected mandatory manual matching and requested an automatic experience like Qoyod.
 
-**How to apply:** Warn about contra-accounts when offering type-based defaults; keep a mapped nature column authoritative, including blank or invalid values that must fail validation.
+**How to apply:** Match recognizable Arabic/English headings automatically, but do not guess ambiguous columns or invent parents. If nature is absent, apply the usual type-based defaults with a visible review notice before confirmation. Explain that contra-accounts may need a nature column; a mapped nature column remains authoritative, including invalid or blank values. Never infer nature from hierarchy levels or payment/collection flags.

@@ -8,7 +8,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { createChartTemplate, inspectChartWorkbook, suggestChartMapping } from "@/lib/chart-excel";
+import { createChartTemplate, inspectChartWorkbook, automaticChartMapping, chartImportNotices } from "@/lib/chart-excel";
 import { chartMappingErrors, mapChartWorkbook, type ChartWorkbookData, type ChartColumnMapping } from "@/lib/chart-column-mapping";
 import { ChartColumnMapper } from "@/components/ChartColumnMapper";
 
@@ -21,11 +21,15 @@ export function ChartImportDialog() {
   const [working, setWorking] = useState(false);
   const [workbook, setWorkbook] = useState<ChartWorkbookData>();
   const [mapping, setMapping] = useState<ChartColumnMapping>({});
+  const [mappingOpen, setMappingOpen] = useState(false);
   const busyRef = useRef(false);
   const mutation = useImportChartOfAccounts();
   const queryClient = useQueryClient();
+  const mappingErrors = workbook ? chartMappingErrors(workbook, mapping) : [];
+  const notices = workbook ? chartImportNotices(workbook, mapping, preview?.rows || []) : [];
 
   async function validate(data: ChartImportRow[], confirm = false) {
+    if (!confirm) setPreview(undefined);
     if (new Blob([JSON.stringify({ rows: data, confirm })]).size > 2 * 1024 * 1024)
       throw new Error("بيانات الطلب تتجاوز 2 ميجابايت؛ قسّم الحسابات إلى دفعات أصغر.");
     const result = await mutation.mutateAsync({ data: { rows: data, confirm } });
@@ -57,14 +61,23 @@ export function ChartImportDialog() {
     setPreview(undefined);
     setWorkbook(undefined);
     setMapping({});
+    setMappingOpen(false);
     if (!file) return;
     await run(async () => {
       if (!file.name.toLowerCase().endsWith(".xlsx"))
         throw new Error("الامتداد المدعوم هو .xlsx. احفظ ملف .xls القديم بصيغة .xlsx أولًا.");
       if (file.size > 5 * 1024 * 1024) throw new Error("حجم الملف يتجاوز 5 ميجابايت.");
       const parsed = await inspectChartWorkbook(await file.arrayBuffer());
+      const matched = automaticChartMapping(parsed);
       setWorkbook(parsed);
-      setMapping(suggestChartMapping(parsed));
+      setMapping(matched);
+      const needsReview = chartMappingErrors(parsed, matched).length > 0;
+      setMappingOpen(needsReview);
+      if (!needsReview) {
+        const mapped = mapChartWorkbook(parsed, matched);
+        setRows(mapped);
+        await validate(mapped);
+      }
     });
   }
   async function download() {
@@ -81,11 +94,12 @@ export function ChartImportDialog() {
   return (
     <>
       <Button variant="outline" onClick={() => {
-        setRows([]); setPreview(undefined); setError(""); setFileName(""); setWorkbook(undefined); setMapping({}); setOpen(true);
+        setRows([]); setPreview(undefined); setError(""); setFileName(""); setWorkbook(undefined); setMapping({}); setMappingOpen(false); setOpen(true);
       }} data-testid="button-import-accounts"><Upload className="h-4 w-4 me-2" />استيراد من Excel</Button>
       <Dialog open={open} onOpenChange={(value) => { if (!working) setOpen(value); }}>
         <DialogContent dir="rtl" className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>استيراد دليل الحسابات من Excel</DialogTitle></DialogHeader>
+          <p className="font-medium text-sm">ارفع الملف ← مطابقة تلقائية ومعاينة ← تأكيد الاستيراد</p>
           <p className="text-sm text-muted-foreground">
             ملفات .xlsx فقط، حتى 5 ميجابايت و2000 حساب، من الورقة الأولى. راجع البيانات قبل التأكيد.
             لن يتم حذف أو استبدال حساب موجود. الاسم الواحد يُستخدم للعربية والإنجليزية، ويمكن تخصيصهما في القالب.
@@ -99,11 +113,23 @@ export function ChartImportDialog() {
             </label>
           </div>
           {fileName && <p className="text-sm break-all">الملف المحدد: <span dir="auto">{fileName}</span></p>}
-          {workbook && <ChartColumnMapper data={workbook} mapping={mapping} disabled={working || !!preview?.imported}
-            onChange={(next) => {
-              setMapping(next); setRows([]); setPreview(undefined); setError("");
-            }} />}
-          {working && <p role="status">جارٍ قراءة الملف أو التحقق والحفظ…</p>}
+          {workbook && <div className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm">{mappingErrors.length ? "تحتاج بعض الأعمدة إلى تحديد؛ راجع الحقول أدناه." : "تمت مطابقة الأعمدة تلقائيًا. راجع الحسابات ثم أكّد الاستيراد."}</p>
+              <Button variant="outline" aria-expanded={mappingOpen} aria-controls="chart-column-mapping"
+                onClick={() => setMappingOpen(!mappingOpen)} disabled={working}>
+                {mappingOpen ? "إخفاء المطابقة" : "تعديل المطابقة (اختياري)"}
+              </Button>
+            </div>
+            {mappingOpen && <div id="chart-column-mapping"><ChartColumnMapper data={workbook} mapping={mapping} disabled={working || !!preview?.imported}
+              onChange={(next) => {
+                setMapping(next); setRows([]); setPreview(undefined); setError("");
+              }} /></div>}
+            {notices.length > 0 && <div className="text-sm bg-muted rounded-md p-3 space-y-2" aria-label="ملاحظات الاستيراد">
+              {notices.map((notice) => <p key={notice}>{notice}</p>)}
+            </div>}
+          </div>}
+          {working && <p role="status">جارٍ قراءة الملف ومطابقة الأعمدة والتحقق من البيانات…</p>}
           {error && <p role="alert" className="text-destructive break-words">{error}</p>}
           {preview && (
             <>
@@ -143,15 +169,15 @@ export function ChartImportDialog() {
           <DialogFooter className="gap-2">
             <Button variant="outline" disabled={working} onClick={() => setOpen(false)}>إغلاق</Button>
             {workbook && !preview?.imported && <Button variant="outline"
-              disabled={working || chartMappingErrors(workbook, mapping).length > 0}
+              disabled={working || mappingErrors.length > 0}
               onClick={() => void run(async () => {
                 const mapped = mapChartWorkbook(workbook, mapping);
                 setRows(mapped);
                 await validate(mapped);
-              })}>معاينة والتحقق</Button>}
-            <Button disabled={working || !preview?.valid || !!preview.imported} onClick={() => void run(() => validate(rows, true))}>
-              تأكيد استيراد {preview?.total || 0} حساب
-            </Button>
+              })}>{preview ? "إعادة المعاينة" : "معاينة والتحقق"}</Button>}
+            {preview && <Button disabled={working || !preview.valid || !!preview.imported} onClick={() => void run(() => validate(rows, true))}>
+              تأكيد استيراد {preview.total} حساب
+            </Button>}
           </DialogFooter>
         </DialogContent>
       </Dialog>
