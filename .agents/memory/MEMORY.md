@@ -14,3 +14,4 @@
 - [Fresh-login verification](clerk-bootstrap-verification.md) — seeded users can hide local-account initialization failures; test a Clerk-only identity without granting organization access.
 - [Chart import policy](chart-import-policy.md) — account codes are opaque identifiers; hierarchy comes from explicit parents, never numbering conventions.
 - [Owner permission scope](owner-permission-scope.md) — the creator requested full rights for their own account within their organization, not platform-wide Super Admin.
+- [Profile permission payload](profile-permission-payload.md) — current-user responses contain nested grants missing from generated types; verify serialization before changing contracts.

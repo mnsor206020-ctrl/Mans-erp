@@ -4,6 +4,7 @@ import { useLanguage } from "@/lib/language-provider";
 import { useToast } from "@/hooks/use-toast";
 import {
   useGetJournalEntry,
+  useGetCurrentUser,
   useSubmitJournalEntry,
   useApproveJournalEntry,
   useRejectJournalEntry,
@@ -14,6 +15,7 @@ import {
   useVoidJournalEntry,
   useDeleteJournalEntry,
   getListJournalEntriesQueryKey,
+  getGetJournalEntryQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -62,16 +64,8 @@ import {
 import ApprovalTimeline from "@/components/journal-entries/ApprovalTimeline";
 import IntegrityBadge from "@/components/journal-entries/IntegrityBadge";
 import { AttachmentsPanel } from "@/components/journal-entries/AttachmentsPanel";
-
-const STATUS_COLORS: Record<string, string> = {
-  DRAFT: "bg-slate-100 text-slate-700 border-slate-200",
-  UNDER_REVIEW: "bg-amber-100 text-amber-800 border-amber-200",
-  APPROVED: "bg-blue-100 text-blue-800 border-blue-200",
-  POSTED: "bg-green-100 text-green-800 border-green-200",
-  LOCKED: "bg-purple-100 text-purple-800 border-purple-200",
-  REVERSED: "bg-orange-100 text-orange-800 border-orange-200",
-  VOIDED: "bg-red-100 text-red-800 border-red-200",
-};
+import { BalanceSummary } from "@/components/journal-entries/BalanceSummary";
+import { getApiErrorMessage, getEntryActions, hasJournalPermission, jt, pickDescription, STATUS_STYLES } from "@/lib/journal-entry-ui";
 
 const ACTION_ICONS: Record<string, any> = {
   SUBMIT:  Send,
@@ -109,6 +103,7 @@ export default function JournalEntryDetail({ params }: Props) {
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const queryClient = useQueryClient();
+  const { data: currentUser } = useGetCurrentUser();
 
   const [commentDialog, setCommentDialog] = useState<{ action: string; title: string } | null>(null);
   const [comment, setComment] = useState("");
@@ -123,60 +118,62 @@ export default function JournalEntryDetail({ params }: Props) {
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: getListJournalEntriesQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getGetJournalEntryQueryKey(params.id) });
   };
+  const onErr = (e: unknown) => toast({ title: jt(lang, "error"), description: getApiErrorMessage(e, jt(lang, "actionFailed")), variant: "destructive" });
 
   const submitMutation = useSubmitJournalEntry({ mutation: {
-    onSuccess: () => { toast({ title: "Submitted for review" }); setCommentDialog(null); setComment(""); invalidate(); },
-    onError: (e: any) => toast({ title: "Error", description: e?.response?.data?.error, variant: "destructive" }),
+    onSuccess: () => { toast({ title: jt(lang, "submitted") }); setCommentDialog(null); setComment(""); invalidate(); },
+    onError: onErr,
   }});
 
   const approveMutation = useApproveJournalEntry({ mutation: {
-    onSuccess: () => { toast({ title: "Approved" }); setCommentDialog(null); setComment(""); invalidate(); },
-    onError: (e: any) => toast({ title: "Error", description: e?.response?.data?.error, variant: "destructive" }),
+    onSuccess: () => { toast({ title: jt(lang, "approved") }); setCommentDialog(null); setComment(""); invalidate(); },
+    onError: onErr,
   }});
 
   const rejectMutation = useRejectJournalEntry({ mutation: {
-    onSuccess: () => { toast({ title: "Rejected — returned to Draft" }); setCommentDialog(null); setComment(""); invalidate(); },
-    onError: (e: any) => toast({ title: "Error", description: e?.response?.data?.error, variant: "destructive" }),
+    onSuccess: () => { toast({ title: jt(lang, "rejected") }); setCommentDialog(null); setComment(""); invalidate(); },
+    onError: onErr,
   }});
 
   const postMutation = usePostJournalEntry({ mutation: {
-    onSuccess: () => { toast({ title: "Posted successfully" }); invalidate(); },
-    onError: (e: any) => toast({ title: "Error", description: e?.response?.data?.error, variant: "destructive" }),
+    onSuccess: () => { toast({ title: jt(lang, "posted") }); invalidate(); },
+    onError: onErr,
   }});
 
   const lockMutation = useLockJournalEntry({ mutation: {
-    onSuccess: () => { toast({ title: "Locked" }); invalidate(); },
-    onError: (e: any) => toast({ title: "Error", description: e?.response?.data?.error, variant: "destructive" }),
+    onSuccess: () => { toast({ title: jt(lang, "locked") }); invalidate(); },
+    onError: onErr,
   }});
 
   const reverseMutation = useReverseJournalEntry({ mutation: {
     onSuccess: (rev: any) => {
-      toast({ title: "Reversal created", description: `Draft ${rev.number} created.` });
+      toast({ title: jt(lang, "reversalCreated"), description: rev.number });
       setReverseDialog(false);
       invalidate();
       navigate(`/journal-entries/${rev.id}`);
     },
-    onError: (e: any) => toast({ title: "Error", description: e?.response?.data?.error, variant: "destructive" }),
+    onError: onErr,
   }});
 
   const copyMutation = useCopyJournalEntry({ mutation: {
     onSuccess: (copy: any) => {
-      toast({ title: "Copied", description: `Draft ${copy.number} created.` });
+      toast({ title: jt(lang, "copied"), description: copy.number });
       invalidate();
       navigate(`/journal-entries/${copy.id}`);
     },
-    onError: (e: any) => toast({ title: "Error", description: e?.response?.data?.error, variant: "destructive" }),
+    onError: onErr,
   }});
 
   const voidMutation = useVoidJournalEntry({ mutation: {
-    onSuccess: () => { toast({ title: "Voided" }); setVoidDialog(false); setVoidReason(""); invalidate(); },
-    onError: (e: any) => toast({ title: "Error", description: e?.response?.data?.error, variant: "destructive" }),
+    onSuccess: () => { toast({ title: jt(lang, "voided") }); setVoidDialog(false); setVoidReason(""); invalidate(); },
+    onError: onErr,
   }});
 
   const deleteMutation = useDeleteJournalEntry({ mutation: {
-    onSuccess: () => { toast({ title: "Deleted" }); navigate("/journal-entries"); },
-    onError: (e: any) => toast({ title: "Error", description: e?.response?.data?.error, variant: "destructive" }),
+    onSuccess: () => { toast({ title: jt(lang, "deleted") }); queryClient.invalidateQueries({ queryKey: getListJournalEntriesQueryKey() }); navigate("/journal-entries"); },
+    onError: onErr,
   }});
 
   const handleCommentAction = () => {
@@ -193,7 +190,7 @@ export default function JournalEntryDetail({ params }: Props) {
 
   if (isLoading) {
     return (
-      <div className="p-6 max-w-5xl mx-auto space-y-4">
+      <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-4">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-32 w-full" />
         <Skeleton className="h-64 w-full" />
@@ -203,14 +200,14 @@ export default function JournalEntryDetail({ params }: Props) {
 
   if (error || !entry) {
     return (
-      <div className="p-6 max-w-5xl mx-auto">
+      <div className="p-4 sm:p-6 max-w-5xl mx-auto">
         <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-6 text-center">
           <AlertTriangle className="w-10 h-10 mx-auto mb-3 text-destructive opacity-60" />
-          <p className="font-medium">Journal entry not found</p>
+          <p className="font-medium">{jt(lang, "loadFailed")}</p>
           <Link href="/journal-entries">
             <Button variant="outline" className="mt-4 gap-2" size="sm">
               <ChevronLeft className="w-4 h-4" />
-              Back to Journal Entries
+              {jt(lang, "back")}
             </Button>
           </Link>
         </div>
@@ -224,21 +221,21 @@ export default function JournalEntryDetail({ params }: Props) {
   const approvals: any[] = e.approvals ?? [];
   const totalDebit = parseFloat(String(e.totalDebit || 0));
   const totalCredit = parseFloat(String(e.totalCredit || 0));
-  const isBalanced = Math.abs(totalDebit - totalCredit) < 0.01;
-  const desc = lang === "ar" ? (e.descriptionAr || e.descriptionEn) : (e.descriptionEn || e.descriptionAr);
+    const desc = pickDescription(e, lang);
 
-  const canEdit    = ["DRAFT", "UNDER_REVIEW"].includes(status);
-  const canSubmit  = status === "DRAFT";
-  const canApprove = status === "UNDER_REVIEW";
-  const canReject  = ["UNDER_REVIEW", "APPROVED"].includes(status);
-  const canPost    = status === "APPROVED";
-  const canLock    = status === "POSTED";
-  const canReverse = ["POSTED", "LOCKED"].includes(status) && !e.reversedByEntryId;
-  const canVoid    = status === "POSTED";
-  const canDelete  = status === "DRAFT";
+  const actions = getEntryActions(status, e.reversedByEntryId);
+  const canEdit = actions.canEdit && hasJournalPermission(currentUser, "update");
+  const canSubmit = actions.canSubmit && hasJournalPermission(currentUser, "update");
+  const canApprove = actions.canApprove && hasJournalPermission(currentUser, "approve");
+  const canReject = actions.canReject && hasJournalPermission(currentUser, "approve");
+  const canPost = actions.canPost && hasJournalPermission(currentUser, "approve");
+  const canLock = actions.canLock && hasJournalPermission(currentUser, "approve");
+  const canReverse = actions.canReverse && hasJournalPermission(currentUser, "void");
+  const canVoid = actions.canVoid && hasJournalPermission(currentUser, "void");
+  const canDelete = actions.canDelete && hasJournalPermission(currentUser, "delete");
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-6">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Link href="/journal-entries">
@@ -255,7 +252,7 @@ export default function JournalEntryDetail({ params }: Props) {
             <div className="space-y-1">
               <div className="flex items-center gap-3 flex-wrap">
                 <h1 className="text-2xl font-bold font-mono tracking-tight">{e.number}</h1>
-                <Badge variant="outline" className={`text-sm font-medium ${STATUS_COLORS[status] || ""}`}>
+                <Badge variant="outline" className={`text-sm font-medium ${STATUS_STYLES[status] || ""}`}>
                   {t(`je.status.${status}`)}
                 </Badge>
                 {e.isReversal && (
@@ -264,15 +261,15 @@ export default function JournalEntryDetail({ params }: Props) {
                   </Badge>
                 )}
               </div>
-              <p className="text-sm text-muted-foreground">{desc || <span className="italic">No description</span>}</p>
+              <p className="text-sm text-muted-foreground">{desc || <span className="italic">{jt(lang, "noDescription")}</span>}</p>
             </div>
 
             {/* Action buttons */}
             <div className="flex items-center gap-2 flex-wrap">
-              <Button variant="outline" size="sm" className="gap-2" onClick={() => copyMutation.mutate({ id: e.id, data: {} } as any)} disabled={isBusy}>
+              {hasJournalPermission(currentUser, "create") && <Button variant="outline" size="sm" className="gap-2" onClick={() => copyMutation.mutate({ id: e.id, data: {} } as any)} disabled={isBusy}>
                 <Copy className="w-4 h-4" />
                 {t("je.copy")}
-              </Button>
+              </Button>}
               {canEdit && (
                 <Link href={`/journal-entries/${e.id}/edit`}>
                   <Button variant="outline" size="sm" className="gap-2">
@@ -441,7 +438,7 @@ export default function JournalEntryDetail({ params }: Props) {
         {/* Workflow Info */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Workflow</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{jt(lang, "workflow")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {e.createdBy && (
@@ -481,11 +478,7 @@ export default function JournalEntryDetail({ params }: Props) {
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center justify-between">
             <span>{t("je.lines")}</span>
-            <div className={`text-sm font-medium flex items-center gap-1.5 ${isBalanced ? "text-green-600" : "text-red-600"}`}>
-              {isBalanced ? "✓" : "✗"}
-              <span>{isBalanced ? t("je.balanced") : t("je.unbalanced")}</span>
-            </div>
-          </CardTitle>
+                      </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -524,18 +517,11 @@ export default function JournalEntryDetail({ params }: Props) {
                   );
                 })}
               </tbody>
-              <tfoot>
-                <tr className="border-t-2 bg-muted/30 font-semibold">
-                  <td colSpan={4} className="py-2.5 px-4 text-end text-sm">{t("je.totalDebit")} / {t("je.totalCredit")}</td>
-                  <td className="py-2.5 px-4 text-end font-mono tabular-nums text-emerald-700">
-                    {formatNumber(totalDebit)}
-                  </td>
-                  <td className="py-2.5 px-4 text-end font-mono tabular-nums text-blue-700">
-                    {formatNumber(totalCredit)}
-                  </td>
-                </tr>
-              </tfoot>
+
             </table>
+          </div>
+          <div className="p-3 sm:p-4 border-t">
+            <BalanceSummary totalDebit={totalDebit} totalCredit={totalCredit} currencyCode={e.currencyCode} />
           </div>
         </CardContent>
       </Card>
@@ -592,7 +578,7 @@ export default function JournalEntryDetail({ params }: Props) {
           <DialogFooter>
             <Button variant="outline" onClick={() => setCommentDialog(null)}>{t("common.cancel")}</Button>
             <Button onClick={handleCommentAction} disabled={isBusy}>
-              {isBusy ? "Processing..." : commentDialog?.title}
+              {isBusy ? jt(lang, "processing") : commentDialog?.title}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -621,7 +607,7 @@ export default function JournalEntryDetail({ params }: Props) {
               onClick={() => reverseMutation.mutate({ id: e.id, data: { reverseDate, reason: reverseReason } } as any)}
               disabled={reverseMutation.isPending}
             >
-              {reverseMutation.isPending ? "Creating reversal..." : t("je.reverse")}
+              {reverseMutation.isPending ? jt(lang, "processing") : t("je.reverse")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -645,7 +631,7 @@ export default function JournalEntryDetail({ params }: Props) {
               onClick={() => voidMutation.mutate({ id: e.id, data: { reason: voidReason } } as any)}
               disabled={voidMutation.isPending || !voidReason.trim()}
             >
-              {voidMutation.isPending ? "Voiding..." : t("je.void")}
+              {voidMutation.isPending ? jt(lang, "processing") : t("je.void")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -664,7 +650,7 @@ export default function JournalEntryDetail({ params }: Props) {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => deleteMutation.mutate({ id: e.id })}
             >
-              {deleteMutation.isPending ? "Deleting..." : t("common.delete")}
+              {deleteMutation.isPending ? jt(lang, "processing") : t("common.delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

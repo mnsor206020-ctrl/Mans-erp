@@ -4,11 +4,14 @@ import { useLanguage } from "@/lib/language-provider";
 import { useToast } from "@/hooks/use-toast";
 import {
   useListJournalEntries,
+  useGetCurrentUser,
   useDeleteJournalEntry,
   useSubmitJournalEntry,
   useCopyJournalEntry,
   getListJournalEntriesQueryKey,
+  getGetJournalEntryQueryKey,
 } from "@workspace/api-client-react";
+import { getApiErrorMessage, hasJournalPermission, jt, pickDescription, STATUS_STYLES } from "@/lib/journal-entry-ui";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,20 +59,11 @@ import {
 
 type JEStatus = "ALL" | "DRAFT" | "UNDER_REVIEW" | "APPROVED" | "POSTED" | "LOCKED" | "REVERSED" | "VOIDED";
 
-const STATUS_COLORS: Record<string, string> = {
-  DRAFT: "bg-slate-100 text-slate-700 border-slate-200",
-  UNDER_REVIEW: "bg-amber-100 text-amber-800 border-amber-200",
-  APPROVED: "bg-blue-100 text-blue-800 border-blue-200",
-  POSTED: "bg-green-100 text-green-800 border-green-200",
-  LOCKED: "bg-purple-100 text-purple-800 border-purple-200",
-  REVERSED: "bg-orange-100 text-orange-800 border-orange-200",
-  VOIDED: "bg-red-100 text-red-800 border-red-200",
-};
 
 function StatusBadge({ status }: { status: string }) {
   const { t } = useLanguage();
   return (
-    <Badge variant="outline" className={`text-xs font-medium ${STATUS_COLORS[status] || ""}`}>
+    <Badge variant="outline" className={`text-xs font-medium ${STATUS_STYLES[status] || ""}`}>
       {t(`je.status.${status}`) || status}
     </Badge>
   );
@@ -87,6 +81,10 @@ export default function JournalEntries() {
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const queryClient = useQueryClient();
+  const { data: currentUser } = useGetCurrentUser();
+  const canCreate = hasJournalPermission(currentUser, "create");
+  const canUpdate = hasJournalPermission(currentUser, "update");
+  const canDelete = hasJournalPermission(currentUser, "delete");
 
   const [activeStatus, setActiveStatus] = useState<JEStatus>("ALL");
   const [search, setSearch] = useState("");
@@ -123,12 +121,12 @@ export default function JournalEntries() {
   const deleteMutation = useDeleteJournalEntry({
     mutation: {
       onSuccess: () => {
-        toast({ title: "Deleted", description: "Journal entry deleted." });
+        toast({ title: jt(lang, "deleted") });
         setDeleteTarget(null);
         queryClient.invalidateQueries({ queryKey: getListJournalEntriesQueryKey() });
       },
       onError: (err: any) => {
-        toast({ title: "Error", description: err?.response?.data?.error || "Failed to delete", variant: "destructive" });
+        toast({ title: jt(lang, "error"), description: getApiErrorMessage(err, jt(lang, "actionFailed")), variant: "destructive" });
         setDeleteTarget(null);
       },
     },
@@ -137,12 +135,13 @@ export default function JournalEntries() {
   const submitMutation = useSubmitJournalEntry({
     mutation: {
       onSuccess: () => {
-        toast({ title: "Submitted", description: "Journal entry submitted for review." });
+        toast({ title: jt(lang, "submitted") });
+        if (submitTarget) queryClient.invalidateQueries({ queryKey: getGetJournalEntryQueryKey(submitTarget.id) });
         setSubmitTarget(null);
         queryClient.invalidateQueries({ queryKey: getListJournalEntriesQueryKey() });
       },
       onError: (err: any) => {
-        toast({ title: "Error", description: err?.response?.data?.error || "Failed to submit", variant: "destructive" });
+        toast({ title: jt(lang, "error"), description: getApiErrorMessage(err, jt(lang, "actionFailed")), variant: "destructive" });
         setSubmitTarget(null);
       },
     },
@@ -151,12 +150,12 @@ export default function JournalEntries() {
   const copyMutation = useCopyJournalEntry({
     mutation: {
       onSuccess: (newEntry: any) => {
-        toast({ title: "Copied", description: `Created ${newEntry.number} as draft.` });
+        toast({ title: jt(lang, "copied"), description: newEntry.number });
         queryClient.invalidateQueries({ queryKey: getListJournalEntriesQueryKey() });
         navigate(`/journal-entries/${newEntry.id}`);
       },
       onError: (err: any) => {
-        toast({ title: "Error", description: err?.response?.data?.error || "Failed to copy", variant: "destructive" });
+        toast({ title: jt(lang, "error"), description: getApiErrorMessage(err, jt(lang, "actionFailed")), variant: "destructive" });
       },
     },
   });
@@ -173,9 +172,9 @@ export default function JournalEntries() {
 
 
   return (
-    <div className="p-6 max-w-[1400px] mx-auto space-y-6">
+    <div className="p-4 sm:p-6 max-w-[1400px] mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-start sm:items-center justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
             <FileText className="w-6 h-6 text-primary" />
@@ -184,20 +183,20 @@ export default function JournalEntries() {
           <p className="text-sm text-muted-foreground mt-0.5">{t("je.subtitle")}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={() => refetch()} title="Refresh">
+          <Button variant="outline" size="icon" onClick={() => refetch()} title={jt(lang, "refresh")} aria-label={jt(lang, "refresh")}>
             <RefreshCw className="w-4 h-4" />
           </Button>
-          <Link href="/journal-entries/new">
+          {canCreate && <Link href="/journal-entries/new">
             <Button className="gap-2">
               <Plus className="w-4 h-4" />
               {t("je.new")}
             </Button>
-          </Link>
+          </Link>}
         </div>
       </div>
 
       {/* Status Tabs */}
-      <div className="flex gap-1 flex-wrap border-b border-border pb-0">
+      <div className="flex gap-1 overflow-x-auto border-b border-border pb-0 -mx-4 px-4 sm:mx-0 sm:px-0">
         {tabs.map((tab) => (
           <button
             key={tab.key}
@@ -215,7 +214,7 @@ export default function JournalEntries() {
 
       {/* Filters */}
       <div className="flex gap-3 flex-wrap items-center">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
+        <div className="relative w-full sm:flex-1 sm:min-w-[200px] sm:max-w-sm">
           <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             placeholder={t("je.search")}
@@ -225,11 +224,11 @@ export default function JournalEntries() {
           />
         </div>
         <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v); setPage(1); }}>
-          <SelectTrigger className="w-[160px]">
+          <SelectTrigger className="w-full sm:w-[160px]">
             <SelectValue placeholder="Type" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="ALL">All Types</SelectItem>
+            <SelectItem value="ALL">{jt(lang, "allTypes")}</SelectItem>
             <SelectItem value="MANUAL">{t("je.type.MANUAL")}</SelectItem>
             <SelectItem value="ADJUSTMENT">{t("je.type.ADJUSTMENT")}</SelectItem>
             <SelectItem value="OPENING">{t("je.type.OPENING")}</SelectItem>
@@ -274,12 +273,12 @@ export default function JournalEntries() {
                     <FileText className="w-10 h-10 mx-auto mb-3 opacity-30" />
                     <p className="font-medium">{t("je.empty")}</p>
                     <p className="text-xs mt-1">{t("je.empty.desc")}</p>
-                    <Link href="/journal-entries/new">
+                    {canCreate && <Link href="/journal-entries/new">
                       <Button className="mt-4 gap-2" size="sm">
                         <Plus className="w-4 h-4" />
                         {t("je.new")}
                       </Button>
-                    </Link>
+                    </Link>}
                   </td>
                 </tr>
               ) : (
@@ -288,7 +287,7 @@ export default function JournalEntries() {
                   const createdByName = createdBy
                     ? `${createdBy.firstNameEn || ""} ${createdBy.lastNameEn || ""}`.trim() || createdBy.email
                     : "—";
-                  const desc = lang === "ar" ? (entry.descriptionAr || entry.descriptionEn) : (entry.descriptionEn || entry.descriptionAr);
+                  const desc = pickDescription(entry, lang);
                   return (
                     <tr
                       key={entry.id}
@@ -328,32 +327,32 @@ export default function JournalEntries() {
                       <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="w-8 h-8 opacity-0 group-hover:opacity-100">
+                            <Button variant="ghost" size="icon" className="w-8 h-8 md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100">
                               <MoreHorizontal className="w-4 h-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => navigate(`/journal-entries/${entry.id}`)}>
                               <Eye className="w-4 h-4 me-2" />
-                              View
+                              {jt(lang, "view")}
                             </DropdownMenuItem>
-                            {["DRAFT", "UNDER_REVIEW"].includes(entry.status) && (
+                            {canUpdate && ["DRAFT", "UNDER_REVIEW"].includes(entry.status) && (
                               <DropdownMenuItem onClick={() => navigate(`/journal-entries/${entry.id}/edit`)}>
                                 <Pencil className="w-4 h-4 me-2" />
                                 {t("je.edit")}
                               </DropdownMenuItem>
                             )}
-                            {entry.status === "DRAFT" && (
+                            {canUpdate && entry.status === "DRAFT" && (
                               <DropdownMenuItem onClick={() => setSubmitTarget({ id: entry.id, number: entry.number })}>
                                 <Send className="w-4 h-4 me-2" />
                                 {t("je.submit")}
                               </DropdownMenuItem>
                             )}
-                            <DropdownMenuItem onClick={() => copyMutation.mutate({ id: entry.id, data: {} } as any)}>
+                            {canCreate && <DropdownMenuItem onClick={() => copyMutation.mutate({ id: entry.id, data: {} } as any)}>
                               <Copy className="w-4 h-4 me-2" />
                               {t("je.copy")}
-                            </DropdownMenuItem>
-                            {entry.status === "DRAFT" && (
+                            </DropdownMenuItem>}
+                            {canDelete && entry.status === "DRAFT" && (
                               <>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem
@@ -378,17 +377,17 @@ export default function JournalEntries() {
 
         {/* Pagination */}
         {!isLoading && total > 0 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t bg-muted/20">
+          <div className="flex items-center justify-between gap-2 flex-wrap px-4 py-3 border-t bg-muted/20">
             <p className="text-sm text-muted-foreground">
-              Showing {Math.min((page - 1) * pageSize + 1, total)}–{Math.min(page * pageSize, total)} of {total} entries
+              {jt(lang, "showing")} {Math.min((page - 1) * pageSize + 1, total)}–{Math.min(page * pageSize, total)} {jt(lang, "of")} {total}
             </p>
             <div className="flex items-center gap-1">
               <Button variant="ghost" size="icon" className="w-8 h-8" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
-                <ChevronLeft className="w-4 h-4" />
+                <ChevronLeft className="w-4 h-4 rtl:rotate-180" />
               </Button>
               <span className="text-sm px-2">{page} / {totalPages}</span>
               <Button variant="ghost" size="icon" className="w-8 h-8" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="w-4 h-4 rtl:rotate-180" />
               </Button>
             </div>
           </div>
@@ -410,7 +409,7 @@ export default function JournalEntries() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => deleteTarget && deleteMutation.mutate({ id: deleteTarget.id })}
             >
-              {deleteMutation.isPending ? "Deleting..." : t("common.delete")}
+              {deleteMutation.isPending ? jt(lang, "processing") : t("common.delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -422,7 +421,7 @@ export default function JournalEntries() {
           <AlertDialogHeader>
             <AlertDialogTitle>{t("je.submit")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Submit {submitTarget?.number} for review?
+              {jt(lang, "submitConfirm")} ({submitTarget?.number})
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -430,7 +429,7 @@ export default function JournalEntries() {
             <AlertDialogAction
               onClick={() => submitTarget && submitMutation.mutate({ id: submitTarget.id, data: {} } as any)}
             >
-              {submitMutation.isPending ? "Submitting..." : t("je.submit")}
+              {submitMutation.isPending ? jt(lang, "processing") : t("je.submit")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
