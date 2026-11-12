@@ -85,6 +85,20 @@ function makeApp() {
   return app;
 }
 
+function makeAppWithArrayEntryId() {
+  const app = express();
+  app.use(express.json());
+  app.use("/journal-entries/*id/attachments", attachmentsRouter);
+  return app;
+}
+
+function makeAppWithoutEntryId() {
+  const app = express();
+  app.use(express.json());
+  app.use("/journal-entries/attachments", attachmentsRouter);
+  return app;
+}
+
 // ── Tests ─────────────────────────────────────────────────────────────────────
 describe("POST /journal-entries/:id/attachments", () => {
   beforeEach(() => {
@@ -181,6 +195,19 @@ describe("POST /journal-entries/:id/attachments", () => {
       .attach("files", SMALL_PDF, { filename: "test.pdf", contentType: "application/pdf" });
 
     expect(res.status).toBe(404);
+    expect(mockSave).not.toHaveBeenCalled();
+  });
+
+  it("rejects an array entry ID before upload or database access", async () => {
+    const app = makeAppWithArrayEntryId();
+
+    const res = await request(app)
+      .post("/journal-entries/first/second/attachments")
+      .attach("files", SMALL_PDF, { filename: "test.pdf", contentType: "application/pdf" });
+
+    expect(res.status).toBe(400);
+    expect(prisma.journalEntry.findFirst).not.toHaveBeenCalled();
+    expect((prisma.journalEntryAttachment as any).create).not.toHaveBeenCalled();
     expect(mockSave).not.toHaveBeenCalled();
   });
 
@@ -345,6 +372,18 @@ describe("GET /journal-entries/:id/attachments/:attachmentId/download", () => {
     expect(res.status).toBe(401);
     expect(mockSignDownload).not.toHaveBeenCalled();
   });
+
+  it("rejects an array entry ID before looking up attachments or signing a URL", async () => {
+    const app = makeAppWithArrayEntryId();
+
+    const res = await request(app)
+      .get(`/journal-entries/first/second/attachments/${ATTACH_ID}/download`);
+
+    expect(res.status).toBe(400);
+    expect(prisma.journalEntry.findFirst).not.toHaveBeenCalled();
+    expect((prisma.journalEntryAttachment as any).findFirst).not.toHaveBeenCalled();
+    expect(mockSignDownload).not.toHaveBeenCalled();
+  });
 });
 
 // ── List tests ────────────────────────────────────────────────────────────────
@@ -390,6 +429,26 @@ describe("GET /journal-entries/:id/attachments", () => {
     const res = await request(app).get(`/journal-entries/${ENTRY_ID}/attachments`);
 
     expect(res.status).toBe(404);
+    expect((prisma.journalEntryAttachment as any).findMany).not.toHaveBeenCalled();
+  });
+
+  it("rejects an array entry ID before querying journal entries or attachments", async () => {
+    const app = makeAppWithArrayEntryId();
+
+    const res = await request(app).get("/journal-entries/first/second/attachments");
+
+    expect(res.status).toBe(400);
+    expect(prisma.journalEntry.findFirst).not.toHaveBeenCalled();
+    expect((prisma.journalEntryAttachment as any).findMany).not.toHaveBeenCalled();
+  });
+
+  it("rejects a missing inherited entry ID before querying journal entries", async () => {
+    const app = makeAppWithoutEntryId();
+
+    const res = await request(app).get("/journal-entries/attachments");
+
+    expect(res.status).toBe(400);
+    expect(prisma.journalEntry.findFirst).not.toHaveBeenCalled();
     expect((prisma.journalEntryAttachment as any).findMany).not.toHaveBeenCalled();
   });
 });
@@ -451,6 +510,18 @@ describe("DELETE /journal-entries/:id/attachments/:attachmentId", () => {
 
     expect(res.status).toBe(404);
     expect(res.body.error).toMatch(/journal entry not found/i);
+    expect((prisma.journalEntryAttachment as any).update).not.toHaveBeenCalled();
+  });
+
+  it("rejects an array entry ID without looking up or modifying attachments", async () => {
+    const app = makeAppWithArrayEntryId();
+
+    const res = await request(app)
+      .delete(`/journal-entries/first/second/attachments/${ATTACH_ID}`);
+
+    expect(res.status).toBe(400);
+    expect(prisma.journalEntry.findFirst).not.toHaveBeenCalled();
+    expect((prisma.journalEntryAttachment as any).findFirst).not.toHaveBeenCalled();
     expect((prisma.journalEntryAttachment as any).update).not.toHaveBeenCalled();
   });
 });
@@ -563,5 +634,20 @@ describe("PATCH /journal-entries/:id/attachments/:attachmentId", () => {
     expect(res.status).toBe(404);
     expect(res.body.error).toMatch(/journal entry not found/i);
     expect((prisma.$transaction as any)).not.toHaveBeenCalled();
+  });
+
+  it("rejects an array entry ID without looking up or updating attachments", async () => {
+    const app = makeAppWithArrayEntryId();
+
+    const res = await request(app)
+      .patch(`/journal-entries/first/second/attachments/${ATTACH_ID}`)
+      .send({ isPrimary: true });
+
+    expect(res.status).toBe(400);
+    expect(prisma.journalEntry.findFirst).not.toHaveBeenCalled();
+    expect((prisma.journalEntryAttachment as any).findFirst).not.toHaveBeenCalled();
+    expect((prisma.journalEntryAttachment as any).update).not.toHaveBeenCalled();
+    expect((prisma.journalEntryAttachment as any).updateMany).not.toHaveBeenCalled();
+    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 });

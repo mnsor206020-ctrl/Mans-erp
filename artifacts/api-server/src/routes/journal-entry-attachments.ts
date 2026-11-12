@@ -77,6 +77,12 @@ function parsePrivateObjectDir(): { bucketName: string; prefix: string } {
 // ── POST /api/journal-entries/:id/attachments ──────────────────────────────────
 
 router.post("/", requirePermission("attachments", "create"), async (req, res) => {
+  const entryId = routeParam(req.params, "id");
+  if (!entryId) {
+    res.status(400).json({ error: "Invalid journal entry ID" });
+    return;
+  }
+
   // ── Parse multipart ───────────────────────────────────────────────────────
   try {
     await runUpload(req, res);
@@ -107,7 +113,6 @@ router.post("/", requirePermission("attachments", "create"), async (req, res) =>
       return;
     }
 
-    const entryId = routeParam(req.params, "id");
     const entry = await prisma.journalEntry.findFirst({
       where: { id: entryId, organizationId: user.organizationId ?? undefined, deletedAt: null },
       select: { id: true },
@@ -181,6 +186,12 @@ router.post("/", requirePermission("attachments", "create"), async (req, res) =>
 // ── GET /api/journal-entries/:id/attachments ──────────────────────────────────
 
 router.get("/", async (req, res) => {
+  const entryId = routeParam(req.params, "id");
+  if (!entryId) {
+    res.status(400).json({ error: "Invalid journal entry ID" });
+    return;
+  }
+
   try {
     const { userId } = getAuth(req);
     const user = await getUser(userId!);
@@ -189,7 +200,6 @@ router.get("/", async (req, res) => {
       return;
     }
 
-    const entryId = routeParam(req.params, "id");
     const entry = await prisma.journalEntry.findFirst({
       where: { id: entryId, organizationId: user.organizationId ?? undefined, deletedAt: null },
       select: { id: true },
@@ -214,6 +224,13 @@ router.get("/", async (req, res) => {
 // ── DELETE /api/journal-entries/:id/attachments/:attachmentId ─────────────────
 
 router.delete("/:attachmentId", requirePermission("attachments", "delete"), async (req, res) => {
+  const entryId = routeParam(req.params, "id");
+  const attachmentId = routeParam(req.params, "attachmentId");
+  if (!entryId || !attachmentId) {
+    res.status(400).json({ error: "Invalid journal entry or attachment ID" });
+    return;
+  }
+
   try {
     const { userId } = getAuth(req);
     const user = await getUser(userId!);
@@ -221,9 +238,6 @@ router.delete("/:attachmentId", requirePermission("attachments", "delete"), asyn
       res.status(401).json({ error: "User not found" });
       return;
     }
-
-    const entryId      = routeParam(req.params, "id");
-    const attachmentId = routeParam(req.params, "attachmentId");
 
     const entry = await prisma.journalEntry.findFirst({
       where: { id: entryId, organizationId: user.organizationId ?? undefined, deletedAt: null },
@@ -258,6 +272,13 @@ router.delete("/:attachmentId", requirePermission("attachments", "delete"), asyn
 // ── PATCH /api/journal-entries/:id/attachments/:attachmentId ──────────────────
 
 router.patch("/:attachmentId", requirePermission("attachments", "update"), async (req, res) => {
+  const entryId = routeParam(req.params, "id");
+  const attachmentId = routeParam(req.params, "attachmentId");
+  if (!entryId || !attachmentId) {
+    res.status(400).json({ error: "Invalid journal entry or attachment ID" });
+    return;
+  }
+
   try {
     const { userId } = getAuth(req);
     const user = await getUser(userId!);
@@ -265,9 +286,6 @@ router.patch("/:attachmentId", requirePermission("attachments", "update"), async
       res.status(401).json({ error: "User not found" });
       return;
     }
-
-    const entryId      = routeParam(req.params, "id");
-    const attachmentId = routeParam(req.params, "attachmentId");
 
     const { isPrimary } = req.body as { isPrimary?: boolean };
     if (isPrimary === undefined) {
@@ -331,6 +349,13 @@ router.patch("/:attachmentId", requirePermission("attachments", "update"), async
 const DOWNLOAD_TTL_SEC = 900; // 15 minutes
 
 router.get("/:attachmentId/download", async (req, res) => {
+  const entryId = routeParam(req.params, "id");
+  const attachmentId = routeParam(req.params, "attachmentId");
+  if (!entryId || !attachmentId) {
+    res.status(400).json({ error: "Invalid journal entry or attachment ID" });
+    return;
+  }
+
   try {
     const { userId } = getAuth(req);
     const user = await getUser(userId!);
@@ -338,9 +363,6 @@ router.get("/:attachmentId/download", async (req, res) => {
       res.status(401).json({ error: "User not found" });
       return;
     }
-
-    const entryId      = routeParam(req.params, "id");
-    const attachmentId = routeParam(req.params, "attachmentId");
 
     // Verify journal entry belongs to this user's organisation
     const entry = await prisma.journalEntry.findFirst({
