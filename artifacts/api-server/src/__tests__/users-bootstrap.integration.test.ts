@@ -1,18 +1,19 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import request from "supertest";
 import express from "express";
 
 vi.mock("@clerk/express", () => ({
   requireAuth:     () => (_req: any, _res: any, next: any) => { next(); },
-  getAuth:         (_req: any) => ({ userId: "new-clerk-id" }),
+  getAuth:         (req: any) => ({ userId: req.headers["x-user-id"] ?? "owner-clerk-id" }),
   clerkMiddleware: () => (_req: any, _res: any, next: any) => { next(); },
+  clerkClient:     { users: { getUser: vi.fn() } },
 }));
 
 vi.mock("@workspace/prisma", () => ({
   prisma: {
-    user:         { findUnique: vi.fn(), count: vi.fn() },
+    user:         { findUnique: vi.fn() },
     role:         { findFirst: vi.fn() },
-    userRole:     { create: vi.fn() },
+    userRole:     { upsert: vi.fn() },
     $transaction: vi.fn(),
   },
 }));
@@ -27,6 +28,7 @@ vi.mock("../lib/authorize", async () => {
 
 import usersRouter from "../routes/users";
 import { prisma } from "@workspace/prisma";
+import { clerkClient } from "@clerk/express";
 
 const app = express();
 app.use(express.json());
@@ -35,59 +37,103 @@ app.use("/api/users", usersRouter);
 describe("GET /users/me — bootstrap", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubEnv("INITIAL_SUPER_ADMIN_EMAIL", "owner@example.com");
   });
 
-  it("creates the user and grants Super Admin inside a single transaction when it is the first user", async () => {
-    const createdUser = { id: "user-1", clerkId: "new-clerk-id", email: "" };
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  function setupTransactionalMocks() {
+    const users = new Map<string, { id: string; clerkId: string; email: string }>();
+    const grants: Array<{ userId: string; roleId: string }> = [];
+    let nextId = 1;
     const superAdminRole = { id: "role-super-admin", nameEn: "Super Admin" };
 
-    (prisma.user.findUnique as any).mockResolvedValue(null);
-    (prisma.user.count as any).mockResolvedValue(0);
-    (prisma.role.findFirst as any).mockResolvedValue(superAdminRole);
-
-    const txUserCreate = vi.fn().mockResolvedValue(createdUser);
-    const txUserRoleCreate = vi.fn().mockResolvedValue({});
-    (prisma.$transaction as any).mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) =>
-      fn({ user: { create: txUserCreate }, userRole: { create: txUserRoleCreate } }),
+    (prisma.user.findUnique as any).mockImplementation(
+      ({ where }: { where: { clerkId: string } }) => Promise.resolve(users.get(where.clerkId) ?? null),
     );
-
-    const res = await request(app).get("/api/users/me");
-
-    expect(res.status).toBe(200);
-    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
-    expect(txUserCreate).toHaveBeenCalledWith({ data: { clerkId: "new-clerk-id", email: "" } });
-    expect(txUserRoleCreate).toHaveBeenCalledWith({
-      data: { userId: createdUser.id, roleId: superAdminRole.id },
+    (prisma.$transaction as any).mockImplementation(
+      async (fn: (tx: unknown) => Promise<unknown>) =>
+        fn({
+          user: {
+            upsert: async ({ where, create }: any) => {
+              const existing = users.get(where.clerkId);
+              if (existing) return existing;
+              const created = { id: `user-${nextId++}`, ...create };
+              users.set(created.clerkId, created);
+              return created;
+            },
+          },
+          role: { findFirst: vi.fn().mockResolvedValue(superAdminRole) },
+          userRole: {
+            upsert: async ({ create }: any) => {
+              if (!grants.some((grant) => grant.userId === create.userId && grant.roleId === create.roleId)) {
+                grants.push(create);
+              }
+              return create;
+            },
+          },
+        }),
+    );
+    (clerkClient.users.getUser as any).mockImplementation(async (clerkId: string) => {
+      if (clerkId === "owner-clerk-id") {
+        return {
+          primaryEmailAddress: { emailAddress: "owner@example.com" },
+          emailAddresses: [
+            { emailAddress: "owner@example.com", verification: { status: "verified" } },
+          ],
+        };
+      }
+      return {
+        primaryEmailAddress: { emailAddress: `${clerkId}@example.com` },
+        emailAddresses: [
+          { emailAddress: `${clerkId}@example.com`, verification: { status: "verified" } },
+        ],
+      };
     });
+    return { users, grants, superAdminRole };
+  }
+
+  it("grants the configured verified owner, not whichever account signs up first", async () => {
+    const { users, grants, superAdminRole } = setupTransactionalMocks();
+
+    const [first, second] = await Promise.all([
+      request(app).get("/api/users/me").set("x-user-id", "attacker-clerk-id"),
+      request(app).get("/api/users/me").set("x-user-id", "owner-clerk-id"),
+    ]);
+
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+    expect(grants).toEqual([
+      { userId: users.get("owner-clerk-id")?.id, roleId: superAdminRole.id },
+    ]);
+    expect(prisma.user.findUnique).toHaveBeenCalledTimes(2);
   });
 
-  it("creates the user without a role when it is not the first user", async () => {
-    const createdUser = { id: "user-2", clerkId: "new-clerk-id", email: "" };
+  it("does not grant Super Admin when the configured email is unverified", async () => {
+    const { grants } = setupTransactionalMocks();
+    (clerkClient.users.getUser as any).mockResolvedValue({
+      primaryEmailAddress: { emailAddress: "owner@example.com" },
+      emailAddresses: [
+        { emailAddress: "owner@example.com", verification: { status: "unverified" } },
+      ],
+    });
 
-    (prisma.user.findUnique as any).mockResolvedValue(null);
-    (prisma.user.count as any).mockResolvedValue(3);
-
-    const txUserCreate = vi.fn().mockResolvedValue(createdUser);
-    const txUserRoleCreate = vi.fn().mockResolvedValue({});
-    (prisma.$transaction as any).mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) =>
-      fn({ user: { create: txUserCreate }, userRole: { create: txUserRoleCreate } }),
-    );
-
-    const res = await request(app).get("/api/users/me");
+    const res = await request(app).get("/api/users/me").set("x-user-id", "unverified-clerk-id");
 
     expect(res.status).toBe(200);
-    expect(prisma.role.findFirst).not.toHaveBeenCalled();
-    expect(txUserRoleCreate).not.toHaveBeenCalled();
-    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(grants).toEqual([]);
   });
 
-  it("does not bootstrap a new user when one already exists", async () => {
-    const existingUser = { id: "user-3", clerkId: "new-clerk-id", email: "a@b.com" };
+  it("does not re-grant privileges to an existing local user", async () => {
+    const existingUser = { id: "user-existing", clerkId: "owner-clerk-id", email: "owner@example.com" };
     (prisma.user.findUnique as any).mockResolvedValue(existingUser);
 
     const res = await request(app).get("/api/users/me");
 
     expect(res.status).toBe(200);
     expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(clerkClient.users.getUser).not.toHaveBeenCalled();
   });
 });

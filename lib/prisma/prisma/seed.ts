@@ -195,19 +195,6 @@ async function main() {
     return;
   }
 
-  // ── Bootstrap: preserve access for any users that already exist ──
-  // (RBAC enforcement is new — existing users must not be locked out)
-  const usersWithoutRoles = await prisma.user.findMany({
-    where: { deletedAt: null, userRoles: { none: {} } },
-  });
-  if (usersWithoutRoles.length > 0) {
-    await prisma.userRole.createMany({
-      skipDuplicates: true,
-      data: usersWithoutRoles.map((u) => ({ userId: u.id, roleId: superAdminRole.id })),
-    });
-    console.log(`     Bootstrapped ${usersWithoutRoles.length} existing user(s) as Super Admin`);
-  }
-
   // ── Demo Organization ─────────────────────────────────────────
   console.log("  → Demo organization");
   const org = await prisma.organization.upsert({

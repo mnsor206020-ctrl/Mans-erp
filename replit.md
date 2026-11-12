@@ -8,8 +8,9 @@ A production-ready cloud ERP system for nonprofit organizations and charities in
 - Import setup uses Node.js 24 and pnpm. For a fresh checkout: `pnpm install --frozen-lockfile`, then regenerate Prisma Client using the command below.
 - The development PostgreSQL database is connected through the managed `DATABASE_URL`. Clerk sign-in is provisioned through Replit; keep its keys in Secrets, never in source files.
 - For an empty development database, run `pnpm --filter @workspace/prisma run push`, then `pnpm --filter @workspace/prisma run seed -- --reference-only`. This initializes currencies, dated exchange-rate reference values, banks, roles, and permissions without creating demo organizations or granting user roles. Review exchange rates before real financial use.
-- The original seed command without `--reference-only` also creates demo records and grants Super Admin to existing users with no roles. Do not run it against real data.
-- API health check: `/api/healthz`. Sign-in and sign-up are available at `/sign-in` and `/sign-up`. The imported app grants its first registered local user Super Admin; secure that first signup before sharing the preview.
+- The full seed command creates demo records but does not grant user roles. Use `--reference-only` when only reference data is needed.
+- Before the intended owner signs up, configure `INITIAL_SUPER_ADMIN_EMAIL` to the owner's email in the app environment. The API grants Super Admin only when that signed-in Clerk account has verified the configured email. Development and production have separate Clerk identities, so configure and verify the intended owner in each environment.
+- API health check: `/api/healthz`. Sign-in and sign-up are available at `/sign-in` and `/sign-up`. New accounts that do not match the configured verified owner are created without elevated roles; assign their roles through existing RBAC administration.
 - Setup verification: public landing and sign-in pages render, health check returns 200, and API/frontend tests pass. The full type check currently reports imported route typing errors; signed-in screens have not been visually verified.
 - `pnpm --filter @workspace/mans-erp run dev` — run the frontend (Mans ERP UI)
 - `pnpm --filter @workspace/api-server run dev` — run the API server (Express)

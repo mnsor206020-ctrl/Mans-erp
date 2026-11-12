@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getAuth, requireAuth } from "@clerk/express";
+import { clerkClient, getAuth, requireAuth } from "@clerk/express";
 import { prisma } from "@workspace/prisma";
 import { z } from "zod";
 import { getCurrentUserWithRoles, isPlatformAdmin, requirePermission } from "../lib/authorize";
@@ -113,17 +113,40 @@ router.get("/me", async (req, res) => {
     let user = await prisma.user.findUnique({ where: { clerkId: userId } });
 
     if (!user) {
-      // Bootstrap: very first user in a fresh system becomes Super Admin
-      const existingUserCount = await prisma.user.count();
-      const superAdminRole =
-        existingUserCount === 0
-          ? await prisma.role.findFirst({ where: { nameEn: "Super Admin", deletedAt: null } })
-          : null;
+      // The owner must configure this address before signing up. Only a verified
+      // Clerk email matching that configuration can receive the initial admin role.
+      const configuredAdminEmail = process.env.INITIAL_SUPER_ADMIN_EMAIL?.trim().toLowerCase();
+      const clerkUser = await clerkClient.users.getUser(userId);
+      const primaryEmail = clerkUser.primaryEmailAddress?.emailAddress;
+      const email =
+        primaryEmail ??
+        clerkUser.emailAddresses[0]?.emailAddress ??
+        `${userId}@users.invalid`;
+      const isConfiguredAdmin =
+        !!configuredAdminEmail &&
+        clerkUser.emailAddresses.some(
+          (address) =>
+            address.emailAddress.trim().toLowerCase() === configuredAdminEmail &&
+            address.verification?.status === "verified",
+        );
 
       user = await prisma.$transaction(async (tx) => {
-        const created = await tx.user.create({ data: { clerkId: userId, email: "" } });
-        if (superAdminRole) {
-          await tx.userRole.create({ data: { userId: created.id, roleId: superAdminRole.id } });
+        const created = await tx.user.upsert({
+          where: { clerkId: userId },
+          create: { clerkId: userId, email },
+          update: {},
+        });
+        if (isConfiguredAdmin) {
+          const superAdminRole = await tx.role.findFirst({
+            where: { nameEn: "Super Admin", deletedAt: null },
+          });
+          if (superAdminRole) {
+            await tx.userRole.upsert({
+              where: { userId_roleId: { userId: created.id, roleId: superAdminRole.id } },
+              create: { userId: created.id, roleId: superAdminRole.id },
+              update: {},
+            });
+          }
         }
         return created;
       });
