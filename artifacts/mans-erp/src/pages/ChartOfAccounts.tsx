@@ -60,6 +60,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ChartImportDialog } from "@/components/ChartImportDialog";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -703,6 +704,8 @@ function ChartOfAccountsContent() {
           <h2 className="text-3xl font-bold tracking-tight">{t("coa.title")}</h2>
           <p className="text-muted-foreground mt-1">{t("coa.subtitle")}</p>
         </div>
+        <div className="flex flex-wrap gap-2">
+        <ChartImportDialog />
         <Button
           onClick={() => setCreateOpen(true)}
           className="shadow-sm shrink-0"
@@ -711,6 +714,7 @@ function ChartOfAccountsContent() {
           <Plus className="w-4 h-4 ltr:mr-2 rtl:ml-2" />
           {t("coa.new")}
         </Button>
+        </div>
       </div>
 
       {/* Stats bar */}

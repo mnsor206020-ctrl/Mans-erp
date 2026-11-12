@@ -75,6 +75,7 @@ app.use(
   }),
 );
 
+app.use("/api/chart-of-accounts/import", express.json({ limit: "2mb" }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

@@ -637,6 +637,32 @@ paths:
         "403":
           description: Forbidden — caller lacks the `roles:read` permission
 
+  /chart-of-accounts/import:
+    post:
+      operationId: importChartOfAccounts
+      tags: [chart-of-accounts]
+      summary: Validate or confirm an atomic chart of accounts import
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChartImportInput"
+      responses:
+        "200":
+          description: Validation preview or completed import
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChartImportResult"
+        "400":
+          description: Invalid input
+        "403":
+          description: Permission or organization required
+        "409":
+          description: Concurrent conflict; nothing imported
+        "500":
+          description: Import rolled back
   /chart-of-accounts/tree:
     get:
       operationId: getChartOfAccountsTree
@@ -3470,6 +3496,68 @@ components:
         - data
         - meta
 
+    ChartImportRow:
+      type: object
+      required: [rowNumber, code, parentCode, type, nature]
+      properties:
+        rowNumber: { type: integer, minimum: 2 }
+        code: { type: string }
+        name: { type: string }
+        nameAr: { type: string }
+        nameEn: { type: string }
+        parentCode: { type: string }
+        type: { type: string }
+        nature: { type: string }
+        notes: { type: string }
+    ChartImportInput:
+      type: object
+      required: [rows, confirm]
+      properties:
+        rows:
+          type: array
+          minItems: 1
+          maxItems: 2000
+          items:
+            $ref: "#/components/schemas/ChartImportRow"
+        confirm: { type: boolean }
+    ChartImportPreviewRow:
+      type: object
+      required: [rowNumber, code, nameAr, nameEn, parentCode, type, nature, notes, level, isGroup]
+      properties:
+        rowNumber: { type: integer }
+        code: { type: string }
+        nameAr: { type: string }
+        nameEn: { type: string }
+        parentCode: { type: string }
+        type: { type: string }
+        nature: { type: string }
+        notes: { type: string }
+        level: { type: integer }
+        isGroup: { type: boolean }
+    ChartImportError:
+      type: object
+      required: [rowNumber, code, message]
+      properties:
+        rowNumber: { type: integer }
+        code: { type: string }
+        message: { type: string }
+    ChartImportResult:
+      type: object
+      required: [valid, total, mainAccounts, subaccounts, imported, rows, errors]
+      properties:
+        valid: { type: boolean }
+        total: { type: integer }
+        mainAccounts: { type: integer }
+        subaccounts: { type: integer }
+        imported: { type: integer }
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChartImportPreviewRow"
+        errors:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChartImportError"
     CreateChartOfAccountInput:
       type: object
       properties:

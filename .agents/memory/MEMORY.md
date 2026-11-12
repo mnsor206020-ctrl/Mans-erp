@@ -1,7 +1,7 @@
 - [Prisma database setup](prisma-db-setup.md) — Prisma is the ORM for Mans ERP; lives in lib/prisma; Drizzle tables replaced
 - [API server stack](api-server-stack.md) — Express routes now import from @workspace/prisma, not @workspace/db
 - [API server externalized deps](api-server-externalized-deps.md) — esbuild externalizes @prisma/client and zod; both must be direct deps of @workspace/api-server package.json or Node fails at runtime
-- [api-zod index ambiguity fix](api-zod-index-fix.md) — export type * from types/ conflicts with export * from api.ts for 7 Body types; use explicit named type exports
+- [API generation compatibility](api-zod-index-fix.md) — preserve curated exports and target the installed Zod runtime when regenerating contracts.
 - [validateAccounts DI pattern](validate-accounts-di.md) — validateAccounts takes prismaClient param (DI) to avoid live Prisma singleton import in utils; keeps unit tests import-isolated
 - [RBAC middleware test fixtures](rbac-test-fixtures.md) — requirePermission gating breaks existing mocked mockUser fixtures unless they include userRoles; use shared test helper
 - [Zod validation + noImplicitReturns](zod-validation-noimplicitreturns.md) — adding an early `return res.status(400)` guard to a handler with no other returns triggers new TS7030; diff errors with line numbers stripped
@@ -12,3 +12,4 @@
 - [Paginated envelope unwrap](paginated-envelope-unwrap.md) — banking list hooks return {data:[...]}; components calling .filter/.map on the envelope crash whole routes
 - [Imported dependency installation](import-dependency-install.md) — locked tarball downloads can be firewall-blocked; refresh owning dependencies without bypassing protection.
 - [Fresh-login verification](clerk-bootstrap-verification.md) — seeded users can hide local-account initialization failures; test a Clerk-only identity without granting organization access.
+- [Chart import policy](chart-import-policy.md) — account codes are opaque identifiers; hierarchy comes from explicit parents, never numbering conventions.

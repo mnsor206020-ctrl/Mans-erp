@@ -4,8 +4,10 @@ import { prisma } from "@workspace/prisma";
 import { z } from "zod";
 import { isPlatformAdmin, requirePermission } from "../lib/authorize";
 import { routeParam } from "../lib/route-param";
+import chartImportRouter from "./chart-import";
 
 const router = Router();
+router.use("/import", chartImportRouter);
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
