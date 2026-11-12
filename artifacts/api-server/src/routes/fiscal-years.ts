@@ -61,6 +61,7 @@ router.get("/", async (req, res) => {
     console.error(err);
     res.status(500).json({ error: "Failed to fetch fiscal years" });
   }
+  return undefined;
 });
 
 router.post("/", requirePermission("fiscal_years", "create"), async (req, res) => {
@@ -97,6 +98,7 @@ router.post("/", requirePermission("fiscal_years", "create"), async (req, res) =
     console.error(err);
     res.status(500).json({ error: "Failed to create fiscal year" });
   }
+  return undefined;
 });
 
 // ── POST /:id/close — create closing entries and mark fiscal year CLOSED ───────

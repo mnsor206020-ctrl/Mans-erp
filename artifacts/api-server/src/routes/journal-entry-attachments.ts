@@ -5,6 +5,7 @@ import multer from "multer";
 import { createHash, randomUUID } from "crypto";
 import { objectStorageClient, signObjectDownloadUrl } from "../lib/objectStorage";
 import { requirePermission } from "../lib/authorize";
+import { routeParam } from "../lib/route-param";
 
 const router = Router({ mergeParams: true });
 
@@ -106,7 +107,7 @@ router.post("/", requirePermission("attachments", "create"), async (req, res) =>
       return;
     }
 
-    const entryId = req.params.id as string;
+    const entryId = routeParam(req.params, "id");
     const entry = await prisma.journalEntry.findFirst({
       where: { id: entryId, organizationId: user.organizationId ?? undefined, deletedAt: null },
       select: { id: true },
@@ -188,7 +189,7 @@ router.get("/", async (req, res) => {
       return;
     }
 
-    const entryId = req.params.id as string;
+    const entryId = routeParam(req.params, "id");
     const entry = await prisma.journalEntry.findFirst({
       where: { id: entryId, organizationId: user.organizationId ?? undefined, deletedAt: null },
       select: { id: true },
@@ -221,8 +222,8 @@ router.delete("/:attachmentId", requirePermission("attachments", "delete"), asyn
       return;
     }
 
-    const entryId      = req.params.id as string;
-    const attachmentId = req.params.attachmentId as string;
+    const entryId      = routeParam(req.params, "id");
+    const attachmentId = routeParam(req.params, "attachmentId");
 
     const entry = await prisma.journalEntry.findFirst({
       where: { id: entryId, organizationId: user.organizationId ?? undefined, deletedAt: null },
@@ -265,8 +266,8 @@ router.patch("/:attachmentId", requirePermission("attachments", "update"), async
       return;
     }
 
-    const entryId      = req.params.id as string;
-    const attachmentId = req.params.attachmentId as string;
+    const entryId      = routeParam(req.params, "id");
+    const attachmentId = routeParam(req.params, "attachmentId");
 
     const { isPrimary } = req.body as { isPrimary?: boolean };
     if (isPrimary === undefined) {
@@ -338,8 +339,8 @@ router.get("/:attachmentId/download", async (req, res) => {
       return;
     }
 
-    const entryId      = req.params.id as string;
-    const attachmentId = req.params.attachmentId as string;
+    const entryId      = routeParam(req.params, "id");
+    const attachmentId = routeParam(req.params, "attachmentId");
 
     // Verify journal entry belongs to this user's organisation
     const entry = await prisma.journalEntry.findFirst({

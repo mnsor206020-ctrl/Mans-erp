@@ -3,6 +3,7 @@ import { getAuth } from "@clerk/express";
 import { prisma } from "@workspace/prisma";
 import { z } from "zod";
 import { requirePermission } from "../lib/authorize";
+import { routeParam } from "../lib/route-param";
 
 const router = Router();
 
@@ -158,6 +159,7 @@ router.get("/tree", async (req, res) => {
   } catch {
     res.status(500).json({ error: "Failed to fetch chart of accounts tree" });
   }
+  return undefined;
 });
 
 // ── GET / (flat, paginated) ──────────────────────────────────────────────────
@@ -225,6 +227,7 @@ router.get("/", async (req, res) => {
   } catch {
     res.status(500).json({ error: "Failed to fetch accounts" });
   }
+  return undefined;
 });
 
 // ── GET /:id ─────────────────────────────────────────────────────────────────
@@ -236,7 +239,7 @@ router.get("/:id", async (req, res) => {
     if (!user) return res.status(401).json({ error: "User not found" });
 
     const account = await prisma.chartOfAccount.findFirst({
-      where: { id: req.params.id, organizationId: user.organizationId, deletedAt: null },
+      where: { id: routeParam(req.params.id), organizationId: user.organizationId ?? "", deletedAt: null },
       include: {
         parent: { select: { id: true, code: true, nameEn: true, nameAr: true } },
         children: {
@@ -256,6 +259,7 @@ router.get("/:id", async (req, res) => {
   } catch {
     res.status(500).json({ error: "Failed to fetch account" });
   }
+  return undefined;
 });
 
 // ── POST / ───────────────────────────────────────────────────────────────────
@@ -337,6 +341,7 @@ router.post("/", requirePermission("chart_of_accounts", "create"), async (req, r
   } catch {
     res.status(500).json({ error: "Failed to create account" });
   }
+  return undefined;
 });
 
 // ── PATCH /:id ───────────────────────────────────────────────────────────────
@@ -348,7 +353,7 @@ router.patch("/:id", requirePermission("chart_of_accounts", "update"), async (re
     if (!user) return res.status(401).json({ error: "User not found" });
 
     const existing = await prisma.chartOfAccount.findFirst({
-      where: { id: req.params.id, organizationId: user.organizationId, deletedAt: null },
+      where: { id: routeParam(req.params.id), organizationId: user.organizationId ?? "", deletedAt: null },
     });
     if (!existing) return res.status(404).json({ error: "Account not found" });
 
@@ -366,7 +371,7 @@ router.patch("/:id", requirePermission("chart_of_accounts", "update"), async (re
           organizationId: existing.organizationId,
           code: data.code,
           deletedAt: null,
-          NOT: { id: req.params.id },
+          NOT: { id: routeParam(req.params.id) },
         },
       });
       if (dup) return res.status(409).json({ error: `Account code "${data.code}" already exists` });
@@ -375,7 +380,7 @@ router.patch("/:id", requirePermission("chart_of_accounts", "update"), async (re
     // Parent change — validate and check for circular references
     let level = existing.level;
     if (data.parentId !== undefined) {
-      if (data.parentId === req.params.id) {
+      if (data.parentId === routeParam(req.params.id)) {
         return res.status(400).json({ error: "An account cannot be its own parent" });
       }
       if (data.parentId) {
@@ -384,7 +389,7 @@ router.patch("/:id", requirePermission("chart_of_accounts", "update"), async (re
         });
         if (!newParent) return res.status(400).json({ error: "Parent account not found" });
 
-        const circular = await isDescendant(data.parentId, req.params.id);
+        const circular = await isDescendant(data.parentId, routeParam(req.params.id));
         if (circular) {
           return res.status(400).json({
             error: "Circular reference detected — the chosen parent is a descendant of this account",
@@ -401,7 +406,7 @@ router.patch("/:id", requirePermission("chart_of_accounts", "update"), async (re
     if (data.isGroup !== undefined && data.isGroup !== existing.isGroup) {
       if (!data.isGroup) {
         const childCount = await prisma.chartOfAccount.count({
-          where: { parentId: req.params.id, deletedAt: null },
+          where: { parentId: routeParam(req.params.id), deletedAt: null },
         });
         if (childCount > 0) {
           return res.status(400).json({
@@ -413,7 +418,7 @@ router.patch("/:id", requirePermission("chart_of_accounts", "update"), async (re
     }
 
     const updated = await prisma.chartOfAccount.update({
-      where: { id: req.params.id },
+      where: { id: routeParam(req.params.id) },
       data: {
         ...(data.code !== undefined ? { code: data.code } : {}),
         ...(data.nameEn !== undefined ? { nameEn: data.nameEn } : {}),
@@ -449,6 +454,7 @@ router.patch("/:id", requirePermission("chart_of_accounts", "update"), async (re
   } catch {
     res.status(500).json({ error: "Failed to update account" });
   }
+  return undefined;
 });
 
 // ── DELETE /:id ──────────────────────────────────────────────────────────────
@@ -460,13 +466,13 @@ router.delete("/:id", requirePermission("chart_of_accounts", "delete"), async (r
     if (!user) return res.status(401).json({ error: "User not found" });
 
     const account = await prisma.chartOfAccount.findFirst({
-      where: { id: req.params.id, organizationId: user.organizationId, deletedAt: null },
+      where: { id: routeParam(req.params.id), organizationId: user.organizationId ?? "", deletedAt: null },
     });
     if (!account) return res.status(404).json({ error: "Account not found" });
 
     // Cannot delete if sub-accounts exist
     const childCount = await prisma.chartOfAccount.count({
-      where: { parentId: req.params.id, deletedAt: null },
+      where: { parentId: routeParam(req.params.id), deletedAt: null },
     });
     if (childCount > 0) {
       return res.status(400).json({
@@ -476,7 +482,7 @@ router.delete("/:id", requirePermission("chart_of_accounts", "delete"), async (r
 
     // Cannot delete if it has journal entry lines
     const txCount = await prisma.journalEntryLine.count({
-      where: { accountId: req.params.id },
+      where: { accountId: routeParam(req.params.id) },
     });
     if (txCount > 0) {
       return res.status(400).json({
@@ -485,7 +491,7 @@ router.delete("/:id", requirePermission("chart_of_accounts", "delete"), async (r
     }
 
     await prisma.chartOfAccount.update({
-      where: { id: req.params.id },
+      where: { id: routeParam(req.params.id) },
       data: { deletedAt: new Date() },
     });
 
@@ -494,7 +500,7 @@ router.delete("/:id", requirePermission("chart_of_accounts", "delete"), async (r
       userEmail: user.email,
       action: "DELETE",
       entityType: "chart_of_account",
-      entityId: req.params.id,
+      entityId: routeParam(req.params.id),
       oldValues: account as object,
       description: `Deleted account ${account.code} – ${account.nameEn}`,
     });
@@ -503,6 +509,7 @@ router.delete("/:id", requirePermission("chart_of_accounts", "delete"), async (r
   } catch {
     res.status(500).json({ error: "Failed to delete account" });
   }
+  return undefined;
 });
 
 // ── POST /:id/toggle-active ──────────────────────────────────────────────────
@@ -514,14 +521,14 @@ router.post("/:id/toggle-active", requirePermission("chart_of_accounts", "update
     if (!user) return res.status(401).json({ error: "User not found" });
 
     const account = await prisma.chartOfAccount.findFirst({
-      where: { id: req.params.id, organizationId: user.organizationId, deletedAt: null },
+      where: { id: routeParam(req.params.id), organizationId: user.organizationId ?? "", deletedAt: null },
     });
     if (!account) return res.status(404).json({ error: "Account not found" });
 
     // Deactivating: block if active children exist
     if (account.isActive) {
       const activeChildCount = await prisma.chartOfAccount.count({
-        where: { parentId: req.params.id, deletedAt: null, isActive: true },
+        where: { parentId: routeParam(req.params.id), deletedAt: null, isActive: true },
       });
       if (activeChildCount > 0) {
         return res.status(400).json({
@@ -531,7 +538,7 @@ router.post("/:id/toggle-active", requirePermission("chart_of_accounts", "update
     }
 
     const updated = await prisma.chartOfAccount.update({
-      where: { id: req.params.id },
+      where: { id: routeParam(req.params.id) },
       data: { isActive: !account.isActive },
     });
 
@@ -550,6 +557,7 @@ router.post("/:id/toggle-active", requirePermission("chart_of_accounts", "update
   } catch {
     res.status(500).json({ error: "Failed to toggle account status" });
   }
+  return undefined;
 });
 
 export default router;

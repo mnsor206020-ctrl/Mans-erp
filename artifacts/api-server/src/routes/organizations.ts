@@ -3,6 +3,7 @@ import { requireAuth, getAuth } from "@clerk/express";
 import { prisma } from "@workspace/prisma";
 import { z } from "zod";
 import { getCurrentUserWithRoles, isPlatformAdmin, requirePermission } from "../lib/authorize";
+import { routeParam } from "../lib/route-param";
 
 const router = Router();
 
@@ -75,12 +76,12 @@ router.get("/:id", async (req, res) => {
     const currentUser = await getCurrentUserWithRoles(clerkId);
     if (!currentUser) return res.status(401).json({ error: "User not found" });
 
-    if (!isPlatformAdmin(currentUser) && currentUser.organizationId !== req.params.id) {
+    if (!isPlatformAdmin(currentUser) && currentUser.organizationId !== routeParam(req.params.id)) {
       return res.status(404).json({ error: "Not found" });
     }
 
     const org = await prisma.organization.findFirst({
-      where: { id: req.params.id, deletedAt: null },
+      where: { id: routeParam(req.params.id), deletedAt: null },
     });
     if (!org) return res.status(404).json({ error: "Not found" });
     return res.json(org);
@@ -91,7 +92,7 @@ router.get("/:id", async (req, res) => {
 
 router.patch("/:id", requirePermission("organizations", "update"), async (req, res) => {
   try {
-    if (!isPlatformAdmin(req.currentUser) && req.currentUser?.organizationId !== req.params.id) {
+    if (!isPlatformAdmin(req.currentUser) && req.currentUser?.organizationId !== routeParam(req.params.id)) {
       return res.status(404).json({ error: "Not found" });
     }
 
@@ -101,7 +102,7 @@ router.patch("/:id", requirePermission("organizations", "update"), async (req, r
     }
 
     const org = await prisma.organization.update({
-      where: { id: req.params.id },
+      where: { id: routeParam(req.params.id) },
       data:  parsed.data,
     });
     return res.json(org);

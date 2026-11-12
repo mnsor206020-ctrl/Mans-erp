@@ -3,6 +3,7 @@ import { getAuth } from "@clerk/express";
 import { prisma } from "@workspace/prisma";
 import { z } from "zod";
 import { isPlatformAdmin, requirePermission } from "../lib/authorize";
+import { routeParam } from "../lib/route-param";
 
 const router = Router();
 
@@ -173,7 +174,7 @@ router.delete(
         : { organizationId: actor.organizationId! };
 
       const invitation = await prisma.invitation.findFirst({
-        where: { id: req.params.id, ...orgFilter },
+        where: { id: routeParam(req.params.id), ...orgFilter },
       });
       if (!invitation) return res.status(404).json({ error: "Invitation not found" });
       if (invitation.status !== "PENDING") {

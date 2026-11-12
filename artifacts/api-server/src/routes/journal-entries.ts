@@ -15,6 +15,7 @@ import {
 import attachmentsRouter from "./journal-entry-attachments";
 import { notificationService } from "../services/notification";
 import { requirePermission } from "../lib/authorize";
+import { routeParam } from "../lib/route-param";
 
 const router = Router();
 
@@ -160,6 +161,7 @@ router.get("/", async (req, res) => {
     console.error(err);
     res.status(500).json({ error: "Failed to fetch journal entries" });
   }
+  return undefined;
 });
 
 // ── GET ONE ─────────────────────────────────────────────────────────────────
@@ -170,7 +172,7 @@ router.get("/:id", async (req, res) => {
     if (!user) return res.status(401).json({ error: "User not found" });
 
     const entry = await prisma.journalEntry.findFirst({
-      where: { id: req.params.id, organizationId: user.organizationId, deletedAt: null },
+      where: { id: routeParam(req.params.id), organizationId: user.organizationId ?? "", deletedAt: null },
       include: {
         createdBy:   { select: { id: true, firstNameEn: true, lastNameEn: true, email: true } },
         submittedBy: { select: { id: true, firstNameEn: true, lastNameEn: true, email: true } },
@@ -200,6 +202,7 @@ router.get("/:id", async (req, res) => {
     console.error(err);
     res.status(500).json({ error: "Failed to fetch journal entry" });
   }
+  return undefined;
 });
 
 // ── CREATE ───────────────────────────────────────────────────────────────────
@@ -285,6 +288,7 @@ router.post("/", requirePermission("journal_entries", "create"), async (req, res
     console.error(err);
     res.status(500).json({ error: "Failed to create journal entry" });
   }
+  return undefined;
 });
 
 // ── UPDATE ───────────────────────────────────────────────────────────────────
@@ -294,7 +298,7 @@ router.patch("/:id", requirePermission("journal_entries", "update"), async (req,
     const user = await getUser(userId!);
     if (!user) return res.status(401).json({ error: "User not found" });
 
-    const existing = await prisma.journalEntry.findFirst({ where: { id: req.params.id, organizationId: user.organizationId, deletedAt: null } });
+    const existing = await prisma.journalEntry.findFirst({ where: { id: routeParam(req.params.id), organizationId: user.organizationId ?? "", deletedAt: null } });
     if (!existing) return res.status(404).json({ error: "Journal entry not found" });
     if (!["DRAFT", "UNDER_REVIEW"].includes(existing.status)) {
       return res.status(400).json({ error: `Cannot edit a ${existing.status} journal entry` });
@@ -324,10 +328,10 @@ router.patch("/:id", requirePermission("journal_entries", "update"), async (req,
 
       // Atomic replace: delete all existing lines then create the new set in one transaction.
       await prisma.$transaction(async (tx) => {
-        await tx.journalEntryLine.deleteMany({ where: { journalEntryId: req.params.id } });
+        await tx.journalEntryLine.deleteMany({ where: { journalEntryId: routeParam(req.params.id) } });
         await tx.journalEntryLine.createMany({
           data: data.lines!.map((l) => ({
-            journalEntryId: req.params.id,
+            journalEntryId: routeParam(req.params.id),
             accountId:      l.accountId,
             costCenterId:   l.costCenterId || null,
             lineNumber:     l.lineNumber,
@@ -346,7 +350,7 @@ router.patch("/:id", requirePermission("journal_entries", "update"), async (req,
     }
 
     const updated = await prisma.journalEntry.update({
-      where: { id: req.params.id },
+      where: { id: routeParam(req.params.id) },
       data: {
         ...(data.fiscalYearId  ? { fiscalYearId: data.fiscalYearId }     : {}),
         ...(data.entryDate     ? { entryDate:    new Date(data.entryDate) } : {}),
@@ -366,7 +370,7 @@ router.patch("/:id", requirePermission("journal_entries", "update"), async (req,
       userEmail:  user.email,
       action:     "UPDATE",
       entityType: "journal_entry",
-      entityId:   req.params.id,
+      entityId:   routeParam(req.params.id),
       description: `Updated journal entry ${existing.number}`,
     });
 
@@ -375,6 +379,7 @@ router.patch("/:id", requirePermission("journal_entries", "update"), async (req,
     console.error(err);
     res.status(500).json({ error: "Failed to update journal entry" });
   }
+  return undefined;
 });
 
 // ── DELETE ───────────────────────────────────────────────────────────────────
@@ -384,17 +389,17 @@ router.delete("/:id", requirePermission("journal_entries", "delete"), async (req
     const user = await getUser(userId!);
     if (!user) return res.status(401).json({ error: "User not found" });
 
-    const entry = await prisma.journalEntry.findFirst({ where: { id: req.params.id, organizationId: user.organizationId, deletedAt: null } });
+    const entry = await prisma.journalEntry.findFirst({ where: { id: routeParam(req.params.id), organizationId: user.organizationId ?? "", deletedAt: null } });
     if (!entry) return res.status(404).json({ error: "Journal entry not found" });
     if (entry.status !== "DRAFT") return res.status(400).json({ error: "Only DRAFT journal entries can be deleted" });
 
-    await prisma.journalEntry.update({ where: { id: req.params.id }, data: { deletedAt: new Date() } });
+    await prisma.journalEntry.update({ where: { id: routeParam(req.params.id) }, data: { deletedAt: new Date() } });
     await writeAuditLog({
       userId:     user.id,
       userEmail:  user.email,
       action:     "DELETE",
       entityType: "journal_entry",
-      entityId:   req.params.id,
+      entityId:   routeParam(req.params.id),
       description: `Deleted draft ${entry.number}`,
     });
 
@@ -403,6 +408,7 @@ router.delete("/:id", requirePermission("journal_entries", "delete"), async (req
     console.error(err);
     res.status(500).json({ error: "Failed to delete journal entry" });
   }
+  return undefined;
 });
 
 // ── SUBMIT (DRAFT → UNDER_REVIEW) ──────────────────────────────────────────
@@ -413,22 +419,25 @@ router.post("/:id/submit", requirePermission("journal_entries", "update"), async
     if (!user) return res.status(401).json({ error: "User not found" });
 
     const entry = await prisma.journalEntry.findFirst({
-      where: { id: req.params.id, organizationId: user.organizationId, deletedAt: null },
+      where: { id: routeParam(req.params.id), organizationId: user.organizationId ?? "", deletedAt: null },
       include: { lines: true },
     });
     if (!entry) return res.status(404).json({ error: "Journal entry not found" });
     if (entry.status !== "DRAFT") return res.status(400).json({ error: `Cannot submit a ${entry.status} entry` });
     if (entry.lines.length < 2) return res.status(400).json({ error: "At least 2 lines required" });
 
-    const { balanced } = validateBalance(entry.lines.map((l) => ({ debit: l.debit, credit: l.credit })));
+    const { balanced } = validateBalance(entry.lines.map((l) => ({
+      debit: Number(l.debit),
+      credit: Number(l.credit),
+    })));
     if (!balanced) return res.status(400).json({ error: "Entry is not balanced" });
 
     const updated = await prisma.journalEntry.update({
-      where: { id: req.params.id },
+      where: { id: routeParam(req.params.id) },
       data: { status: "UNDER_REVIEW", submittedAt: new Date(), submittedByUserId: user.id },
     });
     await writeApprovalRecord({
-      journalEntryId: req.params.id,
+      journalEntryId: routeParam(req.params.id),
       userId: user.id,
       action: "SUBMIT",
       comment: req.body?.comment,
@@ -442,7 +451,7 @@ router.post("/:id/submit", requirePermission("journal_entries", "update"), async
       userEmail:  user.email,
       action:     "APPROVE",
       entityType: "journal_entry",
-      entityId:   req.params.id,
+      entityId:   routeParam(req.params.id),
       description: `Submitted ${entry.number} for review`,
     });
 
@@ -461,6 +470,7 @@ router.post("/:id/submit", requirePermission("journal_entries", "update"), async
     console.error(err);
     res.status(500).json({ error: "Failed to submit journal entry" });
   }
+  return undefined;
 });
 
 // ── APPROVE (UNDER_REVIEW → APPROVED) ────────────────────────────────────
@@ -470,16 +480,16 @@ router.post("/:id/approve", requirePermission("journal_entries", "approve"), asy
     const user = await getUser(userId!);
     if (!user) return res.status(401).json({ error: "User not found" });
 
-    const entry = await prisma.journalEntry.findFirst({ where: { id: req.params.id, organizationId: user.organizationId, deletedAt: null } });
+    const entry = await prisma.journalEntry.findFirst({ where: { id: routeParam(req.params.id), organizationId: user.organizationId ?? "", deletedAt: null } });
     if (!entry) return res.status(404).json({ error: "Journal entry not found" });
     if (entry.status !== "UNDER_REVIEW") return res.status(400).json({ error: `Cannot approve a ${entry.status} entry` });
 
     const updated = await prisma.journalEntry.update({
-      where: { id: req.params.id },
+      where: { id: routeParam(req.params.id) },
       data: { status: "APPROVED", approvedAt: new Date(), approvedByUserId: user.id },
     });
     await writeApprovalRecord({
-      journalEntryId: req.params.id,
+      journalEntryId: routeParam(req.params.id),
       userId: user.id,
       action: "APPROVE",
       comment: req.body?.comment,
@@ -493,7 +503,7 @@ router.post("/:id/approve", requirePermission("journal_entries", "approve"), asy
       userEmail:  user.email,
       action:     "APPROVE",
       entityType: "journal_entry",
-      entityId:   req.params.id,
+      entityId:   routeParam(req.params.id),
       description: `Approved ${entry.number}`,
     });
 
@@ -512,6 +522,7 @@ router.post("/:id/approve", requirePermission("journal_entries", "approve"), asy
     console.error(err);
     res.status(500).json({ error: "Failed to approve journal entry" });
   }
+  return undefined;
 });
 
 // ── REJECT (UNDER_REVIEW|APPROVED → DRAFT) ───────────────────────────────
@@ -527,7 +538,7 @@ router.post("/:id/reject", requirePermission("journal_entries", "approve"), asyn
     const user = await getUser(userId!);
     if (!user) return res.status(401).json({ error: "User not found" });
 
-    const entry = await prisma.journalEntry.findFirst({ where: { id: req.params.id, organizationId: user.organizationId, deletedAt: null } });
+    const entry = await prisma.journalEntry.findFirst({ where: { id: routeParam(req.params.id), organizationId: user.organizationId ?? "", deletedAt: null } });
     if (!entry) return res.status(404).json({ error: "Journal entry not found" });
     if (!["UNDER_REVIEW", "APPROVED"].includes(entry.status)) {
       return res.status(400).json({ error: `Cannot reject a ${entry.status} entry` });
@@ -535,7 +546,7 @@ router.post("/:id/reject", requirePermission("journal_entries", "approve"), asyn
 
     const fromStatus = entry.status;
     const updated = await prisma.journalEntry.update({
-      where: { id: req.params.id },
+      where: { id: routeParam(req.params.id) },
       data: {
         status: "DRAFT",
         submittedAt: null,
@@ -545,7 +556,7 @@ router.post("/:id/reject", requirePermission("journal_entries", "approve"), asyn
       },
     });
     await writeApprovalRecord({
-      journalEntryId: req.params.id,
+      journalEntryId: routeParam(req.params.id),
       userId: user.id,
       action: "REJECT",
       comment: rejectComment,
@@ -559,7 +570,7 @@ router.post("/:id/reject", requirePermission("journal_entries", "approve"), asyn
       userEmail:  user.email,
       action:     "REJECT",
       entityType: "journal_entry",
-      entityId:   req.params.id,
+      entityId:   routeParam(req.params.id),
       description: `Rejected ${entry.number}: ${rejectComment}`,
     });
 
@@ -578,6 +589,7 @@ router.post("/:id/reject", requirePermission("journal_entries", "approve"), asyn
     console.error(err);
     res.status(500).json({ error: "Failed to reject journal entry" });
   }
+  return undefined;
 });
 
 // ── POST (APPROVED → POSTED) ──────────────────────────────────────────────
@@ -588,7 +600,7 @@ router.post("/:id/post", requirePermission("journal_entries", "approve"), async 
     if (!user) return res.status(401).json({ error: "User not found" });
 
     const entry = await prisma.journalEntry.findFirst({
-      where: { id: req.params.id, organizationId: user.organizationId, deletedAt: null },
+      where: { id: routeParam(req.params.id), organizationId: user.organizationId ?? "", deletedAt: null },
       include: {
         lines: { include: { account: true } },
         fiscalYear: true,
@@ -600,9 +612,12 @@ router.post("/:id/post", requirePermission("journal_entries", "approve"), async 
     }
     if (entry.lines.length < 2) return res.status(400).json({ error: "At least 2 lines required" });
 
-    const { balanced } = validateBalance(entry.lines.map((l) => ({ debit: l.debit, credit: l.credit })));
+    const { balanced } = validateBalance(entry.lines.map((l) => ({
+      debit: Number(l.debit),
+      credit: Number(l.credit),
+    })));
     if (!balanced) return res.status(400).json({ error: "Entry is not balanced" });
-    if ((entry.fiscalYear as any).status !== "OPEN") {
+    if (entry.fiscalYear.status !== "OPEN") {
       return res.status(400).json({ error: "Fiscal year is no longer open" });
     }
 
@@ -635,7 +650,7 @@ router.post("/:id/post", requirePermission("journal_entries", "approve"), async 
     );
 
     const updated = await prisma.journalEntry.update({
-      where: { id: req.params.id },
+      where: { id: routeParam(req.params.id) },
       data: {
         status:         "POSTED",
         postedAt,
@@ -646,7 +661,7 @@ router.post("/:id/post", requirePermission("journal_entries", "approve"), async 
       },
     });
     await writeApprovalRecord({
-      journalEntryId: req.params.id,
+      journalEntryId: routeParam(req.params.id),
       userId: user.id,
       action: "POST",
       fromStatus: "APPROVED",
@@ -659,7 +674,7 @@ router.post("/:id/post", requirePermission("journal_entries", "approve"), async 
       userEmail:  user.email,
       action:     "POST",
       entityType: "journal_entry",
-      entityId:   req.params.id,
+      entityId:   routeParam(req.params.id),
       description: `Posted ${entry.number}`,
     });
 
@@ -678,6 +693,7 @@ router.post("/:id/post", requirePermission("journal_entries", "approve"), async 
     console.error(err);
     res.status(500).json({ error: "Failed to post journal entry" });
   }
+  return undefined;
 });
 
 // ── LOCK (POSTED → LOCKED) ────────────────────────────────────────────────
@@ -687,16 +703,16 @@ router.post("/:id/lock", requirePermission("journal_entries", "approve"), async 
     const user = await getUser(userId!);
     if (!user) return res.status(401).json({ error: "User not found" });
 
-    const entry = await prisma.journalEntry.findFirst({ where: { id: req.params.id, organizationId: user.organizationId, deletedAt: null } });
+    const entry = await prisma.journalEntry.findFirst({ where: { id: routeParam(req.params.id), organizationId: user.organizationId ?? "", deletedAt: null } });
     if (!entry) return res.status(404).json({ error: "Journal entry not found" });
     if (entry.status !== "POSTED") return res.status(400).json({ error: "Only POSTED entries can be locked" });
 
     const updated = await prisma.journalEntry.update({
-      where: { id: req.params.id },
+      where: { id: routeParam(req.params.id) },
       data: { status: "LOCKED" },
     });
     await writeApprovalRecord({
-      journalEntryId: req.params.id,
+      journalEntryId: routeParam(req.params.id),
       userId: user.id,
       action: "LOCK",
       fromStatus: "POSTED",
@@ -720,6 +736,7 @@ router.post("/:id/lock", requirePermission("journal_entries", "approve"), async 
     console.error(err);
     res.status(500).json({ error: "Failed to lock journal entry" });
   }
+  return undefined;
 });
 
 // ── REVERSE (create reversal + mark REVERSED) ────────────────────────────
@@ -730,7 +747,7 @@ router.post("/:id/reverse", requirePermission("journal_entries", "void"), async 
     if (!user) return res.status(401).json({ error: "User not found" });
 
     const entry = await prisma.journalEntry.findFirst({
-      where: { id: req.params.id, organizationId: user.organizationId, deletedAt: null },
+      where: { id: routeParam(req.params.id), organizationId: user.organizationId ?? "", deletedAt: null },
       include: { lines: true },
     });
     if (!entry) return res.status(404).json({ error: "Journal entry not found" });
@@ -784,7 +801,7 @@ router.post("/:id/reverse", requirePermission("journal_entries", "void"), async 
       });
 
       await tx.journalEntry.update({
-        where: { id: req.params.id },
+        where: { id: routeParam(req.params.id) },
         data: { status: "REVERSED", reversedByEntryId: createdReversal.id },
       });
 
@@ -792,7 +809,7 @@ router.post("/:id/reverse", requirePermission("journal_entries", "void"), async 
     });
 
     await writeApprovalRecord({
-      journalEntryId: req.params.id,
+      journalEntryId: routeParam(req.params.id),
       userId: user.id,
       action: "REVERSE",
       comment: reason,
@@ -806,7 +823,7 @@ router.post("/:id/reverse", requirePermission("journal_entries", "void"), async 
       userEmail:  user.email,
       action:     "VOID",
       entityType: "journal_entry",
-      entityId:   req.params.id,
+      entityId:   routeParam(req.params.id),
       description: `Reversed ${entry.number} → ${reversalNumber}`,
     });
 
@@ -825,6 +842,7 @@ router.post("/:id/reverse", requirePermission("journal_entries", "void"), async 
     console.error(err);
     res.status(500).json({ error: "Failed to reverse journal entry" });
   }
+  return undefined;
 });
 
 // ── COPY ─────────────────────────────────────────────────────────────────
@@ -835,7 +853,7 @@ router.post("/:id/copy", requirePermission("journal_entries", "create"), async (
     if (!user) return res.status(401).json({ error: "User not found" });
 
     const entry = await prisma.journalEntry.findFirst({
-      where: { id: req.params.id, organizationId: user.organizationId, deletedAt: null },
+      where: { id: routeParam(req.params.id), organizationId: user.organizationId ?? "", deletedAt: null },
       include: { lines: true },
     });
     if (!entry) return res.status(404).json({ error: "Journal entry not found" });
@@ -882,6 +900,7 @@ router.post("/:id/copy", requirePermission("journal_entries", "create"), async (
     console.error(err);
     res.status(500).json({ error: "Failed to copy journal entry" });
   }
+  return undefined;
 });
 
 // ── VOID (POSTED → VOIDED with reason) ──────────────────────────────────
@@ -891,7 +910,7 @@ router.post("/:id/void", requirePermission("journal_entries", "void"), async (re
     const user = await getUser(userId!);
     if (!user) return res.status(401).json({ error: "User not found" });
 
-    const entry = await prisma.journalEntry.findFirst({ where: { id: req.params.id, organizationId: user.organizationId, deletedAt: null } });
+    const entry = await prisma.journalEntry.findFirst({ where: { id: routeParam(req.params.id), organizationId: user.organizationId ?? "", deletedAt: null } });
     if (!entry) return res.status(404).json({ error: "Journal entry not found" });
     if (entry.status !== "POSTED") return res.status(400).json({ error: "Only POSTED entries can be voided" });
 
@@ -900,12 +919,12 @@ router.post("/:id/void", requirePermission("journal_entries", "void"), async (re
 
     const updated = await prisma.$transaction(async (tx) => {
       return tx.journalEntry.update({
-        where: { id: req.params.id },
+        where: { id: routeParam(req.params.id) },
         data: { status: "VOIDED", voidedAt: new Date(), voidedByUserId: user.id, voidReason: reason },
       });
     });
     await writeApprovalRecord({
-      journalEntryId: req.params.id,
+      journalEntryId: routeParam(req.params.id),
       userId: user.id,
       action: "VOID",
       comment: reason,
@@ -919,7 +938,7 @@ router.post("/:id/void", requirePermission("journal_entries", "void"), async (re
       userEmail:  user.email,
       action:     "VOID",
       entityType: "journal_entry",
-      entityId:   req.params.id,
+      entityId:   routeParam(req.params.id),
       description: `Voided ${entry.number}: ${reason}`,
     });
 
@@ -938,6 +957,7 @@ router.post("/:id/void", requirePermission("journal_entries", "void"), async (re
     console.error(err);
     res.status(500).json({ error: "Failed to void journal entry" });
   }
+  return undefined;
 });
 
 // ── GET /:id/approvals — ordered approval history ─────────────────────────
@@ -949,7 +969,7 @@ router.get("/:id/verify-hash", async (req, res) => {
     if (!user) return res.status(401).json({ error: "User not found" });
 
     const entry = await prisma.journalEntry.findFirst({
-      where: { id: req.params.id, organizationId: user.organizationId, deletedAt: null },
+      where: { id: routeParam(req.params.id), organizationId: user.organizationId ?? "", deletedAt: null },
       include: { lines: true },
     });
     if (!entry) return res.status(404).json({ error: "Journal entry not found" });
@@ -987,6 +1007,7 @@ router.get("/:id/verify-hash", async (req, res) => {
     console.error(err);
     res.status(500).json({ error: "Failed to verify integrity hash" });
   }
+  return undefined;
 });
 
 router.get("/:id/approvals", async (req, res) => {
@@ -996,13 +1017,13 @@ router.get("/:id/approvals", async (req, res) => {
     if (!user) return res.status(401).json({ error: "User not found" });
 
     const entry = await prisma.journalEntry.findFirst({
-      where: { id: req.params.id, organizationId: user.organizationId, deletedAt: null },
+      where: { id: routeParam(req.params.id), organizationId: user.organizationId ?? "", deletedAt: null },
       select: { id: true },
     });
     if (!entry) return res.status(404).json({ error: "Journal entry not found" });
 
     const approvals = await prisma.journalEntryApproval.findMany({
-      where: { journalEntryId: req.params.id },
+      where: { journalEntryId: routeParam(req.params.id) },
       orderBy: { createdAt: "asc" },
       include: {
         user: { select: { id: true, firstNameEn: true, lastNameEn: true, email: true } },
@@ -1014,6 +1035,7 @@ router.get("/:id/approvals", async (req, res) => {
     console.error(err);
     res.status(500).json({ error: "Failed to fetch approval history" });
   }
+  return undefined;
 });
 
 export default router;

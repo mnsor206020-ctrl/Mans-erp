@@ -3,6 +3,7 @@ import { getAuth } from "@clerk/express";
 import { prisma } from "@workspace/prisma";
 import { z } from "zod";
 import { requirePermission } from "../lib/authorize";
+import { routeParam } from "../lib/route-param";
 
 const router = Router();
 
@@ -103,7 +104,7 @@ router.get("/:id", async (req, res) => {
 
     const template = await prisma.journalEntryTemplate.findFirst({
       where: {
-        id:             req.params.id,
+        id:             routeParam(req.params.id),
         organizationId: user.organizationId ?? undefined,
         deletedAt:      null,
       },
@@ -186,16 +187,16 @@ router.patch("/:id", requirePermission("journal_entries", "update"), async (req,
     const data = parsed.data;
 
     const existing = await prisma.journalEntryTemplate.findFirst({
-      where: { id: req.params.id, organizationId: user.organizationId ?? undefined, deletedAt: null },
+      where: { id: routeParam(req.params.id), organizationId: user.organizationId ?? undefined, deletedAt: null },
     });
     if (!existing) { res.status(404).json({ error: "Template not found" }); return; }
 
     if (data.lines !== undefined) {
-      await prisma.journalEntryTemplateLine.deleteMany({ where: { templateId: req.params.id } });
+      await prisma.journalEntryTemplateLine.deleteMany({ where: { templateId: routeParam(req.params.id) } });
       if (data.lines.length > 0) {
         await prisma.journalEntryTemplateLine.createMany({
           data: data.lines.map((l) => ({
-            templateId:    req.params.id,
+            templateId:    routeParam(req.params.id),
             accountId:     l.accountId,
             costCenterId:  l.costCenterId || null,
             lineNumber:    l.lineNumber,
@@ -209,7 +210,7 @@ router.patch("/:id", requirePermission("journal_entries", "update"), async (req,
     }
 
     const updated = await prisma.journalEntryTemplate.update({
-      where: { id: req.params.id },
+      where: { id: routeParam(req.params.id) },
       data: {
         ...(data.nameEn        !== undefined ? { nameEn:        data.nameEn }        : {}),
         ...(data.nameAr        !== undefined ? { nameAr:        data.nameAr }        : {}),
@@ -236,12 +237,12 @@ router.delete("/:id", requirePermission("journal_entries", "delete"), async (req
     const user = req.currentUser!;
 
     const existing = await prisma.journalEntryTemplate.findFirst({
-      where: { id: req.params.id, organizationId: user.organizationId ?? undefined, deletedAt: null },
+      where: { id: routeParam(req.params.id), organizationId: user.organizationId ?? undefined, deletedAt: null },
     });
     if (!existing) { res.status(404).json({ error: "Template not found" }); return; }
 
     await prisma.journalEntryTemplate.update({
-      where: { id: req.params.id },
+      where: { id: routeParam(req.params.id) },
       data:  { deletedAt: new Date() },
     });
     res.json({ success: true });
@@ -258,7 +259,7 @@ router.post("/:id/use", requirePermission("journal_entries", "create"), async (r
     const user = req.currentUser!;
 
     const template = await prisma.journalEntryTemplate.findFirst({
-      where: { id: req.params.id, organizationId: user.organizationId ?? undefined, deletedAt: null },
+      where: { id: routeParam(req.params.id), organizationId: user.organizationId ?? undefined, deletedAt: null },
       include: { lines: true },
     });
     if (!template) { res.status(404).json({ error: "Template not found" }); return; }

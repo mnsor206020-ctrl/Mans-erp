@@ -3,6 +3,7 @@ import { getAuth, requireAuth } from "@clerk/express";
 import { prisma } from "@workspace/prisma";
 import { z } from "zod";
 import { getCurrentUserWithRoles, isPlatformAdmin, requirePermission } from "../lib/authorize";
+import { routeParam } from "../lib/route-param";
 
 const router = Router();
 
@@ -226,7 +227,7 @@ router.get("/:id", requirePermission("users", "read"), async (req, res) => {
     const orgFilter = isPlatformAdmin(actor) ? {} : { organizationId: actor.organizationId };
 
     const user = await prisma.user.findFirst({
-      where: { id: req.params.id, deletedAt: null, ...orgFilter },
+      where: { id: routeParam(req.params.id), deletedAt: null, ...orgFilter },
       include: {
         userRoles: { include: { role: true } },
         organization: { select: { id: true, nameEn: true, nameAr: true } },
@@ -260,13 +261,13 @@ router.patch(
           .json({ error: "Validation failed", details: parsed.error.flatten() });
       }
 
-      if (req.params.id === actor.id) {
+      if (routeParam(req.params.id) === actor.id) {
         return res.status(409).json({ error: "You cannot change your own account status" });
       }
 
       const orgFilter = isPlatformAdmin(actor) ? {} : { organizationId: actor.organizationId };
       const targetUser = await prisma.user.findFirst({
-        where: { id: req.params.id, deletedAt: null, ...orgFilter },
+        where: { id: routeParam(req.params.id), deletedAt: null, ...orgFilter },
       });
       if (!targetUser) return res.status(404).json({ error: "User not found" });
 
@@ -315,7 +316,7 @@ router.patch(
 
       const orgFilter = isPlatformAdmin(actor) ? {} : { organizationId: actor.organizationId };
       const targetUser = await prisma.user.findFirst({
-        where: { id: req.params.id, deletedAt: null, ...orgFilter },
+        where: { id: routeParam(req.params.id), deletedAt: null, ...orgFilter },
         include: { userRoles: { include: { role: true } } },
       });
       if (!targetUser) return res.status(404).json({ error: "User not found" });
@@ -386,12 +387,12 @@ router.post(
       const orgFilter = isPlatformAdmin(actor) ? {} : { organizationId: actor.organizationId };
 
       const targetUser = await prisma.user.findFirst({
-        where: { id: req.params.id, deletedAt: null, ...orgFilter },
+        where: { id: routeParam(req.params.id), deletedAt: null, ...orgFilter },
       });
       if (!targetUser) return res.status(404).json({ error: "User not found" });
 
       const role = await prisma.role.findFirst({
-        where: { id: req.params.roleId, deletedAt: null },
+        where: { id: routeParam(req.params.roleId), deletedAt: null },
       });
       if (!role) return res.status(404).json({ error: "Role not found" });
 
@@ -431,12 +432,12 @@ router.delete(
       const orgFilter = isPlatformAdmin(actor) ? {} : { organizationId: actor.organizationId };
 
       const targetUser = await prisma.user.findFirst({
-        where: { id: req.params.id, deletedAt: null, ...orgFilter },
+        where: { id: routeParam(req.params.id), deletedAt: null, ...orgFilter },
       });
       if (!targetUser) return res.status(404).json({ error: "User not found" });
 
       const role = await prisma.role.findFirst({
-        where: { id: req.params.roleId, deletedAt: null },
+        where: { id: routeParam(req.params.roleId), deletedAt: null },
       });
       if (!role) return res.status(404).json({ error: "Role not found" });
 
