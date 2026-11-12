@@ -1,6 +1,6 @@
 import { useLanguage } from "@/lib/language-provider";
-import { useCreateOrganization } from "@workspace/api-client-react";
-import { getGetCurrentUserQueryKey } from "@workspace/api-client-react";
+import { OrganizationPageGate } from "@/components/OrganizationPageGate";
+import { getGetCurrentUserQueryKey, useCreateOrganization } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,10 @@ const orgSchema = z.object({
 type OrgFormValues = z.infer<typeof orgSchema>;
 
 export default function NewOrganization() {
+  return <OrganizationPageGate requireOrganization={false}><NewOrganizationForm /></OrganizationPageGate>;
+}
+
+function NewOrganizationForm() {
   const { t, lang, dir } = useLanguage();
   const [, setLocation] = useLocation();
   const { toast } = useToast();

@@ -157,7 +157,7 @@ describe("Organizations API — validation", () => {
   });
 
   it("POST / still denies organization creation without the existing permission", async () => {
-    (prisma.user.findFirst as any).mockResolvedValue({ ...mockUnassignedUser, userRoles: [] });
+    (prisma.user.findFirst as any).mockResolvedValue({ ...mockRegularUser, userRoles: [] });
 
     const res = await request(app)
       .post("/api/organizations")

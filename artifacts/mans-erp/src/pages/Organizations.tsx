@@ -1,4 +1,5 @@
 import { useLanguage } from "@/lib/language-provider";
+import { OrganizationPageGate } from "@/components/OrganizationPageGate";
 import { useListOrganizations } from "@workspace/api-client-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +11,10 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 
 export default function Organizations() {
+  return <OrganizationPageGate requireOrganization={false}><OrganizationsContent /></OrganizationPageGate>;
+}
+
+function OrganizationsContent() {
   const { t, lang, dir } = useLanguage();
   const { data: orgs, isLoading } = useListOrganizations();
 

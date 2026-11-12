@@ -3,9 +3,16 @@ import { getGetCurrentUserQueryKey, useGetCurrentUser } from "@workspace/api-cli
 import { useLanguage } from "@/lib/language-provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Link } from "wouter";
 
 /** Initialize the local account before mounting organization-scoped queries. */
-export function OrganizationPageGate({ children }: { children: ReactNode }) {
+export function OrganizationPageGate({
+  children,
+  requireOrganization = true,
+}: {
+  children: ReactNode;
+  requireOrganization?: boolean;
+}) {
   const { lang } = useLanguage();
   const user = useGetCurrentUser({ query: { queryKey: getGetCurrentUserQueryKey(), retry: false } });
   const ar = lang === "ar";
@@ -14,7 +21,7 @@ export function OrganizationPageGate({ children }: { children: ReactNode }) {
     return <div role="status">{ar ? "جارٍ تهيئة الحساب…" : "Initializing your account…"}</div>;
   }
 
-  if (user.isError || !user.data?.organizationId) {
+  if (user.isError || (requireOrganization && !user.data?.organizationId)) {
     return (
       <Card>
         <CardContent className="space-y-4 pt-6">
@@ -27,6 +34,11 @@ export function OrganizationPageGate({ children }: { children: ReactNode }) {
                 ? "حسابك غير مرتبط بمنظمة. اطلب من مسؤول النظام ربط حسابك بمنظمة لعرض هذه الصفحة."
                 : "Your account is not assigned to an organization. Ask an administrator to assign your account to view this page."}
           </p>
+          {!user.isError && requireOrganization && (
+            <Link href="/organizations/new">
+              <Button>{ar ? "إنشاء منظمة جديدة" : "Create an organization"}</Button>
+            </Link>
+          )}
           <Button type="button" variant="outline" disabled={user.isFetching} onClick={() => void user.refetch()}>
             {ar ? "إعادة المحاولة" : "Retry"}
           </Button>

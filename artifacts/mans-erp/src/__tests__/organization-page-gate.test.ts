@@ -13,6 +13,13 @@ vi.mock("@workspace/api-client-react", async (importOriginal) => ({
 vi.mock("@/lib/language-provider", () => ({
   useLanguage: () => ({ lang: mocks.lang }),
 }));
+vi.mock("wouter", async () => {
+  const { createElement } = await import("react");
+  return {
+    Link: ({ href, children }: { href: string; children: unknown }) =>
+      createElement("a", { href }, children as React.ReactNode),
+  };
+});
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -39,6 +46,7 @@ describe.each([
     mocks.currentUser.mockReturnValue(state({ data: { organizationId: null } }));
     const html = renderToStaticMarkup(createElement(page));
     expect(html).toContain("not assigned to an organization");
+    expect(html).toContain("Create an organization");
     expect(html).toContain("Retry");
     expect(html).not.toContain("An error occurred");
   });
@@ -79,4 +87,20 @@ it("renders the organization assignment message in Arabic", () => {
   mocks.currentUser.mockReturnValue(state({ data: { organizationId: null } }));
   expect(renderToStaticMarkup(createElement(OrganizationPageGate, null, "hidden data")))
     .toContain("حسابك غير مرتبط بمنظمة");
+});
+
+it("initializes an unassigned account without blocking organization setup", () => {
+  mocks.currentUser.mockReturnValue(state({ data: { organizationId: null } }));
+  const requests = vi.fn();
+  function OrganizationSetup() {
+    requests();
+    return createElement("div", null, "Create organization");
+  }
+  const html = renderToStaticMarkup(createElement(
+    OrganizationPageGate,
+    { requireOrganization: false },
+    createElement(OrganizationSetup),
+  ));
+  expect(requests).toHaveBeenCalledTimes(1);
+  expect(html).toContain("Create organization");
 });

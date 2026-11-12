@@ -174,6 +174,10 @@ router.get("/", async (req, res) => {
     const { userId } = getAuth(req);
     const user = await getCurrentUser(userId!);
     if (!user) return res.status(401).json({ error: "User not found" });
+    const isAdmin = isPlatformAdmin(user);
+    if (!user.organizationId && !isAdmin) {
+      return res.status(403).json({ error: "User is not assigned to an organization" });
+    }
 
     const {
       search,
@@ -187,7 +191,7 @@ router.get("/", async (req, res) => {
     const pageNum = Math.max(1, parseInt(page as string, 10));
     const pageSizeNum = Math.min(200, Math.max(1, parseInt(pageSize as string, 10)));
 
-    const orgId = user.organizationId || undefined;
+    const orgId = isAdmin ? undefined : user.organizationId!;
 
     const where: any = {
       deletedAt: null,

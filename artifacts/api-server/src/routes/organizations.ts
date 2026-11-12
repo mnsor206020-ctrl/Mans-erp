@@ -2,7 +2,7 @@ import { Router } from "express";
 import { requireAuth, getAuth } from "@clerk/express";
 import { prisma } from "@workspace/prisma";
 import { z } from "zod";
-import { getCurrentUserWithRoles, isPlatformAdmin, requirePermission } from "../lib/authorize";
+import { getCurrentUserWithRoles, hasPermission, isPlatformAdmin, requirePermission } from "../lib/authorize";
 import { routeParam } from "../lib/route-param";
 
 const router = Router();
@@ -29,6 +29,25 @@ const updateSchema = z.object({
   city:               z.string().nullish(),
 });
 
+async function requireOrganizationCreateOrBootstrap(req: import("express").Request, res: import("express").Response, next: import("express").NextFunction) {
+  try {
+    const { userId } = getAuth(req);
+    if (!userId) return res.status(401).json({ error: "Unauthenticated" });
+
+    const user = await getCurrentUserWithRoles(userId);
+    if (!user) return res.status(401).json({ error: "User not found" });
+
+    if (!user.organizationId || hasPermission(user, "organizations", "create")) {
+      req.currentUser = user;
+      return next();
+    }
+
+    return res.status(403).json({ error: "Forbidden: you do not have permission to perform this action" });
+  } catch {
+    return res.status(500).json({ error: "Authorization check failed" });
+  }
+}
+
 router.get("/", async (req, res) => {
   try {
     const { userId: clerkId } = getAuth(req);
@@ -53,7 +72,7 @@ router.get("/", async (req, res) => {
   }
 });
 
-router.post("/", requirePermission("organizations", "create"), async (req, res) => {
+router.post("/", requireOrganizationCreateOrBootstrap, async (req, res) => {
   try {
     const parsed = createSchema.safeParse(req.body);
     if (!parsed.success) {

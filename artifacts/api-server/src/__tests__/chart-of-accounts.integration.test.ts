@@ -16,6 +16,7 @@ vi.mock("@workspace/prisma", () => ({
     chartOfAccount: {
       findFirst: vi.fn(),
       findMany:  vi.fn(),
+      count:     vi.fn(),
     },
     journalEntryLine: {
       count: vi.fn(),
@@ -67,6 +68,16 @@ describe("Chart of Accounts API — organization scoping", () => {
       where: { deletedAt: null, organizationId: ORG_ID },
       orderBy: [{ level: "asc" }, { code: "asc" }],
     });
+  });
+
+  it("GET / — refuses to list all accounts for an unassigned user", async () => {
+    (prisma.user.findFirst as any).mockResolvedValue({ ...mockUser, organizationId: null, userRoles: [] });
+
+    const res = await request(app).get("/api/chart-of-accounts");
+
+    expect(res.status).toBe(403);
+    expect(prisma.chartOfAccount.count).not.toHaveBeenCalled();
+    expect(prisma.chartOfAccount.findMany).not.toHaveBeenCalled();
   });
 
   it("GET /:id — account belongs to the caller's organization → 200", async () => {
