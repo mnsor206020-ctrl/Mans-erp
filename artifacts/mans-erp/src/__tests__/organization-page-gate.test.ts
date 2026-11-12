@@ -43,6 +43,14 @@ describe.each([
     expect(html).not.toContain("An error occurred");
   });
 
+  it("waits for a refreshed account after organization assignment", () => {
+    mocks.currentUser.mockReturnValue(state({
+      isFetching: true,
+      data: { organizationId: null },
+    }));
+    expect(renderToStaticMarkup(createElement(page))).toContain("Initializing your account");
+  });
+
   it("shows an explicit initialization failure instead of mounting the page", () => {
     mocks.currentUser.mockReturnValue(state({ isError: true }));
     const html = renderToStaticMarkup(createElement(page));

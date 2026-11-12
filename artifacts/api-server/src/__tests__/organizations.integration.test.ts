@@ -12,6 +12,7 @@ vi.mock("@workspace/prisma", () => ({
   prisma: {
     user: {
       findFirst: vi.fn(),
+      update:    vi.fn(),
     },
     organization: {
       create:    vi.fn(),
@@ -19,6 +20,13 @@ vi.mock("@workspace/prisma", () => ({
       findFirst: vi.fn(),
       findMany:  vi.fn(),
     },
+    role: {
+      findFirst: vi.fn(),
+    },
+    userRole: {
+      upsert: vi.fn(),
+    },
+    $transaction: vi.fn(),
   },
 }));
 
@@ -41,6 +49,11 @@ const mockRegularUser = {
   organizationId: OWN_ORG_ID,
 };
 
+const mockUnassignedUser = {
+  ...mockUser,
+  organizationId: null,
+};
+
 const mockSuperAdminUser = {
   ...mockUser,
   organizationId: OWN_ORG_ID,
@@ -57,6 +70,14 @@ describe("Organizations API — validation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (prisma.user.findFirst as any).mockResolvedValue(mockUser);
+    (prisma.$transaction as any).mockImplementation((work: (tx: unknown) => unknown) =>
+      work({
+        organization: prisma.organization,
+        role: prisma.role,
+        user: prisma.user,
+        userRole: prisma.userRole,
+      }),
+    );
   });
 
   it("POST / returns 400 with details when required fields are missing", async () => {
@@ -78,6 +99,7 @@ describe("Organizations API — validation", () => {
 
   it("POST / creates the organization when the body is valid", async () => {
     const created = { id: "org-1", nameEn: "Test Org", nameAr: "منظمة", type: "CHARITY" };
+    (prisma.user.findFirst as any).mockResolvedValue(mockRegularUser);
     (prisma.organization.create as any).mockResolvedValue(created);
 
     const res = await request(app)
@@ -89,6 +111,61 @@ describe("Organizations API — validation", () => {
     expect(prisma.organization.create).toHaveBeenCalledWith({
       data: { nameEn: "Test Org", nameAr: "منظمة", type: "CHARITY" },
     });
+    expect(prisma.user.update).not.toHaveBeenCalled();
+    expect(prisma.userRole.upsert).not.toHaveBeenCalled();
+  });
+
+  it("POST / atomically links an unassigned creator as Organization Admin", async () => {
+    const created = { id: "org-new", nameEn: "New Org", nameAr: "منظمة جديدة", type: "CHARITY" };
+    (prisma.user.findFirst as any).mockResolvedValue(mockUnassignedUser);
+    (prisma.role.findFirst as any).mockResolvedValue({ id: "organization-admin-role" });
+    (prisma.organization.create as any).mockResolvedValue(created);
+
+    const res = await request(app)
+      .post("/api/organizations")
+      .send({ nameEn: "New Org", nameAr: "منظمة جديدة", type: "CHARITY" });
+
+    expect(res.status).toBe(201);
+    expect(res.body).toEqual(created);
+    expect(prisma.role.findFirst).toHaveBeenCalledWith({
+      where: { nameEn: "Organization Admin", deletedAt: null },
+      select: { id: true },
+    });
+    expect(prisma.user.update).toHaveBeenCalledWith({
+      where: { id: "user-1" },
+      data: { organizationId: "org-new" },
+    });
+    expect(prisma.userRole.upsert).toHaveBeenCalledWith({
+      where: { userId_roleId: { userId: "user-1", roleId: "organization-admin-role" } },
+      create: { userId: "user-1", roleId: "organization-admin-role" },
+      update: {},
+    });
+  });
+
+  it("POST / creates no organization if the creator admin role is missing", async () => {
+    (prisma.user.findFirst as any).mockResolvedValue(mockUnassignedUser);
+    (prisma.role.findFirst as any).mockResolvedValue(null);
+
+    const res = await request(app)
+      .post("/api/organizations")
+      .send({ nameEn: "New Org", nameAr: "منظمة جديدة", type: "CHARITY" });
+
+    expect(res.status).toBe(500);
+    expect(prisma.organization.create).not.toHaveBeenCalled();
+    expect(prisma.user.update).not.toHaveBeenCalled();
+    expect(prisma.userRole.upsert).not.toHaveBeenCalled();
+  });
+
+  it("POST / still denies organization creation without the existing permission", async () => {
+    (prisma.user.findFirst as any).mockResolvedValue({ ...mockUnassignedUser, userRoles: [] });
+
+    const res = await request(app)
+      .post("/api/organizations")
+      .send({ nameEn: "New Org", nameAr: "منظمة جديدة", type: "CHARITY" });
+
+    expect(res.status).toBe(403);
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(prisma.organization.create).not.toHaveBeenCalled();
   });
 
   it("PATCH /:id returns 400 when type is invalid", async () => {

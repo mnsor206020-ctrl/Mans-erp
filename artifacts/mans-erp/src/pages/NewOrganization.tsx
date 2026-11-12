@@ -1,5 +1,7 @@
 import { useLanguage } from "@/lib/language-provider";
 import { useCreateOrganization } from "@workspace/api-client-react";
+import { getGetCurrentUserQueryKey } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +31,7 @@ export default function NewOrganization() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const createOrg = useCreateOrganization();
+  const queryClient = useQueryClient();
 
   const form = useForm<OrgFormValues>({
     resolver: zodResolver(orgSchema),
@@ -46,6 +49,7 @@ export default function NewOrganization() {
   const onSubmit = (data: OrgFormValues) => {
     createOrg.mutate({ data }, {
       onSuccess: () => {
+        void queryClient.invalidateQueries({ queryKey: getGetCurrentUserQueryKey() });
         toast({
           title: t('common.success'),
           description: lang === 'ar' ? 'تم إنشاء المنظمة بنجاح' : 'Organization created successfully',

@@ -60,8 +60,38 @@ router.post("/", requirePermission("organizations", "create"), async (req, res) 
       return res.status(400).json({ error: "Validation failed", details: parsed.error.flatten() });
     }
 
-    const org = await prisma.organization.create({
-      data: parsed.data,
+    const creator = req.currentUser;
+    const linkCreator = creator?.organizationId === null;
+    const org = await prisma.$transaction(async (tx) => {
+      const organizationAdmin = linkCreator
+        ? await tx.role.findFirst({
+            where: { nameEn: "Organization Admin", deletedAt: null },
+            select: { id: true },
+          })
+        : null;
+
+      if (linkCreator && !organizationAdmin) {
+        throw new Error("Organization Admin role is not configured");
+      }
+
+      const created = await tx.organization.create({ data: parsed.data });
+      if (creator && organizationAdmin) {
+        await tx.user.update({
+          where: { id: creator.id },
+          data: { organizationId: created.id },
+        });
+        await tx.userRole.upsert({
+          where: {
+            userId_roleId: {
+              userId: creator.id,
+              roleId: organizationAdmin.id,
+            },
+          },
+          create: { userId: creator.id, roleId: organizationAdmin.id },
+          update: {},
+        });
+      }
+      return created;
     });
     return res.status(201).json(org);
   } catch (err) {

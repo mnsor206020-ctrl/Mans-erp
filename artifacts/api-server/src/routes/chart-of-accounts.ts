@@ -2,7 +2,7 @@ import { Router } from "express";
 import { getAuth } from "@clerk/express";
 import { prisma } from "@workspace/prisma";
 import { z } from "zod";
-import { requirePermission } from "../lib/authorize";
+import { isPlatformAdmin, requirePermission } from "../lib/authorize";
 import { routeParam } from "../lib/route-param";
 
 const router = Router();
@@ -145,7 +145,12 @@ router.get("/tree", async (req, res) => {
     const user = await getCurrentUser(userId!);
     if (!user) return res.status(401).json({ error: "User not found" });
 
-    const organizationId = user.organizationId || undefined;
+    const isAdmin = isPlatformAdmin(user);
+    if (!user.organizationId && !isAdmin) {
+      return res.status(403).json({ error: "User is not assigned to an organization" });
+    }
+
+    const organizationId = isAdmin ? undefined : user.organizationId!;
 
     const accounts = await prisma.chartOfAccount.findMany({
       where: {

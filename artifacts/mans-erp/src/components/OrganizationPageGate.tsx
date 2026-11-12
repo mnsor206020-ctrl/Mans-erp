@@ -10,7 +10,7 @@ export function OrganizationPageGate({ children }: { children: ReactNode }) {
   const user = useGetCurrentUser({ query: { queryKey: getGetCurrentUserQueryKey(), retry: false } });
   const ar = lang === "ar";
 
-  if (user.isPending) {
+  if (user.isPending || (user.isFetching && !user.data?.organizationId)) {
     return <div role="status">{ar ? "جارٍ تهيئة الحساب…" : "Initializing your account…"}</div>;
   }
 

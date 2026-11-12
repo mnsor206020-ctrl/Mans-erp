@@ -15,6 +15,7 @@ vi.mock("@workspace/prisma", () => ({
     },
     chartOfAccount: {
       findFirst: vi.fn(),
+      findMany:  vi.fn(),
     },
     journalEntryLine: {
       count: vi.fn(),
@@ -45,6 +46,27 @@ describe("Chart of Accounts API — organization scoping", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (prisma.user.findFirst as any).mockResolvedValue(mockUser);
+  });
+
+  it("GET /tree — refuses to expose every organization's accounts to an unassigned user", async () => {
+    (prisma.user.findFirst as any).mockResolvedValue({ ...mockUser, organizationId: null, userRoles: [] });
+
+    const res = await request(app).get("/api/chart-of-accounts/tree");
+
+    expect(res.status).toBe(403);
+    expect(prisma.chartOfAccount.findMany).not.toHaveBeenCalled();
+  });
+
+  it("GET /tree — limits an organization member to their own accounts", async () => {
+    (prisma.chartOfAccount.findMany as any).mockResolvedValue([]);
+
+    const res = await request(app).get("/api/chart-of-accounts/tree");
+
+    expect(res.status).toBe(200);
+    expect(prisma.chartOfAccount.findMany).toHaveBeenCalledWith({
+      where: { deletedAt: null, organizationId: ORG_ID },
+      orderBy: [{ level: "asc" }, { code: "asc" }],
+    });
   });
 
   it("GET /:id — account belongs to the caller's organization → 200", async () => {
