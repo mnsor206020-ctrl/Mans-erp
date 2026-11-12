@@ -42,6 +42,22 @@ function isAdminRole(roleNameEn: string): boolean {
   return roleNameEn === "Super Admin" || roleNameEn === "Organization Admin";
 }
 
+function hasConfiguredVerifiedAdminEmail(
+  emailAddresses: Array<{
+    emailAddress: string;
+    verification?: { status?: string | null } | null;
+  }>,
+): boolean {
+  const configuredAdminEmail = process.env.INITIAL_SUPER_ADMIN_EMAIL?.trim().toLowerCase();
+  if (!configuredAdminEmail) return false;
+
+  return emailAddresses.some(
+    (address) =>
+      address.emailAddress.trim().toLowerCase() === configuredAdminEmail &&
+      address.verification?.status === "verified",
+  );
+}
+
 /** Pass the already-loaded role to avoid a duplicate DB fetch. */
 async function assertRoleRemovalSafe(
   targetUserId: string,
@@ -113,22 +129,15 @@ router.get("/me", async (req, res) => {
     let user = await prisma.user.findUnique({ where: { clerkId: userId } });
 
     if (!user) {
-      // The owner must configure this address before signing up. Only a verified
-      // Clerk email matching that configuration can receive the initial admin role.
-      const configuredAdminEmail = process.env.INITIAL_SUPER_ADMIN_EMAIL?.trim().toLowerCase();
+      // New accounts may claim the one-time bootstrap grant only when Clerk
+      // confirms the configured owner email is verified.
       const clerkUser = await clerkClient.users.getUser(userId);
       const primaryEmail = clerkUser.primaryEmailAddress?.emailAddress;
       const email =
         primaryEmail ??
         clerkUser.emailAddresses[0]?.emailAddress ??
         `${userId}@users.invalid`;
-      const isConfiguredAdmin =
-        !!configuredAdminEmail &&
-        clerkUser.emailAddresses.some(
-          (address) =>
-            address.emailAddress.trim().toLowerCase() === configuredAdminEmail &&
-            address.verification?.status === "verified",
-        );
+      const isConfiguredAdmin = hasConfiguredVerifiedAdminEmail(clerkUser.emailAddresses);
 
       user = await prisma.$transaction(async (tx) => {
         const created = await tx.user.upsert({
@@ -141,11 +150,18 @@ router.get("/me", async (req, res) => {
             where: { nameEn: "Super Admin", deletedAt: null },
           });
           if (superAdminRole) {
-            await tx.userRole.upsert({
-              where: { userId_roleId: { userId: created.id, roleId: superAdminRole.id } },
-              create: { userId: created.id, roleId: superAdminRole.id },
-              update: {},
+            await tx.initialSuperAdminClaim.createMany({
+              data: [{ id: 1, userId: created.id, status: "CLAIMED" }],
+              skipDuplicates: true,
             });
+            const claim = await tx.initialSuperAdminClaim.findUnique({ where: { id: 1 } });
+            if (claim?.userId === created.id && claim.status === "CLAIMED") {
+              await tx.userRole.upsert({
+                where: { userId_roleId: { userId: created.id, roleId: superAdminRole.id } },
+                create: { userId: created.id, roleId: superAdminRole.id },
+                update: {},
+              });
+            }
           }
         }
         return created;
@@ -156,6 +172,56 @@ router.get("/me", async (req, res) => {
     return res.json(userWithRoles ?? user);
   } catch (err) {
     return res.status(500).json({ error: "Failed to fetch user" });
+  }
+});
+
+// ── POST /users/me/claim-initial-admin ───────────────────────────────────────
+
+router.post("/me/claim-initial-admin", async (req, res) => {
+  try {
+    const { userId: clerkId } = getAuth(req);
+    if (!clerkId) return res.status(401).json({ error: "Unauthorized" });
+
+    const clerkUser = await clerkClient.users.getUser(clerkId);
+    if (!hasConfiguredVerifiedAdminEmail(clerkUser.emailAddresses)) {
+      return res.status(403).json({ error: "Configured owner email must be verified in Clerk" });
+    }
+
+    const user = await prisma.user.findUnique({ where: { clerkId } });
+    if (!user || user.deletedAt) {
+      return res.status(404).json({ error: "Create your local profile before claiming administrator access" });
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      const role = await tx.role.findFirst({
+        where: { nameEn: "Super Admin", deletedAt: null },
+      });
+      if (!role) return { error: "Super Admin role is unavailable", status: 503 };
+
+      const createdClaim = await tx.initialSuperAdminClaim.createMany({
+        data: [{ id: 1, userId: user.id, status: "CLAIMED" }],
+        skipDuplicates: true,
+      });
+      if (createdClaim.count !== 1) {
+        return { error: "The one-time administrator claim has already been used or revoked", status: 409 };
+      }
+      const claim = await tx.initialSuperAdminClaim.findUnique({ where: { id: 1 } });
+      if (!claim || claim.userId !== user.id || claim.status !== "CLAIMED") {
+        return { error: "The one-time administrator claim has already been used or revoked", status: 409 };
+      }
+
+      await tx.userRole.upsert({
+        where: { userId_roleId: { userId: user.id, roleId: role.id } },
+        create: { userId: user.id, roleId: role.id },
+        update: {},
+      });
+      return { claimed: true };
+    });
+
+    if ("error" in result) return res.status(result.status ?? 409).json({ error: result.error });
+    return res.json(result);
+  } catch (err) {
+    return res.status(500).json({ error: "Failed to claim initial administrator access" });
   }
 });
 
@@ -374,12 +440,26 @@ router.patch(
 
       const oldRoles = (targetUser.userRoles ?? []).map((ur) => ur.role.nameEn);
 
-      await prisma.$transaction([
+      const removedSuperAdmin = removedRoleIds.some(
+        (id) => existingRoleMap.get(id)?.nameEn === "Super Admin",
+      );
+      const roleChanges = [
         prisma.userRole.deleteMany({ where: { userId: targetUser.id } }),
         prisma.userRole.createMany({
           data: parsed.data.roleIds.map((roleId) => ({ userId: targetUser.id, roleId })),
         }),
-      ]);
+      ];
+      if (removedSuperAdmin) {
+        await prisma.$transaction([
+          ...roleChanges,
+          prisma.initialSuperAdminClaim.updateMany({
+            where: { id: 1, userId: targetUser.id, status: "CLAIMED" },
+            data: { status: "REVOKED", revokedAt: new Date() },
+          }),
+        ]);
+      } else {
+        await prisma.$transaction(roleChanges);
+      }
 
       await audit(
         { id: actor.id, email: actor.email },
@@ -476,7 +556,17 @@ router.delete(
         return res.status(e.status ?? 409).json({ error: e.message });
       }
 
-      await prisma.userRole.delete({ where: { id: existing.id } });
+      if (role.nameEn === "Super Admin") {
+        await prisma.$transaction([
+          prisma.userRole.delete({ where: { id: existing.id } }),
+          prisma.initialSuperAdminClaim.updateMany({
+            where: { id: 1, userId: targetUser.id, status: "CLAIMED" },
+            data: { status: "REVOKED", revokedAt: new Date() },
+          }),
+        ]);
+      } else {
+        await prisma.userRole.delete({ where: { id: existing.id } });
+      }
 
       await audit(
         { id: actor.id, email: actor.email },

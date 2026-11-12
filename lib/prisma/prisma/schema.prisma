@@ -136,6 +136,11 @@ enum InvitationStatus {
   EXPIRED
 }
 
+enum InitialSuperAdminClaimStatus {
+  CLAIMED
+  REVOKED
+}
+
 // ============================================================
 // CORE: USERS, ROLES, PERMISSIONS
 // ============================================================
@@ -162,6 +167,7 @@ model User {
   branch         Branch?  @relation(fields: [branchId], references: [id])
 
   userRoles       UserRole[]
+  initialSuperAdminClaim InitialSuperAdminClaim?
   journalEntries          JournalEntry[]         @relation("JECreatedBy")
   postedJournalEntries    JournalEntry[]         @relation("JEPostedBy")
   voidedJournalEntries    JournalEntry[]         @relation("JEVoidedBy")
@@ -231,6 +237,19 @@ model UserRole {
   @@index([userId])
   @@index([roleId])
   @@map("user_roles")
+}
+
+model InitialSuperAdminClaim {
+  // A fixed singleton key makes the initial Super Admin claim global and one-time.
+  id        Int                             @id @default(1)
+  userId    String                          @unique @map("user_id") @db.Uuid
+  status    InitialSuperAdminClaimStatus    @default(CLAIMED)
+  claimedAt DateTime                        @default(now()) @map("claimed_at")
+  revokedAt DateTime?                       @map("revoked_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@map("initial_super_admin_claims")
 }
 
 model RolePermission {
