@@ -118,7 +118,9 @@ describe("Organizations API — validation", () => {
   it("POST / atomically links an unassigned creator as Organization Admin", async () => {
     const created = { id: "org-new", nameEn: "New Org", nameAr: "منظمة جديدة", type: "CHARITY" };
     (prisma.user.findFirst as any).mockResolvedValue(mockUnassignedUser);
-    (prisma.role.findFirst as any).mockResolvedValue({ id: "organization-admin-role" });
+    (prisma.role.findFirst as any)
+      .mockResolvedValueOnce({ id: "organization-admin-role" })
+      .mockResolvedValueOnce({ id: "accountant-role" });
     (prisma.organization.create as any).mockResolvedValue(created);
 
     const res = await request(app)
@@ -131,6 +133,10 @@ describe("Organizations API — validation", () => {
       where: { nameEn: "Organization Admin", deletedAt: null },
       select: { id: true },
     });
+    expect(prisma.role.findFirst).toHaveBeenNthCalledWith(2, {
+      where: { nameEn: "Accountant", deletedAt: null },
+      select: { id: true },
+    });
     expect(prisma.user.update).toHaveBeenCalledWith({
       where: { id: "user-1" },
       data: { organizationId: "org-new" },
@@ -140,11 +146,18 @@ describe("Organizations API — validation", () => {
       create: { userId: "user-1", roleId: "organization-admin-role" },
       update: {},
     });
+    expect(prisma.userRole.upsert).toHaveBeenCalledWith({
+      where: { userId_roleId: { userId: "user-1", roleId: "accountant-role" } },
+      create: { userId: "user-1", roleId: "accountant-role" },
+      update: {},
+    });
   });
 
-  it("POST / creates no organization if the creator admin role is missing", async () => {
+  it("POST / creates no organization if a required creator role is missing", async () => {
     (prisma.user.findFirst as any).mockResolvedValue(mockUnassignedUser);
-    (prisma.role.findFirst as any).mockResolvedValue(null);
+    (prisma.role.findFirst as any)
+      .mockResolvedValueOnce({ id: "organization-admin-role" })
+      .mockResolvedValueOnce(null);
 
     const res = await request(app)
       .post("/api/organizations")

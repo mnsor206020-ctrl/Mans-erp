@@ -88,9 +88,15 @@ router.post("/", requireOrganizationCreateOrBootstrap, async (req, res) => {
             select: { id: true },
           })
         : null;
+      const accountant = linkCreator
+        ? await tx.role.findFirst({
+            where: { nameEn: "Accountant", deletedAt: null },
+            select: { id: true },
+          })
+        : null;
 
-      if (linkCreator && !organizationAdmin) {
-        throw new Error("Organization Admin role is not configured");
+      if (linkCreator && (!organizationAdmin || !accountant)) {
+        throw new Error("Required organization roles are not configured");
       }
 
       const created = await tx.organization.create({ data: parsed.data });
@@ -99,16 +105,19 @@ router.post("/", requireOrganizationCreateOrBootstrap, async (req, res) => {
           where: { id: creator.id },
           data: { organizationId: created.id },
         });
-        await tx.userRole.upsert({
-          where: {
-            userId_roleId: {
-              userId: creator.id,
-              roleId: organizationAdmin.id,
+        for (const role of [organizationAdmin, accountant]) {
+          if (!role) continue;
+          await tx.userRole.upsert({
+            where: {
+              userId_roleId: {
+                userId: creator.id,
+                roleId: role.id,
+              },
             },
-          },
-          create: { userId: creator.id, roleId: organizationAdmin.id },
-          update: {},
-        });
+            create: { userId: creator.id, roleId: role.id },
+            update: {},
+          });
+        }
       }
       return created;
     });
