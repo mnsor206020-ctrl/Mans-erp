@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { Link } from "wouter";
 import { useLanguage } from "@/lib/language-provider";
+import { OrganizationPageGate } from "@/components/OrganizationPageGate";
 import { useToast } from "@/hooks/use-toast";
 import {
   useGetChartOfAccountsTree,
@@ -489,6 +490,10 @@ function TreeNode({ node, expanded, onToggleExpand, onEdit, onDelete, onToggleAc
 // ── Main page ────────────────────────────────────────────────────────────────
 
 export default function ChartOfAccounts() {
+  return <OrganizationPageGate><ChartOfAccountsContent /></OrganizationPageGate>;
+}
+
+function ChartOfAccountsContent() {
   const { lang, dir, t } = useLanguage();
   const { toast } = useToast();
   const queryClient = useQueryClient();

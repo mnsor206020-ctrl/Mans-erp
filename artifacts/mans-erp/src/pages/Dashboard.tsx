@@ -1,4 +1,5 @@
 import { useLanguage } from "@/lib/language-provider";
+import { OrganizationPageGate } from "@/components/OrganizationPageGate";
 import { useGetDashboardStats, useGetDashboardMonthly, useGetRecentActivity } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -33,6 +34,10 @@ const chartConfig: ChartConfig = {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
+  return <OrganizationPageGate><DashboardContent /></OrganizationPageGate>;
+}
+
+function DashboardContent() {
   const { t, lang } = useLanguage();
 
   const { data: stats,    isLoading: statsLoading,    isError: statsError }    = useGetDashboardStats();
