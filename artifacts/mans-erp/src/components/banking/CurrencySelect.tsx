@@ -1,6 +1,8 @@
 import { useLanguage } from "@/lib/language-provider";
 import { useListCurrencies } from "@workspace/api-client-react";
 import type { Currency } from "@workspace/api-client-react";
+import { unwrapPaginatedList } from "@/lib/paginated-list";
+import { BankingListError } from "./BankingListError";
 import {
   Select,
   SelectContent,
@@ -28,8 +30,8 @@ export function CurrencySelect({
   id,
 }: CurrencySelectProps) {
   const { lang, t } = useLanguage();
-  const { data, isLoading } = useListCurrencies({ status: "ACTIVE" });
-  const currencies: Currency[] = data ?? [];
+  const { data, isLoading, isError, refetch } = useListCurrencies({ status: "ACTIVE" });
+  const currencies = unwrapPaginatedList<Currency>(data);
 
   const handleChange = (code: string) => {
     const currency = currencies.find((c) => c.code === code);
@@ -42,6 +44,16 @@ export function CurrencySelect({
         <Loader2 className="h-3 w-3 animate-spin" />
         {t("banking.currency.loading")}
       </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <BankingListError
+        message={lang === "ar" ? "تعذر تحميل العملات." : "Could not load currencies."}
+        retryLabel={lang === "ar" ? "إعادة المحاولة" : "Retry"}
+        onRetry={() => void refetch()}
+      />
     );
   }
 
