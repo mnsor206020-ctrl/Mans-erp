@@ -10,7 +10,7 @@ import {
   useListCashBoxes,
   useListChartOfAccounts,
 } from "@workspace/api-client-react";
-import type { BankAccount, CashBox, Payment } from "@workspace/api-client-react";
+import type { BankAccount, CashBox, Payment, PaymentCreate } from "@workspace/api-client-react";
 import {
   Dialog,
   DialogContent,
@@ -169,9 +169,9 @@ export function PaymentFormDialog({
   const handleSubmit = () => {
     if (!validate()) return;
 
-    const base = {
-      paymentDate:   new Date(paymentDate) as any,
-      paymentMethod: paymentMethod as any,
+    const base: PaymentCreate = {
+      paymentDate:   new Date(paymentDate).toISOString(),
+      paymentMethod: paymentMethod as PaymentCreate["paymentMethod"],
       amount:        parseFloat(amount),
       currencyCode:  currencyCode || "SAR",
       exchangeRate:  parseFloat(exchangeRate) || 1,
@@ -183,7 +183,7 @@ export function PaymentFormDialog({
       descriptionEn: descriptionEn || undefined,
       descriptionAr: descriptionAr || undefined,
       chequeNumber:  isCheque ? (chequeNumber   || undefined) : undefined,
-      chequeDate:    isCheque && chequeDate ? new Date(chequeDate) as any : undefined,
+      chequeDate:    isCheque && chequeDate ? new Date(chequeDate).toISOString() : undefined,
       chequeBankName: isCheque ? (chequeBankName || undefined) : undefined,
     };
 
@@ -196,9 +196,9 @@ export function PaymentFormDialog({
             onOpenChange(false);
             onSuccess();
           },
-          onError: (err: any) => {
+          onError: (err) => {
             toast({
-              title: err?.response?.data?.error ?? t("common.error"),
+              title: err.message || t("common.error"),
               variant: "destructive",
             });
           },
@@ -206,16 +206,16 @@ export function PaymentFormDialog({
       );
     } else {
       createMutation.mutate(
-        { ...base, glAccountId: glAccountId || undefined } as any,
+        { data: { ...base, glAccountId: glAccountId || undefined } },
         {
           onSuccess: () => {
             toast({ title: lang === "ar" ? "تم إنشاء المدفوعة" : "Payment created" });
             onOpenChange(false);
             onSuccess();
           },
-          onError: (err: any) => {
+          onError: (err) => {
             toast({
-              title: err?.response?.data?.error ?? t("common.error"),
+              title: err.message || t("common.error"),
               variant: "destructive",
             });
           },

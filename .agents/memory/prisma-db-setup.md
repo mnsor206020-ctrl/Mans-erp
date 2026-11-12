@@ -15,3 +15,11 @@ The ORM for Mans ERP is Prisma, housed in `lib/prisma/`. The old Drizzle setup i
 - The Prisma client singleton is exported from `lib/prisma/src/index.ts` as `prisma`
 - `tsx` is a devDependency of `@workspace/prisma` (catalog entry) — required for the seed script
 - Prisma build scripts require allowlisting in `pnpm-workspace.yaml` under `onlyBuiltDependencies`: prisma, @prisma/client, @prisma/engines
+
+## Financial persistence verification
+
+Keep Prisma write delegates typed. Unrestricted mock delegates can accept fields that the actual Prisma model rejects, so passing mocked route tests alone does not establish that a financial operation can be saved.
+
+**Why:** A real synthetic petty-cash save revealed an unsupported field that permissive mocks and a delegate cast had hidden.
+
+**How to apply:** Preserve compiler checking on create/update payloads, assert the allowed persistence fields in regression tests, and verify an isolated development save when changing financial persistence. Include accounting prerequisites in synthetic fixtures so setup failures are not mistaken for application failures.

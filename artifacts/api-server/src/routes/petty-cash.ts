@@ -117,7 +117,7 @@ router.post("/", requirePermission("petty_cash", "create"), async (req, res) => 
     }
 
     const [entry] = await prisma.$transaction(async (tx) => {
-      const newEntry = await (tx.pettyCash as any).create({
+      const newEntry = await tx.pettyCash.create({
         data: {
           cashBoxId:       data.cashBoxId,
           type:            data.type,
@@ -130,7 +130,6 @@ router.post("/", requirePermission("petty_cash", "create"), async (req, res) => 
           categoryId:      data.categoryId   ?? null,
           glAccountId:     data.glAccountId  ?? null,
           costCenterId:    data.costCenterId  ?? null,
-          createdByUserId: user.id,
         },
         include: {
           cashBox: {

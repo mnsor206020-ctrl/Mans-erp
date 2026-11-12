@@ -119,8 +119,8 @@ export function PettyCashFormDialog({
   const handleSubmit = () => {
     if (!validate()) return;
     createMutation.mutate(
-      {
-        transactionDate: new Date(transactionDate) as any,
+      { data: {
+        transactionDate: new Date(transactionDate).toISOString(),
         type,
         amount: parseFloat(amount),
         cashBoxId,
@@ -129,16 +129,16 @@ export function PettyCashFormDialog({
         reference:     reference.trim() || undefined,
         glAccountId:   glAccountId      || undefined,
         costCenterId:  costCenterId     || undefined,
-      } as any,
+      } },
       {
         onSuccess: () => {
           toast({ title: lang === "ar" ? "تم إنشاء القيد" : "Entry created" });
           onOpenChange(false);
           onSuccess();
         },
-        onError: (err: any) => {
+        onError: (err) => {
           toast({
-            title: err?.response?.data?.error ?? t("common.error"),
+            title: err.message || t("common.error"),
             variant: "destructive",
           });
         },

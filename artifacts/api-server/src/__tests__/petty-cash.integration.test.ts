@@ -143,9 +143,10 @@ describe("Petty Cash API — Integration", () => {
 
   // ── PC-I-02 ──────────────────────────────────────────────────────────────────
   it("PC-I-02: POST creates an OUT entry and decrements cash box balance atomically", async () => {
+    const createPettyCash = vi.fn().mockResolvedValue(mockEntry);
     (prisma.$transaction as any).mockImplementation(async (fn: any) => {
       const txMock = {
-        pettyCash:    { create: vi.fn().mockResolvedValue(mockEntry), update: vi.fn().mockResolvedValue({}) },
+        pettyCash:    { create: createPettyCash, update: vi.fn().mockResolvedValue({}) },
         cashBox:      { update: vi.fn().mockResolvedValue({ ...mockCashBox, currentBalance: "4800" }) },
         journalEntry: {
           findMany: vi.fn().mockResolvedValue([]),
@@ -172,6 +173,21 @@ describe("Petty Cash API — Integration", () => {
     expect(res.body.type).toBe("OUT");
     expect(res.body.cashBox).toBeDefined();
     expect(res.body.cashBox.id).toBe(CASH_BOX_ID);
+    // Keep the persisted payload aligned with the Prisma PettyCash model.
+    // The actor belongs on the generated journal, not on an unsupported field.
+    expect(createPettyCash.mock.calls[0][0].data).toEqual({
+      cashBoxId: CASH_BOX_ID,
+      type: "OUT",
+      transactionDate: new Date("2026-07-01"),
+      amount: 200,
+      descriptionEn: "Office supplies",
+      descriptionAr: "مستلزمات مكتبية",
+      reference: null,
+      receiptNumber: null,
+      categoryId: null,
+      glAccountId: GL_ACCOUNT_ID,
+      costCenterId: null,
+    });
   });
 
   // ── PC-I-03 ──────────────────────────────────────────────────────────────────
