@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { getAuth } from "@clerk/express";
-import { prisma } from "@workspace/prisma";
+import { prisma, type JournalEntryAttachment } from "@workspace/prisma";
 import multer from "multer";
 import { createHash, randomUUID } from "crypto";
 import { objectStorageClient, signObjectDownloadUrl } from "../lib/objectStorage";
@@ -129,7 +129,7 @@ router.post("/", requirePermission("attachments", "create"), async (req, res) =>
     }
 
     // Enforce per-entry attachment cap across all non-deleted records
-    const existingCount = await (prisma.journalEntryAttachment as any).count({
+    const existingCount = await prisma.journalEntryAttachment.count({
       where: { journalEntryId: entryId, deletedAt: null },
     });
     if (existingCount + files.length > MAX_FILES_PER_ENTRY) {
@@ -140,7 +140,7 @@ router.post("/", requirePermission("attachments", "create"), async (req, res) =>
     }
 
     const { bucketName, prefix } = parsePrivateObjectDir();
-    const created: object[] = [];
+    const created: JournalEntryAttachment[] = [];
 
     for (const file of files) {
       const fileId = randomUUID();
@@ -159,7 +159,7 @@ router.post("/", requirePermission("attachments", "create"), async (req, res) =>
       });
 
       // Persist attachment record
-      const attachment = await (prisma.journalEntryAttachment as any).create({
+      const attachment = await prisma.journalEntryAttachment.create({
         data: {
           journalEntryId:   entryId,
           uploadedByUserId: user.id,
@@ -209,7 +209,7 @@ router.get("/", async (req, res) => {
       return;
     }
 
-    const attachments = await (prisma.journalEntryAttachment as any).findMany({
+    const attachments = await prisma.journalEntryAttachment.findMany({
       where: { journalEntryId: entryId, deletedAt: null },
       orderBy: { createdAt: "asc" },
     });
@@ -248,7 +248,7 @@ router.delete("/:attachmentId", requirePermission("attachments", "delete"), asyn
       return;
     }
 
-    const attachment = await (prisma.journalEntryAttachment as any).findFirst({
+    const attachment = await prisma.journalEntryAttachment.findFirst({
       where: { id: attachmentId, journalEntryId: entryId, deletedAt: null },
       select: { id: true },
     });
@@ -257,7 +257,7 @@ router.delete("/:attachmentId", requirePermission("attachments", "delete"), asyn
       return;
     }
 
-    await (prisma.journalEntryAttachment as any).update({
+    await prisma.journalEntryAttachment.update({
       where: { id: attachmentId },
       data:  { deletedAt: new Date() },
     });
@@ -306,7 +306,7 @@ router.patch("/:attachmentId", requirePermission("attachments", "update"), async
       return;
     }
 
-    const attachment = await (prisma.journalEntryAttachment as any).findFirst({
+    const attachment = await prisma.journalEntryAttachment.findFirst({
       where: { id: attachmentId, journalEntryId: entryId, deletedAt: null },
       select: { id: true },
     });
@@ -315,23 +315,23 @@ router.patch("/:attachmentId", requirePermission("attachments", "update"), async
       return;
     }
 
-    let updated: object;
+    let updated: JournalEntryAttachment;
 
     if (isPrimary) {
       // Clear any existing primary then set the new one — atomically
-      const result = await (prisma.$transaction as any)([
-        (prisma.journalEntryAttachment as any).updateMany({
+      const [, updatedAttachment] = await prisma.$transaction([
+        prisma.journalEntryAttachment.updateMany({
           where: { journalEntryId: entryId, isPrimary: true, deletedAt: null },
           data:  { isPrimary: false },
         }),
-        (prisma.journalEntryAttachment as any).update({
+        prisma.journalEntryAttachment.update({
           where: { id: attachmentId },
           data:  { isPrimary: true },
         }),
       ]);
-      updated = result[1];
+      updated = updatedAttachment;
     } else {
-      updated = await (prisma.journalEntryAttachment as any).update({
+      updated = await prisma.journalEntryAttachment.update({
         where: { id: attachmentId },
         data:  { isPrimary: false },
       });
@@ -375,7 +375,7 @@ router.get("/:attachmentId/download", async (req, res) => {
     }
 
     // Verify attachment exists, belongs to this entry, and is not soft-deleted
-    const attachment = await (prisma.journalEntryAttachment as any).findFirst({
+    const attachment = await prisma.journalEntryAttachment.findFirst({
       where: { id: attachmentId, journalEntryId: entryId, deletedAt: null },
       select: { id: true, storageBucket: true, storageKey: true },
     });
