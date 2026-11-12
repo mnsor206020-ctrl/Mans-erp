@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useLocation } from "wouter";
 import { ArrowLeft, ArrowRight, Building2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { buildOrganizationPayload } from "@/lib/organization-payload";
 
 const orgSchema = z.object({
   nameEn: z.string().min(1, "English name is required"),
@@ -51,7 +52,7 @@ function NewOrganizationForm() {
   });
 
   const onSubmit = (data: OrgFormValues) => {
-    createOrg.mutate({ data }, {
+    createOrg.mutate({ data: buildOrganizationPayload(data) }, {
       onSuccess: () => {
         void queryClient.invalidateQueries({ queryKey: getGetCurrentUserQueryKey() });
         toast({
