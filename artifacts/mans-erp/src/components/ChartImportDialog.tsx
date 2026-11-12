@@ -8,7 +8,9 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { createChartTemplate, parseChartWorkbook } from "@/lib/chart-excel";
+import { createChartTemplate, inspectChartWorkbook, suggestChartMapping } from "@/lib/chart-excel";
+import { chartMappingErrors, mapChartWorkbook, type ChartWorkbookData, type ChartColumnMapping } from "@/lib/chart-column-mapping";
+import { ChartColumnMapper } from "@/components/ChartColumnMapper";
 
 export function ChartImportDialog() {
   const [open, setOpen] = useState(false);
@@ -17,6 +19,8 @@ export function ChartImportDialog() {
   const [error, setError] = useState("");
   const [fileName, setFileName] = useState("");
   const [working, setWorking] = useState(false);
+  const [workbook, setWorkbook] = useState<ChartWorkbookData>();
+  const [mapping, setMapping] = useState<ChartColumnMapping>({});
   const busyRef = useRef(false);
   const mutation = useImportChartOfAccounts();
   const queryClient = useQueryClient();
@@ -51,14 +55,16 @@ export function ChartImportDialog() {
     setFileName(file?.name || "");
     setRows([]);
     setPreview(undefined);
+    setWorkbook(undefined);
+    setMapping({});
     if (!file) return;
     await run(async () => {
       if (!file.name.toLowerCase().endsWith(".xlsx"))
         throw new Error("الامتداد المدعوم هو .xlsx. احفظ ملف .xls القديم بصيغة .xlsx أولًا.");
       if (file.size > 5 * 1024 * 1024) throw new Error("حجم الملف يتجاوز 5 ميجابايت.");
-      const parsed = await parseChartWorkbook(await file.arrayBuffer());
-      setRows(parsed);
-      await validate(parsed);
+      const parsed = await inspectChartWorkbook(await file.arrayBuffer());
+      setWorkbook(parsed);
+      setMapping(suggestChartMapping(parsed));
     });
   }
   async function download() {
@@ -75,7 +81,7 @@ export function ChartImportDialog() {
   return (
     <>
       <Button variant="outline" onClick={() => {
-        setRows([]); setPreview(undefined); setError(""); setFileName(""); setOpen(true);
+        setRows([]); setPreview(undefined); setError(""); setFileName(""); setWorkbook(undefined); setMapping({}); setOpen(true);
       }} data-testid="button-import-accounts"><Upload className="h-4 w-4 me-2" />استيراد من Excel</Button>
       <Dialog open={open} onOpenChange={(value) => { if (!working) setOpen(value); }}>
         <DialogContent dir="rtl" className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -93,6 +99,10 @@ export function ChartImportDialog() {
             </label>
           </div>
           {fileName && <p className="text-sm break-all">الملف المحدد: <span dir="auto">{fileName}</span></p>}
+          {workbook && <ChartColumnMapper data={workbook} mapping={mapping} disabled={working || !!preview?.imported}
+            onChange={(next) => {
+              setMapping(next); setRows([]); setPreview(undefined); setError("");
+            }} />}
           {working && <p role="status">جارٍ قراءة الملف أو التحقق والحفظ…</p>}
           {error && <p role="alert" className="text-destructive break-words">{error}</p>}
           {preview && (
@@ -132,7 +142,13 @@ export function ChartImportDialog() {
           )}
           <DialogFooter className="gap-2">
             <Button variant="outline" disabled={working} onClick={() => setOpen(false)}>إغلاق</Button>
-            {!!rows.length && !preview?.imported && <Button variant="outline" disabled={working} onClick={() => void run(() => validate(rows))}>إعادة الفحص</Button>}
+            {workbook && !preview?.imported && <Button variant="outline"
+              disabled={working || chartMappingErrors(workbook, mapping).length > 0}
+              onClick={() => void run(async () => {
+                const mapped = mapChartWorkbook(workbook, mapping);
+                setRows(mapped);
+                await validate(mapped);
+              })}>معاينة والتحقق</Button>}
             <Button disabled={working || !preview?.valid || !!preview.imported} onClick={() => void run(() => validate(rows, true))}>
               تأكيد استيراد {preview?.total || 0} حساب
             </Button>

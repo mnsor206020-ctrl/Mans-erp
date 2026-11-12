@@ -1,29 +1,22 @@
 import type { ChartImportRow } from "@workspace/api-client-react";
 import type { Cell } from "exceljs";
+import { mapChartWorkbook, type ChartWorkbookData, type ChartColumnMapping, type ChartImportField } from "./chart-column-mapping";
 
 const MAX_ROWS = 2000;
 const normalize = (value: string) => value.trim().toLowerCase().replace(/[\s_()[\]-]/g, "");
 const headers: Record<string, keyof ChartImportRow> = {};
 const aliases: Partial<Record<keyof ChartImportRow, string[]>> = {
-  code: ["Account Code", "code", "كود الحساب", "رقم الحساب"],
+  code: ["Account Code", "code", "كود الحساب", "رقم الحساب", "الرمز"],
   name: ["Account Name", "name", "اسم الحساب"],
-  nameAr: ["Account Name Arabic", "nameAr", "اسم الحساب عربي"],
-  nameEn: ["Account Name English", "nameEn", "اسم الحساب إنجليزي", "اسم الحساب انجليزي"],
-  parentCode: ["Parent Account Code", "parentCode", "كود الحساب الأب", "كود الحساب الاب", "رقم الحساب الأب"],
+  nameAr: ["Account Name Arabic", "nameAr", "اسم الحساب عربي", "الاسم بالعربية"],
+  nameEn: ["Account Name English", "nameEn", "اسم الحساب إنجليزي", "اسم الحساب انجليزي", "الاسم بالإنجليزية"],
+  parentCode: ["Parent Account Code", "parentCode", "كود الحساب الأب", "كود الحساب الاب", "رقم الحساب الأب", "رمز الحساب الرئيسي"],
   type: ["Account Type", "type", "نوع الحساب"],
   nature: ["Account Nature", "nature", "طبيعة الحساب"],
   notes: ["Account Description", "Description", "notes", "وصف الحساب", "الوصف"],
 };
 for (const [key, values] of Object.entries(aliases))
   values.forEach((label) => { headers[normalize(label)] = key as keyof ChartImportRow; });
-
-const typeAliases: Record<string, string> = {
-  "أصول": "ASSET", "اصول": "ASSET", asset: "ASSET", assets: "ASSET",
-  "التزامات": "LIABILITY", "خصوم": "LIABILITY", liability: "LIABILITY", liabilities: "LIABILITY",
-  "حقوق الملكية": "EQUITY", equity: "EQUITY",
-  "إيرادات": "REVENUE", "ايرادات": "REVENUE", revenue: "REVENUE",
-  "مصروفات": "EXPENSE", expense: "EXPENSE", expenses: "EXPENSE",
-};
 
 function text(cell: Cell, code = false): string {
   if (cell.type === 6 || (cell.value && typeof cell.value === "object" && "formula" in cell.value))
@@ -38,44 +31,59 @@ function text(cell: Cell, code = false): string {
   return cell.text.trim();
 }
 
-export async function parseChartWorkbook(buffer: ArrayBuffer): Promise<ChartImportRow[]> {
+export async function inspectChartWorkbook(buffer: ArrayBuffer): Promise<ChartWorkbookData> {
   const { default: ExcelJS } = await import("exceljs");
   const workbook = new ExcelJS.Workbook();
   try { await workbook.xlsx.load(buffer); }
   catch { throw new Error("تعذر قراءة الملف. تأكد أنه ملف Excel صالح بصيغة .xlsx وغير محمي بكلمة مرور."); }
   const sheet = workbook.worksheets[0];
   if (!sheet) throw new Error("الملف لا يحتوي على ورقة عمل.");
-  const columns = new Map<number, keyof ChartImportRow>();
-  const seen = new Set<string>();
-  sheet.getRow(1).eachCell((cell, col) => {
-    const field = headers[normalize(text(cell))];
-    if (!field) return;
-    if (seen.has(field)) throw new Error(`العمود مكرر: ${cell.text}`);
-    seen.add(field);
-    columns.set(col, field);
-  });
-  if (!["code", "parentCode", "type", "nature"].every((key) => seen.has(key)) ||
-      !["name", "nameAr", "nameEn"].some((key) => seen.has(key)))
-    throw new Error("عناوين الأعمدة غير مكتملة. استخدم قالب Excel المتاح.");
-
-  const rows: ChartImportRow[] = [];
+  const rows: ChartWorkbookData["rows"] = [];
+  const columnIndices = new Set<number>();
+  sheet.getRow(1).eachCell((_, col) => columnIndices.add(col));
   sheet.eachRow((row, number) => {
     if (number === 1) return;
-    const values: Record<string, string> = {};
-    for (const [col, field] of columns) values[field] = text(row.getCell(col), field === "code" || field === "parentCode");
-    if (Object.values(values).every((v) => !v)) return;
-    if (rows.length >= MAX_ROWS) throw new Error("الحد الأقصى 2000 حساب لكل ملف. قسّم الملف إلى دفعات.");
-    const type = values.type || "";
-    const nature = values.nature || "";
-    rows.push({
-      rowNumber: number, code: values.code || "", parentCode: values.parentCode || "",
-      name: values.name, nameAr: values.nameAr, nameEn: values.nameEn, notes: values.notes,
-      type: typeAliases[type.toLowerCase()] || type.toUpperCase(),
-      nature: ({ "مدين": "DEBIT", "دائن": "CREDIT" } as Record<string, string>)[nature] || nature.toUpperCase(),
+    const cells: ChartWorkbookData["rows"][number]["cells"] = {};
+    row.eachCell((cell, col) => {
+      columnIndices.add(col);
+      try { cells[col] = { value: text(cell), codeValue: text(cell, true) }; }
+      catch (e) {
+        cells[col] = { value: cell.text, codeValue: cell.text, error: e instanceof Error ? e.message : "خلية غير صالحة." };
+      }
     });
+    if (Object.values(cells).every((cell) => !cell.value && !cell.error)) return;
+    if (rows.length >= MAX_ROWS) throw new Error("الحد الأقصى 2000 حساب لكل ملف. قسّم الملف إلى دفعات.");
+    rows.push({ rowNumber: number, cells });
   });
   if (!rows.length) throw new Error("الملف لا يحتوي على حسابات.");
-  return rows;
+  return {
+    sheetName: sheet.name, rows,
+    columns: [...columnIndices].sort((a, b) => a - b).map((index) => ({
+      index, label: sheet.getRow(1).getCell(index).text.trim() || `عمود ${index} (بدون عنوان)`,
+      samples: rows.slice(0, 3).map((row) => row.cells[index]?.value || ""),
+    })),
+  };
+}
+
+/** Suggestions are editable; ambiguous duplicate headers are never chosen silently. */
+export function suggestChartMapping(data: ChartWorkbookData): ChartColumnMapping {
+  const mapping: ChartColumnMapping = {};
+  const ambiguous = new Set<ChartImportField>();
+  for (const column of data.columns) {
+    const field = headers[normalize(column.label)] as ChartImportField | undefined;
+    if (!field) continue;
+    if (mapping[field] !== undefined) ambiguous.add(field);
+    mapping[field] = column.index;
+  }
+  ambiguous.forEach((field) => delete mapping[field]);
+  return mapping;
+}
+
+export async function parseChartWorkbook(buffer: ArrayBuffer): Promise<ChartImportRow[]> {
+  const data = await inspectChartWorkbook(buffer);
+  const fields = data.columns.map((column) => headers[normalize(column.label)]).filter(Boolean);
+  if (new Set(fields).size !== fields.length) throw new Error("العمود مكرر؛ راجع مطابقة الأعمدة.");
+  return mapChartWorkbook(data, suggestChartMapping(data));
 }
 
 export async function createChartTemplate(): Promise<ArrayBuffer> {
@@ -102,6 +110,7 @@ export async function createChartTemplate(): Promise<ArrayBuffer> {
   const instructions = workbook.addWorksheet("Instructions");
   [
     "احذف صفوف المثال واستبدلها بحساباتك. تُقرأ الورقة الأولى فقط.",
+    "يمكنك استخدام عناوين مختلفة واختيار مطابقة الأعمدة قبل المعاينة؛ الأعمدة غير المحددة تُتجاهل.",
     "احفظ الأكواد كنص للحفاظ على الأصفار، ولا تستخدم صيغ Excel.",
     "Account Type: ASSET, LIABILITY, EQUITY, REVENUE, EXPENSE",
     "Account Nature: DEBIT, CREDIT (مدين، دائن)",
