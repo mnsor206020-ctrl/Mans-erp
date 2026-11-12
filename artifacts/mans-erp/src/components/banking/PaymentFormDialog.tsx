@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useLanguage } from "@/lib/language-provider";
 import { useToast } from "@/hooks/use-toast";
+import { unwrapPaginatedList } from "@/lib/paginated-list";
+import { BankingListError } from "./BankingListError";
 import {
   useCreatePayment,
   useUpdatePayment,
@@ -8,7 +10,7 @@ import {
   useListCashBoxes,
   useListChartOfAccounts,
 } from "@workspace/api-client-react";
-import type { Payment } from "@workspace/api-client-react";
+import type { BankAccount, CashBox, Payment } from "@workspace/api-client-react";
 import {
   Dialog,
   DialogContent,
@@ -119,12 +121,12 @@ export function PaymentFormDialog({
   }, [open, payment]);
 
   // ── Data hooks ───────────────────────────────────────────────────────────────
-  const { data: bankAccounts = [], isLoading: loadingBanks } = useListBankAccounts();
-  const { data: cashBoxes   = [], isLoading: loadingBoxes  } = useListCashBoxes();
+  const { data: bankAccountsRaw, isLoading: loadingBanks, isError: bankAccountsError, refetch: refetchBanks } = useListBankAccounts();
+  const { data: cashBoxesRaw, isLoading: loadingBoxes, isError: cashBoxesError, refetch: refetchBoxes } = useListCashBoxes();
   const { data: coaRaw,           isLoading: loadingCoa    } = useListChartOfAccounts();
 
-  const activeBankAccounts = (bankAccounts as any[]).filter((b: any) => b.isActive && !b.deletedAt);
-  const activeCashBoxes    = (cashBoxes as any[]).filter((c: any) => c.isActive && !c.deletedAt);
+  const activeBankAccounts = unwrapPaginatedList<BankAccount>(bankAccountsRaw).filter((b) => b.isActive && !b.deletedAt);
+  const activeCashBoxes = unwrapPaginatedList<CashBox>(cashBoxesRaw).filter((c) => c.isActive && !c.deletedAt);
   const glAccounts = ((coaRaw as any)?.data ?? (Array.isArray(coaRaw) ? coaRaw : []) as any[])
     .filter((a: any) => a.isActive && !a.isGroup && a.allowDirectEntry && !a.deletedAt)
     .map((a: any) => ({
@@ -333,6 +335,12 @@ export function PaymentFormDialog({
                   <div className="flex items-center gap-2 text-muted-foreground text-sm h-9">
                     <Loader2 className="h-4 w-4 animate-spin" /> {t("common.loading")}
                   </div>
+                ) : bankAccountsError ? (
+                  <BankingListError
+                    message={lbl("Could not load bank accounts.", "تعذر تحميل الحسابات البنكية.")}
+                    retryLabel={lbl("Retry", "إعادة المحاولة")}
+                    onRetry={() => void refetchBanks()}
+                  />
                 ) : (
                   <Select value={bankAccountId} onValueChange={setBankAccountId}>
                     <SelectTrigger
@@ -373,6 +381,12 @@ export function PaymentFormDialog({
                   <div className="flex items-center gap-2 text-muted-foreground text-sm h-9">
                     <Loader2 className="h-4 w-4 animate-spin" /> {t("common.loading")}
                   </div>
+                ) : cashBoxesError ? (
+                  <BankingListError
+                    message={lbl("Could not load cash boxes.", "تعذر تحميل الصناديق النقدية.")}
+                    retryLabel={lbl("Retry", "إعادة المحاولة")}
+                    onRetry={() => void refetchBoxes()}
+                  />
                 ) : (
                   <Select value={cashBoxId} onValueChange={setCashBoxId}>
                     <SelectTrigger

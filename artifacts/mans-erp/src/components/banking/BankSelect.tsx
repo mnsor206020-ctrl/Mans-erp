@@ -44,6 +44,16 @@ export function BankSelect({ value, onChange, disabled, id }: BankSelectProps) {
       : selected.nameEn || selected.nameAr
     : "";
 
+  if (isError) {
+    return (
+      <BankingListError
+        message={lang === "ar" ? "تعذر تحميل البنوك." : "Could not load banks."}
+        retryLabel={lang === "ar" ? "إعادة المحاولة" : "Retry"}
+        onRetry={() => void refetch()}
+      />
+    );
+  }
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -54,7 +64,7 @@ export function BankSelect({ value, onChange, disabled, id }: BankSelectProps) {
           aria-expanded={open}
           aria-controls={id ? `${id}-listbox` : undefined}
           aria-haspopup="listbox"
-          disabled={disabled || isLoading || isError}
+          disabled={disabled || isLoading}
           className="w-full justify-between h-9 font-normal text-start truncate"
         >
           {isLoading ? (
@@ -73,47 +83,37 @@ export function BankSelect({ value, onChange, disabled, id }: BankSelectProps) {
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[320px] p-0" align="start">
-        {isError ? (
-          <div className="p-3">
-            <BankingListError
-              message={lang === "ar" ? "تعذر تحميل البنوك." : "Could not load banks."}
-              retryLabel={lang === "ar" ? "إعادة المحاولة" : "Retry"}
-              onRetry={() => void refetch()}
-            />
-          </div>
-        ) : (
-          <Command id={id ? `${id}-listbox` : undefined}>
-            <CommandInput placeholder={t("banking.bank.search")} />
-            <CommandList>
-              <CommandEmpty>{t("banking.bank.empty")}</CommandEmpty>
-              <CommandGroup>
-                {banks.map((bank) => {
-                  const label =
-                    lang === "ar"
-                      ? bank.nameAr || bank.nameEn
-                      : bank.nameEn || bank.nameAr;
-                  return (
-                    <CommandItem
-                      key={bank.id}
-                      value={`${bank.nameEn} ${bank.nameAr}`}
-                      onSelect={() => {
-                        onChange(bank.id, bank);
-                        setOpen(false);
-                      }}
-                    >
-                      <Check
-                        className={`me-2 h-4 w-4 shrink-0 ${
-                          value === bank.id ? "opacity-100" : "opacity-0"
-                        }`}
-                      />
-                      <span className="text-sm truncate">{label}</span>
-                    </CommandItem>
-                  );
-                })}
-              </CommandGroup>
-            </CommandList>
-          </Command>
-        )}
+        <Command id={id ? `${id}-listbox` : undefined}>
+          <CommandInput placeholder={t("banking.bank.search")} />
+          <CommandList>
+            <CommandEmpty>{t("banking.bank.empty")}</CommandEmpty>
+            <CommandGroup>
+              {banks.map((bank) => {
+                const label =
+                  lang === "ar"
+                    ? bank.nameAr || bank.nameEn
+                    : bank.nameEn || bank.nameAr;
+                return (
+                  <CommandItem
+                    key={bank.id}
+                    value={`${bank.nameEn} ${bank.nameAr}`}
+                    onSelect={() => {
+                      onChange(bank.id, bank);
+                      setOpen(false);
+                    }}
+                  >
+                    <Check
+                      className={`me-2 h-4 w-4 shrink-0 ${
+                        value === bank.id ? "opacity-100" : "opacity-0"
+                      }`}
+                    />
+                    <span className="text-sm truncate">{label}</span>
+                  </CommandItem>
+                );
+              })}
+            </CommandGroup>
+          </CommandList>
+        </Command>
       </PopoverContent>
     </Popover>
   );
