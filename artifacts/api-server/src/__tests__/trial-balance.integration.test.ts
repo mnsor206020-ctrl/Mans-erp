@@ -154,13 +154,13 @@ describe("GET /reports/trial-balance", () => {
     expect(res.body.asOf).toBeNull();
   });
 
-  it("TB-I-09: journal entry lines are queried with POSTED status filter", async () => {
+  it("TB-I-09: includes POSTED and REVERSED journal entry lines", async () => {
     (prisma.user.findFirst as any).mockResolvedValue(mockUser);
     (prisma.fiscalYear.findFirst as any).mockResolvedValue(mockFiscalYear);
     (prisma.journalEntryLine.findMany as any).mockResolvedValue([]);
     await request(createApp()).get(`/reports/trial-balance?fiscalYearId=${FY_ID}`);
     const callArg = (prisma.journalEntryLine.findMany as any).mock.calls[0][0];
-    expect(callArg.where.journalEntry.status).toBe("POSTED");
+    expect(callArg.where.journalEntry.status).toEqual({ in: ["POSTED", "REVERSED"] });
     expect(callArg.where.journalEntry.fiscalYearId).toBe(FY_ID);
   });
 

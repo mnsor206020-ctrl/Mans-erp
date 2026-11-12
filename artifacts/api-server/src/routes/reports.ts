@@ -40,7 +40,7 @@ router.get("/trial-balance", async (req, res): Promise<void> => {
 
     const jeWhere: Record<string, unknown> = {
       fiscalYearId,
-      status: "POSTED",
+      status: { in: ["POSTED", "REVERSED"] },
       deletedAt: null,
     };
     if (asOf) {
@@ -134,13 +134,14 @@ router.get("/account-ledger", async (req, res): Promise<void> => {
       return;
     }
 
-    // Beginning balance: sum all POSTED lines for this account strictly before `from`
+    // Reversed originals retain their posted amounts; their reversals offset them.
+    // Beginning balance includes both statuses strictly before `from`.
     const priorLines = await prisma.journalEntryLine.findMany({
       where: {
         accountId,
         journalEntry: {
           organizationId: user.organizationId,
-          status:         "POSTED",
+          status:         { in: ["POSTED", "REVERSED"] },
           deletedAt:      null,
           entryDate:      { lt: new Date(from) },
         },
@@ -157,7 +158,7 @@ router.get("/account-ledger", async (req, res): Promise<void> => {
         accountId,
         journalEntry: {
           organizationId: user.organizationId,
-          status:         "POSTED",
+          status:         { in: ["POSTED", "REVERSED"] },
           deletedAt:      null,
           entryDate:      { gte: new Date(from), lte: new Date(to) },
         },
@@ -258,13 +259,13 @@ router.get("/balance-sheet", async (req, res): Promise<void> => {
     const lines = await prisma.journalEntryLine.findMany({
       where: {
         account: {
-          type:           { in: ["ASSET", "LIABILITY", "EQUITY"] },
+          type:           { in: ["ASSET", "LIABILITY", "EQUITY", "REVENUE", "EXPENSE"] },
           organizationId: user.organizationId,
           deletedAt:      null,
         },
         journalEntry: {
           fiscalYearId,
-          status:    "POSTED",
+          status:    { in: ["POSTED", "REVERSED"] },
           deletedAt: null,
           entryDate: { lte: new Date(asOf) },
         },
@@ -319,6 +320,7 @@ router.get("/balance-sheet", async (req, res): Promise<void> => {
     const assets:      { accountId: string; accountCode: string; accountNameEn: string; accountNameAr: string; balance: number }[] = [];
     const liabilities: typeof assets = [];
     const equity:      typeof assets = [];
+    let currentYearResult = 0;
 
     for (const acc of accountMap.values()) {
       const balance =
@@ -337,6 +339,20 @@ router.get("/balance-sheet", async (req, res): Promise<void> => {
       if      (acc.type === "ASSET")     assets.push(row);
       else if (acc.type === "LIABILITY") liabilities.push(row);
       else if (acc.type === "EQUITY")    equity.push(row);
+      else if (acc.type === "REVENUE")   currentYearResult += balance;
+      else if (acc.type === "EXPENSE")   currentYearResult -= balance;
+    }
+
+    // Unclosed income/expense balances belong to equity at the same cutoff.
+    // This is a report-only row, not an account or a closing journal entry.
+    if (currentYearResult !== 0) {
+      equity.push({
+        accountId: "current-year-result",
+        accountCode: "CURRENT_YEAR_RESULT",
+        accountNameEn: "Current year profit / loss",
+        accountNameAr: "ربح / خسارة السنة الحالية",
+        balance: currentYearResult,
+      });
     }
 
     // Sort each section by account code
@@ -410,7 +426,7 @@ router.get("/income-statement", async (req, res): Promise<void> => {
         },
         journalEntry: {
           fiscalYearId,
-          status:    "POSTED",
+          status:    { in: ["POSTED", "REVERSED"] },
           deletedAt: null,
           entryDate: { gte: new Date(from), lte: new Date(to) },
         },

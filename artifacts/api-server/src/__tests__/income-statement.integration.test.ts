@@ -257,7 +257,7 @@ describe("GET /reports/income-statement", () => {
       .query({ fiscalYearId: "fy-1", from: "2025-01-01", to: "2025-12-31" });
 
     const callArgs = prismaLineMock.findMany.mock.calls[0][0];
-    expect(callArgs.where.journalEntry.status).toBe("POSTED");
+    expect(callArgs.where.journalEntry.status).toEqual({ in: ["POSTED", "REVERSED"] });
     expect(callArgs.where.journalEntry.fiscalYearId).toBe("fy-1");
   });
 

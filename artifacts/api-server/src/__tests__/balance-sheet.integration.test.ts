@@ -213,9 +213,9 @@ describe("GET /reports/balance-sheet", () => {
 
     const callArgs = prismaLineMock.findMany.mock.calls[0][0];
     expect(callArgs.where.account.type.in).toEqual(
-      expect.arrayContaining(["ASSET", "LIABILITY", "EQUITY"]),
+      expect.arrayContaining(["ASSET", "LIABILITY", "EQUITY", "REVENUE", "EXPENSE"]),
     );
-    expect(callArgs.where.account.type.in).toHaveLength(3);
+    expect(callArgs.where.account.type.in).toHaveLength(5);
   });
 
   it("queries only POSTED journal entries", async () => {
@@ -228,7 +228,7 @@ describe("GET /reports/balance-sheet", () => {
       .query({ fiscalYearId: "fy-1", asOf: "2025-12-31" });
 
     const callArgs = prismaLineMock.findMany.mock.calls[0][0];
-    expect(callArgs.where.journalEntry.status).toBe("POSTED");
+    expect(callArgs.where.journalEntry.status).toEqual({ in: ["POSTED", "REVERSED"] });
     expect(callArgs.where.journalEntry.fiscalYearId).toBe("fy-1");
   });
 
