@@ -189,6 +189,12 @@ async function main() {
     data: orgAdminPerms.map((p) => ({ roleId: orgAdminRole.id, permissionId: p.id })),
   });
 
+  // Import setup needs reference data only, not demo records or role grants.
+  if (process.argv.includes("--reference-only")) {
+    console.log("✅ Reference data seeded; demo records and user role grants skipped.");
+    return;
+  }
+
   // ── Bootstrap: preserve access for any users that already exist ──
   // (RBAC enforcement is new — existing users must not be locked out)
   const usersWithoutRoles = await prisma.user.findMany({

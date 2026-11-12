@@ -10,3 +10,4 @@
 - [assert-role-removal-safe](assert-role-removal-safe.md) — takes role object (not roleId) to avoid duplicate DB fetch; 3 safety guards enforced
 - [Reversal report exclusion](reversal-report-exclusion.md) — reports filter POSTED only; REVERSED originals vanish so reversals double-count; include both statuses
 - [Paginated envelope unwrap](paginated-envelope-unwrap.md) — banking list hooks return {data:[...]}; components calling .filter/.map on the envelope crash whole routes
+- [Imported dependency installation](import-dependency-install.md) — locked tarball downloads can be firewall-blocked; refresh owning dependencies without bypassing protection.
