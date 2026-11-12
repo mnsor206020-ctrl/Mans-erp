@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { useLanguage } from "@/lib/language-provider";
 import { OrganizationPageGate } from "@/components/OrganizationPageGate";
 import { useToast } from "@/hooks/use-toast";
+import { chartAccountDeleteError } from "@/lib/chart-account-delete-error";
 import {
   useGetChartOfAccountsTree,
   useCreateChartOfAccount,
@@ -10,6 +11,8 @@ import {
   useDeleteChartOfAccount,
   useToggleChartOfAccountActive,
   getGetChartOfAccountsTreeQueryKey,
+  getListChartOfAccountsQueryKey,
+  getGetChartOfAccountQueryKey,
 } from "@workspace/api-client-react";
 import type { ChartOfAccountNode, CreateChartOfAccountInput, UpdateChartOfAccountInput } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -635,18 +638,19 @@ function ChartOfAccountsContent() {
   };
 
   const handleDelete = () => {
-    if (!deleteNode) return;
+    if (!deleteNode || deleteMutation.isPending) return;
     deleteMutation.mutate(
       { id: deleteNode.id },
       {
         onSuccess: () => {
           toast({ title: lang === "ar" ? "تم حذف الحساب" : "Account deleted" });
+          queryClient.invalidateQueries({ queryKey: getListChartOfAccountsQueryKey() });
+          queryClient.removeQueries({ queryKey: getGetChartOfAccountQueryKey(deleteNode.id) });
           setDeleteNode(null);
           invalidate();
         },
-        onError: (err: any) => {
-          const msg = err?.response?.data?.error || (lang === "ar" ? "حدث خطأ" : "An error occurred");
-          toast({ title: msg, variant: "destructive" });
+        onError: (err) => {
+          toast({ title: chartAccountDeleteError(err, lang), variant: "destructive" });
         },
       }
     );
@@ -967,6 +971,7 @@ function ChartOfAccountsContent() {
             <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
+              disabled={deleteMutation.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               data-testid="button-confirm-delete"
             >

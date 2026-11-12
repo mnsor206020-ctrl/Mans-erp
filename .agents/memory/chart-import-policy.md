@@ -11,6 +11,6 @@ Treat imported account codes as opaque identifiers. Never infer hierarchy from c
 
 The default import journey must be upload → automatic column matching → review → confirm. Manual column mapping is optional, except for missing or ambiguous fields that cannot be resolved safely.
 
-**Why:** The user explicitly rejected mandatory manual matching and requested an automatic experience like Qoyod.
+**Why:** The user explicitly rejected mandatory manual matching, requested an automatic experience like Qoyod, and confirmed the automatic import worked.
 
 **How to apply:** Match recognizable Arabic/English headings automatically, but do not guess ambiguous columns or invent parents. If nature is absent, apply the usual type-based defaults with a visible review notice before confirmation. Explain that contra-accounts may need a nature column; a mapped nature column remains authoritative, including invalid or blank values. Never infer nature from hierarchy levels or payment/collection flags.

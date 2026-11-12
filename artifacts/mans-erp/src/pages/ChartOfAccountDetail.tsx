@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useLanguage } from "@/lib/language-provider";
 import { useToast } from "@/hooks/use-toast";
+import { chartAccountDeleteError } from "@/lib/chart-account-delete-error";
 import {
   useGetChartOfAccount,
   useUpdateChartOfAccount,
@@ -9,6 +10,7 @@ import {
   useToggleChartOfAccountActive,
   getGetChartOfAccountsTreeQueryKey,
   getGetChartOfAccountQueryKey,
+  getListChartOfAccountsQueryKey,
 } from "@workspace/api-client-react";
 import type { UpdateChartOfAccountInput } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -146,16 +148,20 @@ export default function ChartOfAccountDetail({ params }: { params: { id: string 
   };
 
   const handleDelete = () => {
+    if (deleteMutation.isPending) return;
     deleteMutation.mutate(
       { id: params.id },
       {
         onSuccess: () => {
           toast({ title: lang === "ar" ? "تم حذف الحساب" : "Account deleted" });
+          queryClient.invalidateQueries({ queryKey: getGetChartOfAccountsTreeQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getListChartOfAccountsQueryKey() });
+          queryClient.removeQueries({ queryKey: getGetChartOfAccountQueryKey(params.id) });
           setLocation("/chart-of-accounts");
         },
-        onError: (err: any) => {
+        onError: (err) => {
           toast({
-            title: err?.response?.data?.error || (lang === "ar" ? "حدث خطأ" : "Error"),
+            title: chartAccountDeleteError(err, lang),
             variant: "destructive",
           });
           setDeleteOpen(false);
@@ -580,6 +586,7 @@ export default function ChartOfAccountDetail({ params }: { params: { id: string 
             <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
+              disabled={deleteMutation.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deleteMutation.isPending ? t("coa.deleting") : t("common.delete")}
