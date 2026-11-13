@@ -40,6 +40,8 @@ router.get("/trial-balance", async (req, res): Promise<void> => {
 
     const jeWhere: Record<string, unknown> = {
       fiscalYearId,
+      organizationId: user.organizationId,
+      fiscalYear: { organizationId: user.organizationId },
       status: { in: ["POSTED", "REVERSED"] },
       deletedAt: null,
     };
@@ -48,7 +50,7 @@ router.get("/trial-balance", async (req, res): Promise<void> => {
     }
 
     const lines = await prisma.journalEntryLine.findMany({
-      where: { journalEntry: jeWhere },
+      where: { journalEntry: jeWhere, account: { organizationId: user.organizationId } },
       include: {
         account: { select: { id: true, code: true, nameEn: true, nameAr: true } },
       },
@@ -139,8 +141,10 @@ router.get("/account-ledger", async (req, res): Promise<void> => {
     const priorLines = await prisma.journalEntryLine.findMany({
       where: {
         accountId,
+        account: { organizationId: user.organizationId },
         journalEntry: {
           organizationId: user.organizationId,
+          fiscalYear: { organizationId: user.organizationId },
           status:         { in: ["POSTED", "REVERSED"] },
           deletedAt:      null,
           entryDate:      { lt: new Date(from) },
@@ -156,8 +160,10 @@ router.get("/account-ledger", async (req, res): Promise<void> => {
     const lines = await prisma.journalEntryLine.findMany({
       where: {
         accountId,
+        account: { organizationId: user.organizationId },
         journalEntry: {
           organizationId: user.organizationId,
+          fiscalYear: { organizationId: user.organizationId },
           status:         { in: ["POSTED", "REVERSED"] },
           deletedAt:      null,
           entryDate:      { gte: new Date(from), lte: new Date(to) },
@@ -265,6 +271,8 @@ router.get("/balance-sheet", async (req, res): Promise<void> => {
         },
         journalEntry: {
           fiscalYearId,
+          organizationId: user.organizationId,
+          fiscalYear: { organizationId: user.organizationId },
           status:    { in: ["POSTED", "REVERSED"] },
           deletedAt: null,
           entryDate: { lte: new Date(asOf) },
@@ -426,6 +434,8 @@ router.get("/income-statement", async (req, res): Promise<void> => {
         },
         journalEntry: {
           fiscalYearId,
+          organizationId: user.organizationId,
+          fiscalYear: { organizationId: user.organizationId },
           status:    { in: ["POSTED", "REVERSED"] },
           deletedAt: null,
           entryDate: { gte: new Date(from), lte: new Date(to) },

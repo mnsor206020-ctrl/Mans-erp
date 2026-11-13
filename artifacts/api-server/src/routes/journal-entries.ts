@@ -19,7 +19,31 @@ import { routeParam } from "../lib/route-param";
 
 const router = Router();
 
+// Fail closed for every journal route, including attachments. Never infer a
+// financial organization from a body/query parameter or an empty user scope.
+router.use(async (req, res, next): Promise<void> => {
+  try {
+    const user = await getUser(getAuth(req).userId);
+    if (!user) { res.status(401).json({ error: "User not found" }); return; }
+    if (!user.organizationId) { res.status(400).json({ error: "User has no organization" }); return; }
+    next();
+  } catch {
+    res.status(500).json({ error: "Failed to resolve organization" });
+  }
+});
+
 router.use("/:id/attachments", attachmentsRouter);
+
+// Also exclude legacy inconsistent links; ownership of the entry alone is
+// insufficient when a fiscal year or one of its accounts belongs elsewhere.
+function journalOrganizationScope(organizationId: string | null) {
+  const orgId = organizationId ?? "";
+  return {
+    organizationId: orgId,
+    fiscalYear: { organizationId: orgId },
+    lines: { every: { account: { organizationId: orgId } } },
+  };
+}
 
 async function getUser(clerkId: string | null | undefined) {
   if (!clerkId) return null;
@@ -119,7 +143,7 @@ router.get("/", async (req, res) => {
     const skip     = (pageNum - 1) * pageSz;
 
     const where: Record<string, unknown> = {
-      organizationId: user.organizationId,
+      ...journalOrganizationScope(user.organizationId),
       deletedAt: null,
     };
 
@@ -172,7 +196,7 @@ router.get("/:id", async (req, res) => {
     if (!user) return res.status(401).json({ error: "User not found" });
 
     const entry = await prisma.journalEntry.findFirst({
-      where: { id: routeParam(req.params.id), organizationId: user.organizationId ?? "", deletedAt: null },
+      where: { id: routeParam(req.params.id), ...journalOrganizationScope(user.organizationId), deletedAt: null },
       include: {
         createdBy:   { select: { id: true, firstNameEn: true, lastNameEn: true, email: true } },
         submittedBy: { select: { id: true, firstNameEn: true, lastNameEn: true, email: true } },
@@ -298,7 +322,7 @@ router.patch("/:id", requirePermission("journal_entries", "update"), async (req,
     const user = await getUser(userId!);
     if (!user) return res.status(401).json({ error: "User not found" });
 
-    const existing = await prisma.journalEntry.findFirst({ where: { id: routeParam(req.params.id), organizationId: user.organizationId ?? "", deletedAt: null } });
+    const existing = await prisma.journalEntry.findFirst({ where: { id: routeParam(req.params.id), ...journalOrganizationScope(user.organizationId), deletedAt: null } });
     if (!existing) return res.status(404).json({ error: "Journal entry not found" });
     if (!["DRAFT", "UNDER_REVIEW"].includes(existing.status)) {
       return res.status(400).json({ error: `Cannot edit a ${existing.status} journal entry` });
@@ -307,6 +331,13 @@ router.patch("/:id", requirePermission("journal_entries", "update"), async (req,
     const parsed = updateSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: "Validation failed", details: parsed.error.flatten() });
     const data = parsed.data;
+
+    if (data.fiscalYearId) {
+      const fiscalYear = await prisma.fiscalYear.findFirst({
+        where: { id: data.fiscalYearId, organizationId: user.organizationId!, deletedAt: null },
+      });
+      if (!fiscalYear) return res.status(400).json({ error: "Fiscal year not found" });
+    }
 
     let newTotals: { totalDebit: number; totalCredit: number } | undefined;
 
@@ -389,7 +420,7 @@ router.delete("/:id", requirePermission("journal_entries", "delete"), async (req
     const user = await getUser(userId!);
     if (!user) return res.status(401).json({ error: "User not found" });
 
-    const entry = await prisma.journalEntry.findFirst({ where: { id: routeParam(req.params.id), organizationId: user.organizationId ?? "", deletedAt: null } });
+    const entry = await prisma.journalEntry.findFirst({ where: { id: routeParam(req.params.id), ...journalOrganizationScope(user.organizationId), deletedAt: null } });
     if (!entry) return res.status(404).json({ error: "Journal entry not found" });
     if (entry.status !== "DRAFT") return res.status(400).json({ error: "Only DRAFT journal entries can be deleted" });
 
@@ -419,7 +450,7 @@ router.post("/:id/submit", requirePermission("journal_entries", "update"), async
     if (!user) return res.status(401).json({ error: "User not found" });
 
     const entry = await prisma.journalEntry.findFirst({
-      where: { id: routeParam(req.params.id), organizationId: user.organizationId ?? "", deletedAt: null },
+      where: { id: routeParam(req.params.id), ...journalOrganizationScope(user.organizationId), deletedAt: null },
       include: { lines: true },
     });
     if (!entry) return res.status(404).json({ error: "Journal entry not found" });
@@ -480,7 +511,7 @@ router.post("/:id/approve", requirePermission("journal_entries", "approve"), asy
     const user = await getUser(userId!);
     if (!user) return res.status(401).json({ error: "User not found" });
 
-    const entry = await prisma.journalEntry.findFirst({ where: { id: routeParam(req.params.id), organizationId: user.organizationId ?? "", deletedAt: null } });
+    const entry = await prisma.journalEntry.findFirst({ where: { id: routeParam(req.params.id), ...journalOrganizationScope(user.organizationId), deletedAt: null } });
     if (!entry) return res.status(404).json({ error: "Journal entry not found" });
     if (entry.status !== "UNDER_REVIEW") return res.status(400).json({ error: `Cannot approve a ${entry.status} entry` });
 
@@ -538,7 +569,7 @@ router.post("/:id/reject", requirePermission("journal_entries", "approve"), asyn
     const user = await getUser(userId!);
     if (!user) return res.status(401).json({ error: "User not found" });
 
-    const entry = await prisma.journalEntry.findFirst({ where: { id: routeParam(req.params.id), organizationId: user.organizationId ?? "", deletedAt: null } });
+    const entry = await prisma.journalEntry.findFirst({ where: { id: routeParam(req.params.id), ...journalOrganizationScope(user.organizationId), deletedAt: null } });
     if (!entry) return res.status(404).json({ error: "Journal entry not found" });
     if (!["UNDER_REVIEW", "APPROVED"].includes(entry.status)) {
       return res.status(400).json({ error: `Cannot reject a ${entry.status} entry` });
@@ -600,7 +631,7 @@ router.post("/:id/post", requirePermission("journal_entries", "approve"), async 
     if (!user) return res.status(401).json({ error: "User not found" });
 
     const entry = await prisma.journalEntry.findFirst({
-      where: { id: routeParam(req.params.id), organizationId: user.organizationId ?? "", deletedAt: null },
+      where: { id: routeParam(req.params.id), ...journalOrganizationScope(user.organizationId), deletedAt: null },
       include: {
         lines: { include: { account: true } },
         fiscalYear: true,
@@ -703,7 +734,7 @@ router.post("/:id/lock", requirePermission("journal_entries", "approve"), async 
     const user = await getUser(userId!);
     if (!user) return res.status(401).json({ error: "User not found" });
 
-    const entry = await prisma.journalEntry.findFirst({ where: { id: routeParam(req.params.id), organizationId: user.organizationId ?? "", deletedAt: null } });
+    const entry = await prisma.journalEntry.findFirst({ where: { id: routeParam(req.params.id), ...journalOrganizationScope(user.organizationId), deletedAt: null } });
     if (!entry) return res.status(404).json({ error: "Journal entry not found" });
     if (entry.status !== "POSTED") return res.status(400).json({ error: "Only POSTED entries can be locked" });
 
@@ -747,7 +778,7 @@ router.post("/:id/reverse", requirePermission("journal_entries", "void"), async 
     if (!user) return res.status(401).json({ error: "User not found" });
 
     const entry = await prisma.journalEntry.findFirst({
-      where: { id: routeParam(req.params.id), organizationId: user.organizationId ?? "", deletedAt: null },
+      where: { id: routeParam(req.params.id), ...journalOrganizationScope(user.organizationId), deletedAt: null },
       include: { lines: true },
     });
     if (!entry) return res.status(404).json({ error: "Journal entry not found" });
@@ -853,7 +884,7 @@ router.post("/:id/copy", requirePermission("journal_entries", "create"), async (
     if (!user) return res.status(401).json({ error: "User not found" });
 
     const entry = await prisma.journalEntry.findFirst({
-      where: { id: routeParam(req.params.id), organizationId: user.organizationId ?? "", deletedAt: null },
+      where: { id: routeParam(req.params.id), ...journalOrganizationScope(user.organizationId), deletedAt: null },
       include: { lines: true },
     });
     if (!entry) return res.status(404).json({ error: "Journal entry not found" });
@@ -910,7 +941,7 @@ router.post("/:id/void", requirePermission("journal_entries", "void"), async (re
     const user = await getUser(userId!);
     if (!user) return res.status(401).json({ error: "User not found" });
 
-    const entry = await prisma.journalEntry.findFirst({ where: { id: routeParam(req.params.id), organizationId: user.organizationId ?? "", deletedAt: null } });
+    const entry = await prisma.journalEntry.findFirst({ where: { id: routeParam(req.params.id), ...journalOrganizationScope(user.organizationId), deletedAt: null } });
     if (!entry) return res.status(404).json({ error: "Journal entry not found" });
     if (entry.status !== "POSTED") return res.status(400).json({ error: "Only POSTED entries can be voided" });
 
@@ -969,7 +1000,7 @@ router.get("/:id/verify-hash", async (req, res) => {
     if (!user) return res.status(401).json({ error: "User not found" });
 
     const entry = await prisma.journalEntry.findFirst({
-      where: { id: routeParam(req.params.id), organizationId: user.organizationId ?? "", deletedAt: null },
+      where: { id: routeParam(req.params.id), ...journalOrganizationScope(user.organizationId), deletedAt: null },
       include: { lines: true },
     });
     if (!entry) return res.status(404).json({ error: "Journal entry not found" });
@@ -1017,7 +1048,7 @@ router.get("/:id/approvals", async (req, res) => {
     if (!user) return res.status(401).json({ error: "User not found" });
 
     const entry = await prisma.journalEntry.findFirst({
-      where: { id: routeParam(req.params.id), organizationId: user.organizationId ?? "", deletedAt: null },
+      where: { id: routeParam(req.params.id), ...journalOrganizationScope(user.organizationId), deletedAt: null },
       select: { id: true },
     });
     if (!entry) return res.status(404).json({ error: "Journal entry not found" });

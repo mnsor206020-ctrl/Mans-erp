@@ -1,7 +1,8 @@
 /**
  * Read-only security audit of the real routers with an IN-MEMORY Prisma double.
  * Never imports the live Prisma client or writes to either development database.
- * it.fails cases document confirmed missing guards, NOT completed security fixes.
+ * Regression coverage for the previously confirmed guards. Real PostgreSQL/HTTP
+ * coverage lives in organization-isolation.postgres.test.ts.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import express from "express";
@@ -240,48 +241,46 @@ describe("journal and fiscal-year read boundaries", () => {
   });
 });
 
-describe("CONFIRMED SECURITY GAPS — current behavior reproduced without live database access", () => {
-  it("documents both organizations' fiscal years returned to an unassigned non-platform user", async () => {
+describe("previous security-gap reproductions now reject cross-organization access", () => {
+  it("denies an unassigned non-platform user's fiscal-year list", async () => {
     const res = await request(app).get("/fiscal-years").set("x-test-identity", "unassigned");
-    expect(res.status).toBe(200);
-    expect(res.body.map((year: { id: string }) => year.id)).toEqual([FY_A, FY_B]);
+    expect(res.status).toBe(400);
+    expect(db.fiscalYear.findMany).not.toHaveBeenCalled();
   });
-  it("documents foreign-organization fiscal-year creation with a scoped create permission", async () => {
+  it("denies foreign-organization fiscal-year creation despite the create permission", async () => {
     const res = await request(app).post("/fiscal-years").set("x-test-identity", "a").send({
       organizationId: B, nameEn: "TEST foreign year", nameAr: "اختبار سنة أجنبية",
       startDate: "2027-01-01", endDate: "2027-12-31",
     });
-    expect(res.status).toBe(201);
-    expect(db.fiscalYear.create).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ organizationId: B }),
-    }));
+    expect(res.status).toBe(403);
+    expect(db.fiscalYear.create).not.toHaveBeenCalled();
   });
-  it("documents an owned draft accepting another organization's fiscal year", async () => {
+  it("rejects another organization's fiscal year on an owned draft", async () => {
     entries[0]!.status = "DRAFT";
     const res = await request(app).patch(`/journal-entries/${ENTRY_A}`)
       .set("x-test-identity", "a").send({ fiscalYearId: FY_B });
-    expect(res.status).toBe(200);
-    expect(db.fiscalYear.findFirst).not.toHaveBeenCalled();
-    expect(entries[0]!.fiscalYearId).toBe(FY_B);
+    expect(res.status).toBe(400);
+    expect(db.fiscalYear.findFirst).toHaveBeenCalled();
+    expect(entries[0]!.fiscalYearId).toBe(FY_A);
   });
-  it("documents trial balance including foreign entries with inconsistent fiscal-year linkage", async () => {
+  it("excludes foreign entries with inconsistent fiscal-year linkage", async () => {
     // A conditional fixture, NOT an assertion that the live TEST data are corrupt.
-    // The real PATCH route above permits creating this foreign-year linkage on a draft.
+    // Legacy inconsistent data must not bypass the report's organization guard.
     entries[0]!.fiscalYearId = FY_B;
     const res = await request(app).get("/reports/trial-balance")
       .set("x-test-identity", "b").query({ fiscalYearId: FY_B });
     expect(res.status).toBe(200);
-    expect(res.body).toMatchObject({ totalDebit: 10700, totalCredit: 10700 });
+    expect(res.body).toMatchObject({ totalDebit: 9000, totalCredit: 9000 });
   });
 });
 
-describe("PENDING SECURITY FIXES — four explicit expected failures, not isolation guarantees", () => {
-  it.fails("must deny fiscal-year listing for a user without an organization", async () => {
+describe("four required security guards", () => {
+  it("must deny fiscal-year listing for a user without an organization", async () => {
     const res = await request(app).get("/fiscal-years").set("x-test-identity", "unassigned");
     expect([400, 403]).toContain(res.status);
     expect(db.fiscalYear.findMany).not.toHaveBeenCalled();
   });
-  it.fails("must refuse a foreign organization on fiscal-year creation", async () => {
+  it("must refuse a foreign organization on fiscal-year creation", async () => {
     const res = await request(app).post("/fiscal-years").set("x-test-identity", "a").send({
       organizationId: B, nameEn: "TEST foreign year", nameAr: "اختبار سنة أجنبية",
       startDate: "2027-01-01", endDate: "2027-12-31",
@@ -289,14 +288,14 @@ describe("PENDING SECURITY FIXES — four explicit expected failures, not isolat
     expect([400, 403, 404]).toContain(res.status);
     expect(db.fiscalYear.create).not.toHaveBeenCalled();
   });
-  it.fails("must refuse a foreign fiscal year on draft update", async () => {
+  it("must refuse a foreign fiscal year on draft update", async () => {
     entries[0]!.status = "DRAFT";
     const res = await request(app).patch(`/journal-entries/${ENTRY_A}`)
       .set("x-test-identity", "a").send({ fiscalYearId: FY_B });
     expect([400, 403, 404]).toContain(res.status);
     expect(db.journalEntry.update).not.toHaveBeenCalled();
   });
-  it.fails("must exclude foreign journal entries from trial balance despite inconsistent linkage", async () => {
+  it("must exclude foreign journal entries from trial balance despite inconsistent linkage", async () => {
     entries[0]!.fiscalYearId = FY_B;
     const res = await request(app).get("/reports/trial-balance")
       .set("x-test-identity", "b").query({ fiscalYearId: FY_B });

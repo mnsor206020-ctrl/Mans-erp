@@ -28,3 +28,17 @@ mtime_ms = 1794568540014
 storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:353dbcab-c6b1-436f-bc91-c4c0aaadd698/cf7ceb51-5b32-4224-bdb1-077e850dc678/ff0aa275-59e3-4df8-a366-96fb636142e7"
 storage_version_token = "1794568557882218"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "kvfFn0_tjJ9oAFSv1u5Ja"
+uri = "file://.local/reports/organization-isolation-fixes.md"
+type = "text"
+title = "تقرير إصلاح ثغرات عزل المنظمات الأربع"
+description = "تفاصيل الأسباب والإصلاحات والملفات، ونتائج 205 اختبارات، وحدود التحقق من Clerk ونسخة TEST المستقلة."
+logical_id = "1dbb0353-1cd0-456f-a95b-92062947f2b9"
+content_hash = "sha256:eb237c5142c4b6f13e1b57ff46703dccc6e1e93ca2a004e81d9f319751a06762"
+size = 11581
+mtime_ms = 1794570739649
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:353dbcab-c6b1-436f-bc91-c4c0aaadd698/1dbb0353-1cd0-456f-a95b-92062947f2b9/acfafc2c-4374-46fa-a961-15f4f0d1f447"
+storage_version_token = "1794570771281859"
+content_type = "text/markdown"

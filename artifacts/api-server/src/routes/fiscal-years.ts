@@ -44,13 +44,14 @@ router.get("/", async (req, res) => {
     const user = await getUser(userId!);
     if (!user) return res.status(401).json({ error: "User not found" });
 
+    if (!user.organizationId) return res.status(400).json({ error: "User has no organization" });
     const { status } = req.query;
-    const orgId = user.organizationId || undefined;
+    const orgId = user.organizationId;
 
     const fiscalYears = await prisma.fiscalYear.findMany({
       where: {
         deletedAt: null,
-        ...(orgId ? { organizationId: orgId } : {}),
+        organizationId: orgId,
         ...(status ? { status: status as any } : {}),
       },
       orderBy: [{ startDate: "desc" }],
@@ -69,6 +70,7 @@ router.post("/", requirePermission("fiscal_years", "create"), async (req, res) =
     const { userId } = getAuth(req);
     const user = await getUser(userId!);
     if (!user) return res.status(401).json({ error: "User not found" });
+    if (!user.organizationId) return res.status(400).json({ error: "User has no organization" });
 
     const parsed = createSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -76,9 +78,9 @@ router.post("/", requirePermission("fiscal_years", "create"), async (req, res) =
     }
 
     const { organizationId, nameEn, nameAr, startDate, endDate, isDefault } = parsed.data;
-    const orgId = organizationId || user.organizationId;
-    if (!orgId) {
-      return res.status(400).json({ error: "organizationId is required" });
+    const orgId = user.organizationId;
+    if (organizationId && organizationId !== orgId) {
+      return res.status(403).json({ error: "Forbidden: organization does not match the authenticated user" });
     }
 
     const fy = await prisma.fiscalYear.create({
@@ -131,7 +133,7 @@ router.post("/:id/close", requirePermission("fiscal_years", "update"), async (re
 
     // ── 2. Check for existing CLOSING entries (idempotency guard) ─────────────
     const existingClosing = await prisma.journalEntry.findFirst({
-      where: { fiscalYearId: fy.id, type: "CLOSING", deletedAt: null },
+      where: { organizationId: user.organizationId, fiscalYearId: fy.id, type: "CLOSING", deletedAt: null },
     });
     if (existingClosing) {
       res.status(400).json({ error: "Closing entries already exist for this fiscal year." });
@@ -156,7 +158,7 @@ router.post("/:id/close", requirePermission("fiscal_years", "update"), async (re
     // ── 4. Aggregate POSTED journal entry lines for REVENUE & EXPENSE accounts ─
     const postedLines = await prisma.journalEntryLine.findMany({
       where: {
-        journalEntry: { fiscalYearId: fy.id, status: "POSTED", deletedAt: null },
+        journalEntry: { organizationId: user.organizationId, fiscalYearId: fy.id, status: "POSTED", deletedAt: null },
         account: { type: { in: ["REVENUE", "EXPENSE"] }, organizationId: user.organizationId },
       },
       include: {
@@ -314,7 +316,7 @@ router.post("/:id/rollover", requirePermission("fiscal_years", "update"), async 
 
     // ── 2. Prevent duplicate rollovers ──────────────────────────────────────────
     const existingNext = await prisma.fiscalYear.findFirst({
-      where: { previousFiscalYearId: sourceFY.id, deletedAt: null },
+      where: { organizationId: user.organizationId, previousFiscalYearId: sourceFY.id, deletedAt: null },
     });
     if (existingNext) {
       res.status(400).json({ error: "This fiscal year has already been rolled over." });
@@ -363,6 +365,7 @@ router.post("/:id/rollover", requirePermission("fiscal_years", "update"), async 
       where: {
         journalEntry: {
           organizationId: user.organizationId,
+          fiscalYear: { organizationId: user.organizationId },
           status:  "POSTED",
           entryDate: { lte: sourceFY.endDate },
           deletedAt: null,
