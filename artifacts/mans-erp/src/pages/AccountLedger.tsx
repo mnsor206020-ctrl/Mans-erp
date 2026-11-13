@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/select";
 import { BookText, RefreshCw, FileDown } from "lucide-react";
 import { buildCsv, downloadCsv, generateFilename } from "@/lib/csv";
+import { ledgerErrorMessage, retryLedgerRequest } from "@/lib/account-ledger-ui";
 
 function formatAmount(n: number): string {
   return n.toLocaleString("en-SA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -60,7 +61,7 @@ export default function AccountLedger() {
   const { data: ledgerRaw, isLoading: ledgerLoading, error: ledgerError, refetch } = useGetAccountLedger(
     loadParams ?? { accountId: "", from: "", to: "" },
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    { query: { enabled: !!loadParams } as any },
+    { query: { enabled: !!loadParams, retry: retryLedgerRequest } as any },
   );
   const ledger = ledgerRaw as AccountLedgerFull | undefined;
 
@@ -192,7 +193,7 @@ export default function AccountLedger() {
       ) : ledgerError ? (
         <Card>
           <CardContent role="alert" className="py-8 text-destructive">
-            {ledgerError.message || t("common.error")}
+            {ledgerErrorMessage(ledgerError, t("common.error"))}
           </CardContent>
         </Card>
       ) : ledger ? (
