@@ -1,0 +1,16 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "Hj8AtVKZxhEiyp3mcB_Xs"
+uri = "file://.local/reports/test-organization-isolation.md"
+type = "text"
+title = "تقرير عزل بيانات TEST وخطة التنظيف"
+description = "نتائج فحص المسارات والاختبارات المعزولة، أربع حمايات ناقصة، وحدود التحقق الحي وخيارات التنظيف دون تنفيذها."
+logical_id = "9b22709c-c764-4fd5-8e5e-069f824a2a43"
+content_hash = "sha256:6d9fb3dbe5f527629bd11ad9acd23a12d6fb3d6e0f64274180adc1555399eeee"
+size = 12120
+mtime_ms = 1794568359702
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:353dbcab-c6b1-436f-bc91-c4c0aaadd698/9b22709c-c764-4fd5-8e5e-069f824a2a43/261cecec-390c-4529-9c8e-2739ac697292"
+storage_version_token = "1794568396157663"
+content_type = "text/markdown"
