@@ -360,11 +360,13 @@ router.post("/:id/rollover", requirePermission("fiscal_years", "update"), async 
       return;
     }
 
-    // ── 5. Aggregate cumulative POSTED balances for BALANCE SHEET accounts ─────
+    // Source-year balances already include its opening entry. Historical years
+    // must not be added again when carrying that balance into the next year.
     const postedLines = await prisma.journalEntryLine.findMany({
       where: {
         journalEntry: {
           organizationId: user.organizationId,
+          fiscalYearId: sourceFY.id,
           fiscalYear: { organizationId: user.organizationId },
           status:  "POSTED",
           entryDate: { lte: sourceFY.endDate },

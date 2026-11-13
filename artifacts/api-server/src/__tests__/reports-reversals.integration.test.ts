@@ -4,7 +4,7 @@ import request from "supertest";
 
 const db = vi.hoisted(() => ({
   user: { findFirst: vi.fn() },
-  fiscalYear: { findFirst: vi.fn() },
+  fiscalYear: { findFirst: vi.fn(), findMany: vi.fn() },
   chartOfAccount: { findFirst: vi.fn() },
   journalEntryLine: { findMany: vi.fn() },
 }));
@@ -54,6 +54,10 @@ beforeEach(() => {
   ];
   db.user.findFirst.mockResolvedValue({ id: "user", organizationId: "org" });
   db.fiscalYear.findFirst.mockResolvedValue({ id: "fy", organizationId: "org" });
+  db.fiscalYear.findMany.mockResolvedValue([{
+    id: "fy", organizationId: "org", previousFiscalYearId: null,
+    startDate: new Date("2026-01-01"), endDate: new Date("2026-12-31"),
+  }]);
   db.chartOfAccount.findFirst.mockResolvedValue(cash);
   // Honor the actual report predicates: a fixed mock return would hide the bug.
   db.journalEntryLine.findMany.mockImplementation(({ where }: { where: LineWhere }) =>

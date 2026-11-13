@@ -57,7 +57,7 @@ export default function AccountLedger() {
   });
   const accounts = accountsPage?.data ?? [];
 
-  const { data: ledgerRaw, isLoading: ledgerLoading, refetch } = useGetAccountLedger(
+  const { data: ledgerRaw, isLoading: ledgerLoading, error: ledgerError, refetch } = useGetAccountLedger(
     loadParams ?? { accountId: "", from: "", to: "" },
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     { query: { enabled: !!loadParams } as any },
@@ -187,6 +187,12 @@ export default function AccountLedger() {
             {[...Array(8)].map((_, i) => (
               <Skeleton key={i} className="h-9 w-full" />
             ))}
+          </CardContent>
+        </Card>
+      ) : ledgerError ? (
+        <Card>
+          <CardContent role="alert" className="py-8 text-destructive">
+            {ledgerError.message || t("common.error")}
           </CardContent>
         </Card>
       ) : ledger ? (

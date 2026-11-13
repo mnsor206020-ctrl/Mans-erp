@@ -69,8 +69,10 @@ const revenueA = { ...cashA, id: "revenue-a", code: "4000", type: "REVENUE", nat
 const revenueB = { ...revenueA, id: "revenue-b", organizationId: B };
 const accounts = [cashA, cashB, revenueA, revenueB];
 const fiscalYears = [
-  { id: FY_A, organizationId: A, deletedAt: null, status: "OPEN" },
-  { id: FY_B, organizationId: B, deletedAt: null, status: "OPEN" },
+  { id: FY_A, organizationId: A, deletedAt: null, status: "OPEN",
+    startDate: new Date("2026-01-01"), endDate: new Date("2026-12-31"), previousFiscalYearId: null },
+  { id: FY_B, organizationId: B, deletedAt: null, status: "OPEN",
+    startDate: new Date("2026-01-01"), endDate: new Date("2026-12-31"), previousFiscalYearId: null },
 ];
 let entries: Entry[];
 type Line = {

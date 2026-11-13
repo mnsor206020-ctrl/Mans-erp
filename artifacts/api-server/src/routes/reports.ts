@@ -136,18 +136,76 @@ router.get("/account-ledger", async (req, res): Promise<void> => {
       return;
     }
 
+    const fromDate = new Date(from);
+    const toDate = new Date(to);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)
+      || !Number.isFinite(fromDate.getTime()) || !Number.isFinite(toDate.getTime())
+      || fromDate.toISOString().slice(0, 10) !== from || toDate.toISOString().slice(0, 10) !== to
+      || fromDate > toDate) {
+      res.status(400).json({ error: "نطاق تواريخ دفتر الأستاذ غير صالح" });
+      return;
+    }
+
+    // Keep the existing account/from/to contract. Resolve the fiscal scope
+    // from dates instead of adding all historical activity to a carried opening.
+    const years = await prisma.fiscalYear.findMany({
+      where: {
+        organizationId: user.organizationId,
+        deletedAt: null,
+        startDate: { lte: toDate },
+        endDate: { gte: fromDate },
+      },
+      orderBy: { startDate: "asc" },
+    });
+    const firstYear = years[0];
+    if (!firstYear || firstYear.startDate > fromDate || years[years.length - 1]!.endDate < toDate) {
+      res.status(400).json({ error: "اختر فترة مغطاة بسنوات مالية داخل منظمتك" });
+      return;
+    }
+    for (let i = 1; i < years.length; i++) {
+      const previous = years[i - 1]!;
+      const current = years[i]!;
+      if (current.startDate.getTime() !== previous.endDate.getTime() + 86_400_000
+        || current.previousFiscalYearId !== previous.id) {
+        res.status(400).json({ error: "العرض متعدد السنوات يتطلب سنوات متتابعة مرتبطة بترحيل الأرصدة دون تداخل" });
+        return;
+      }
+      // The schema does not distinguish a generated carry-forward from another
+      // start-date OPENING. Do not silently omit multiple ambiguous openings.
+      const openingCount = await prisma.journalEntry.count({
+        where: {
+          organizationId: user.organizationId, fiscalYearId: current.id,
+          type: "OPENING", entryDate: current.startDate,
+          status: { in: ["POSTED", "REVERSED"] }, deletedAt: null,
+        },
+      });
+      if (openingCount !== 1) {
+        res.status(400).json({ error: "تعذر تحديد افتتاحي ترحيل واحد للسنة التالية؛ راجع الأرصدة قبل عرض عدة سنوات" });
+        return;
+      }
+    }
+    const yearScopes = years.map((year, index) => ({
+      fiscalYearId: year.id,
+      entryDate: { gte: year.startDate, lte: year.endDate },
+      // Only suppress a successor's start-date opening when its predecessor
+      // is already represented. Preserve the first year's opening and all
+      // other dated OPENING entries; never filter OPENING globally.
+      ...(index > 0 ? { NOT: { type: "OPENING" as const, entryDate: year.startDate } } : {}),
+    }));
+
     // Reversed originals retain their posted amounts; their reversals offset them.
-    // Beginning balance includes both statuses strictly before `from`.
+    // The source year's opening represents prior history exactly once.
     const priorLines = await prisma.journalEntryLine.findMany({
       where: {
         accountId,
         account: { organizationId: user.organizationId },
         journalEntry: {
           organizationId: user.organizationId,
+          fiscalYearId: firstYear.id,
           fiscalYear: { organizationId: user.organizationId },
           status:         { in: ["POSTED", "REVERSED"] },
           deletedAt:      null,
-          entryDate:      { lt: new Date(from) },
+          entryDate:      { gte: firstYear.startDate, lt: fromDate },
         },
       },
       select: { debit: true, credit: true },
@@ -166,7 +224,8 @@ router.get("/account-ledger", async (req, res): Promise<void> => {
           fiscalYear: { organizationId: user.organizationId },
           status:         { in: ["POSTED", "REVERSED"] },
           deletedAt:      null,
-          entryDate:      { gte: new Date(from), lte: new Date(to) },
+          OR: yearScopes,
+          entryDate:      { gte: fromDate, lte: toDate },
         },
       },
       include: {

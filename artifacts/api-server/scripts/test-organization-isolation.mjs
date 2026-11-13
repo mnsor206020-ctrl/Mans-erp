@@ -39,10 +39,11 @@ try {
   run("pnpm", ["--filter", "@workspace/prisma", "exec", "prisma", "db", "push",
     "--schema", "prisma/schema.prisma", "--skip-generate"], { stdio: "inherit" });
   run("pnpm", ["--filter", "@workspace/api-server", "exec", "vitest", "run",
+    ...(process.argv.slice(2).length ? process.argv.slice(2) : [
     "src/__tests__/organization-isolation.postgres.test.ts",
     "src/__tests__/organization-isolation.audit.test.ts",
     "src/__tests__/reports-reversals.integration.test.ts",
-    "src/__tests__/authorize.unit.test.ts"], { stdio: "inherit" });
+    "src/__tests__/authorize.unit.test.ts"])], { stdio: "inherit" });
 } catch (error) {
   process.exitCode = 1;
   console.error("Isolated API tests failed:", error.message);

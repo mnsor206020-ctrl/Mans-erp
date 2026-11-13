@@ -42,3 +42,17 @@ mtime_ms = 1794570739649
 storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:353dbcab-c6b1-436f-bc91-c4c0aaadd698/1dbb0353-1cd0-456f-a95b-92062947f2b9/acfafc2c-4374-46fa-a961-15f4f0d1f447"
 storage_version_token = "1794570771281859"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "FvQUfCRHQJnZMIISIbFyE"
+uri = "file://.local/reports/opening-balances-execution.md"
+type = "text"
+title = "تقرير إصلاح الأرصدة الافتتاحية للمراجعة"
+description = "نتائج السنوات الأربع ودفتر الأستاذ متعدد السنوات، الملفات المعدلة، والقيود المتبقية."
+logical_id = "1a23ede1-59ef-4406-949f-e7b6523039a9"
+content_hash = "sha256:35e115269ed9c92c315a57896343cc38f86d1a792e18f01a29684801a09c4e02"
+size = 6037
+mtime_ms = 1794588491449
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:353dbcab-c6b1-436f-bc91-c4c0aaadd698/1a23ede1-59ef-4406-949f-e7b6523039a9/dfab7d66-132c-4249-95a7-3c725c291c42"
+storage_version_token = "1794588512817647"
+content_type = "text/markdown"
