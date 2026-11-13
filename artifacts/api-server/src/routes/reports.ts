@@ -497,6 +497,7 @@ router.get("/income-statement", async (req, res): Promise<void> => {
           fiscalYear: { organizationId: user.organizationId },
           status:    { in: ["POSTED", "REVERSED"] },
           deletedAt: null,
+          type:      { not: "CLOSING" },
           entryDate: { gte: new Date(from), lte: new Date(to) },
         },
       },

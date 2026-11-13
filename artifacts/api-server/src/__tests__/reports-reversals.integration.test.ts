@@ -18,9 +18,9 @@ const cash = { id: "cash", code: "1000", nameEn: "Cash", nameAr: "النقد", t
 const revenue = { ...cash, id: "revenue", code: "4000", nameEn: "Revenue", type: "REVENUE", nature: "CREDIT" };
 const expense = { ...cash, id: "expense", code: "5000", nameEn: "Expense", type: "EXPENSE" };
 
-function posting(id: string, status: string, date: string, debit: typeof cash, credit: typeof cash, amount: number) {
+function posting(id: string, status: string, date: string, debit: typeof cash, credit: typeof cash, amount: number, type = "MANUAL") {
   const journalEntry = {
-    id, number: id, status, entryDate: new Date(date), fiscalYearId: "fy", organizationId: "org",
+    id, number: id, status, type, entryDate: new Date(date), fiscalYearId: "fy", organizationId: "org",
     deletedAt: null as Date | null, descriptionEn: null, descriptionAr: null, reference: null,
   };
   return [
@@ -38,6 +38,7 @@ type LineWhere = {
   account?: { type?: { in: string[] }; organizationId?: string; deletedAt?: null };
   journalEntry?: {
     status?: string | { in: string[] };
+    type?: { not: string };
     fiscalYearId?: string;
     organizationId?: string;
     deletedAt?: null;
@@ -74,12 +75,90 @@ beforeEach(() => {
       if ("deletedAt" in je && entry.deletedAt !== null) return false;
       if (typeof je.status === "string" && entry.status !== je.status) return false;
       if (typeof je.status === "object" && !je.status.in.includes(entry.status)) return false;
+      if (je.type && entry.type === je.type.not) return false;
       if (je.entryDate?.lt && entry.entryDate >= je.entryDate.lt) return false;
       if (je.entryDate?.gte && entry.entryDate < je.entryDate.gte) return false;
       if (je.entryDate?.lte && entry.entryDate > je.entryDate.lte) return false;
       return true;
     }).sort((a, b) => a.journalEntry.entryDate.getTime() - b.journalEntry.entryDate.getTime())),
   );
+});
+
+describe("income statement preserves activity after closing", () => {
+  const equity = { ...cash, id: "equity", code: "3000", nameEn: "Net assets", type: "EQUITY", nature: "CREDIT" };
+
+  function activity() {
+    return [
+      ...posting("receipt", "POSTED", "2026-01-10", cash, revenue, 1500, "RECEIPT"),
+      ...posting("payment", "POSTED", "2026-02-20", expense, cash, 200, "PAYMENT"),
+    ];
+  }
+
+  function closing() {
+    // One balanced closing journal: Dr Revenue 1500, Cr Expense 200, Cr Equity 1300.
+    return [
+      posting("closing", "POSTED", "2026-12-31", revenue, equity, 1500, "CLOSING")[0]!,
+      posting("closing", "POSTED", "2026-12-31", equity, expense, 200, "CLOSING")[1]!,
+      posting("closing", "POSTED", "2026-12-31", revenue, equity, 1300, "CLOSING")[1]!,
+    ];
+  }
+
+  it("keeps revenue 1500, expenses 200 and surplus 1300 before and after closing", async () => {
+    lines = activity();
+    const before = await income();
+    expect(before.status).toBe(200);
+    expect(before.body).toMatchObject({ totalRevenue: 1500, totalExpenses: 200, netIncome: 1300 });
+    lines.push(...closing());
+    db.fiscalYear.findFirst.mockResolvedValue({ id: "fy", organizationId: "org", status: "CLOSED" });
+    const after = await income();
+    expect(after.status).toBe(200);
+    expect(after.body).toEqual(before.body);
+    expect(db.journalEntryLine.findMany).toHaveBeenLastCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        account: expect.objectContaining({ organizationId: "org" }),
+        journalEntry: expect.objectContaining({
+          fiscalYearId: "fy", organizationId: "org",
+          fiscalYear: { organizationId: "org" },
+          status: { in: ["POSTED", "REVERSED"] },
+          type: { not: "CLOSING" },
+          entryDate: { gte: new Date("2026-01-01"), lte: new Date("2026-12-31") },
+        }),
+      }),
+    }));
+  });
+
+  it("keeps other journal types and reversed originals with their reversals", async () => {
+    lines = activity();
+    lines.push(
+      ...posting("extra-original", "REVERSED", "2026-03-01", cash, revenue, 700),
+      ...posting("extra-reversal", "POSTED", "2026-03-02", revenue, cash, 700, "REVERSAL"),
+      ...closing(),
+    );
+    const res = await income();
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ totalRevenue: 1500, totalExpenses: 200, netIncome: 1300 });
+  });
+
+  it("still includes closing entries in trial balance, balance sheet and ledger", async () => {
+    lines = [...activity(), ...closing()];
+    const tb = await trial();
+    expect(tb.status).toBe(200);
+    expect(tb.body.lines).toEqual(expect.arrayContaining([
+      expect.objectContaining({ accountId: "revenue", balance: 0 }),
+      expect.objectContaining({ accountId: "expense", balance: 0 }),
+      expect.objectContaining({ accountId: "equity", totalCredit: 1300, balance: -1300 }),
+    ]));
+    expect(tb.body).toMatchObject({ totalDebit: 3200, totalCredit: 3200 });
+    const bs = await balance();
+    expect(bs.status).toBe(200);
+    expect(bs.body).toMatchObject({ totalAssets: 1300, totalEquity: 1300, isBalanced: true });
+    db.chartOfAccount.findFirst.mockResolvedValue(revenue);
+    const ledger = await request(app).get("/reports/account-ledger")
+      .query({ accountId: "revenue", from: "2026-01-01", to: "2026-12-31" });
+    expect(ledger.status).toBe(200);
+    expect(ledger.body).toMatchObject({ totalDebit: 1500, totalCredit: 1500, endingBalance: 0 });
+    expect(ledger.body.lines).toHaveLength(2);
+  });
 });
 
 const trial = (asOf = "2026-12-31") =>
