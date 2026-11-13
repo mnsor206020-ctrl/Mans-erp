@@ -14,3 +14,17 @@ mtime_ms = 1794568359702
 storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:353dbcab-c6b1-436f-bc91-c4c0aaadd698/9b22709c-c764-4fd5-8e5e-069f824a2a43/261cecec-390c-4529-9c8e-2739ac697292"
 storage_version_token = "1794568396157663"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "gFKZlfv7RGaAUiD42rhLP"
+uri = "file://.local/reports/fiscal-year-create-permission.md"
+type = "text"
+title = "تشخيص صلاحية إنشاء السنة المالية"
+description = "سبب 403 وجدول الأدوار والتوصية بعدم تغيير المنح، مع نتائج الاختبارات وحدود التحقق من TEST."
+logical_id = "cf7ceb51-5b32-4224-bdb1-077e850dc678"
+content_hash = "sha256:2f97ce8fcb6a9dcf4e016e6fd1f88566545a894dbe320fa8d15723bc36799be0"
+size = 8489
+mtime_ms = 1794568540014
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:353dbcab-c6b1-436f-bc91-c4c0aaadd698/cf7ceb51-5b32-4224-bdb1-077e850dc678/ff0aa275-59e3-4df8-a366-96fb636142e7"
+storage_version_token = "1794568557882218"
+content_type = "text/markdown"
