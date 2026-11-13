@@ -5,6 +5,13 @@ import { OrganizationPageGate } from "@/components/OrganizationPageGate";
 import { useToast } from "@/hooks/use-toast";
 import { chartAccountDeleteError } from "@/lib/chart-account-delete-error";
 import {
+  createAccountFormSession,
+  syncAccountFormSession,
+  type AccountFormData,
+  type AccountType,
+  type AccountNature,
+} from "@/lib/chart-account-form-session";
+import {
   useGetChartOfAccountsTree,
   useCreateChartOfAccount,
   useUpdateChartOfAccount,
@@ -65,33 +72,6 @@ import {
 import { cn } from "@/lib/utils";
 import { ChartImportDialog } from "@/components/ChartImportDialog";
 
-// ── Types ────────────────────────────────────────────────────────────────────
-
-type AccountType = "ASSET" | "LIABILITY" | "EQUITY" | "REVENUE" | "EXPENSE";
-type AccountNature = "DEBIT" | "CREDIT";
-
-interface AccountFormData {
-  parentId: string | null;
-  code: string;
-  nameEn: string;
-  nameAr: string;
-  type: AccountType | "";
-  nature: AccountNature | "";
-  isGroup: boolean;
-  notes: string;
-}
-
-const DEFAULT_FORM: AccountFormData = {
-  parentId: null,
-  code: "",
-  nameEn: "",
-  nameAr: "",
-  type: "",
-  nature: "",
-  isGroup: false,
-  notes: "",
-};
-
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 const TYPE_CONFIG: Record<AccountType, { label: string; labelAr: string; color: string; dot: string }> = {
@@ -139,22 +119,26 @@ function AccountFormDialog({
   title,
 }: AccountFormDialogProps) {
   const { lang, dir, t } = useLanguage();
-  const [form, setForm] = useState<AccountFormData>(initialData || DEFAULT_FORM);
+  const [session, setSession] = useState(() => createAccountFormSession(open, initialData));
+  const nextSession = syncAccountFormSession(session, open, initialData);
+  // React retries this component before committing children, so stale values
+  // never appear when controlled open/account props begin a new session.
+  if (nextSession !== session) setSession(nextSession);
+  const form = nextSession.values;
 
   const setField = <K extends keyof AccountFormData>(key: K, val: AccountFormData[K]) => {
-    setForm((prev) => {
-      const next = { ...prev, [key]: val };
+    setSession((prev) => {
+      const next = { ...prev.values, [key]: val };
       if (key === "type") {
         next.nature = defaultNature(val as AccountType | "") as AccountNature | "";
       }
-      return next;
+      return { ...prev, values: next };
     });
   };
 
-  // Reset form when dialog opens
+  // Controlled open changes (including successful saves) are handled above.
   const handleOpenChange = (o: boolean) => {
     if (!o) onClose();
-    else setForm(initialData || DEFAULT_FORM);
   };
 
   // Suggest next code based on parent
