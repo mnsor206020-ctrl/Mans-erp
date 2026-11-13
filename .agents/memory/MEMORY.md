@@ -15,3 +15,4 @@
 - [Chart import policy](chart-import-policy.md) — account codes are opaque identifiers; hierarchy comes from explicit parents, never numbering conventions.
 - [Owner permission scope](owner-permission-scope.md) — the creator requested full rights for their own account within their organization, not platform-wide Super Admin.
 - [Profile permission payload](profile-permission-payload.md) — current-user responses contain nested grants missing from generated types; verify serialization before changing contracts.
+- [Test environment isolation](test-environment-isolation.md) — verify project-scoped development resources; do not require legacy Neon endpoint IDs on current Replit databases.
