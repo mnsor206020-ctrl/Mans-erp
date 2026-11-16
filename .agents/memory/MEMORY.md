@@ -17,3 +17,4 @@
 - [Profile permission payload](profile-permission-payload.md) — current-user responses contain nested grants missing from generated types; verify serialization before changing contracts.
 - [Test environment isolation](test-environment-isolation.md) — verify project-scoped development resources; do not require legacy Neon endpoint IDs on current Replit databases.
 - [Opening balance review](opening-balance-review.md) — require execution-report and multi-year ledger review before accepting the duplication fix; preserve historical entries.
+- [Closed-year policy](closed-year-policy.md) — CLOSED journals are immutable; general routes never reverse or void CLOSING; no correction workflow in this phase.

@@ -336,23 +336,23 @@ export default function JournalEntries() {
                               <Eye className="w-4 h-4 me-2" />
                               {jt(lang, "view")}
                             </DropdownMenuItem>
-                            {canUpdate && ["DRAFT", "UNDER_REVIEW"].includes(entry.status) && (
+                            {canUpdate && entry.fiscalYear?.status === "OPEN" && ["DRAFT", "UNDER_REVIEW"].includes(entry.status) && (
                               <DropdownMenuItem onClick={() => navigate(`/journal-entries/${entry.id}/edit`)}>
                                 <Pencil className="w-4 h-4 me-2" />
                                 {t("je.edit")}
                               </DropdownMenuItem>
                             )}
-                            {canUpdate && entry.status === "DRAFT" && (
+                            {canUpdate && entry.fiscalYear?.status === "OPEN" && entry.status === "DRAFT" && (
                               <DropdownMenuItem onClick={() => setSubmitTarget({ id: entry.id, number: entry.number })}>
                                 <Send className="w-4 h-4 me-2" />
                                 {t("je.submit")}
                               </DropdownMenuItem>
                             )}
-                            {canCreate && <DropdownMenuItem onClick={() => copyMutation.mutate({ id: entry.id, data: {} } as any)}>
+                            {canCreate && entry.fiscalYear?.status === "OPEN" && <DropdownMenuItem onClick={() => copyMutation.mutate({ id: entry.id, data: {} } as any)}>
                               <Copy className="w-4 h-4 me-2" />
                               {t("je.copy")}
                             </DropdownMenuItem>}
-                            {canDelete && entry.status === "DRAFT" && (
+                            {canDelete && entry.fiscalYear?.status === "OPEN" && entry.status === "DRAFT" && (
                               <>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem

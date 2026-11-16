@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { canChangeBankingJournal, getApiErrorMessage } from "@/lib/journal-entry-ui";
 import { useLanguage } from "@/lib/language-provider";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -101,7 +102,7 @@ export default function PettyCash() {
           invalidate();
         },
         onError: (err: any) => {
-          toast({ title: err?.response?.data?.error ?? t("common.error"), variant: "destructive" });
+          toast({ title: getApiErrorMessage(err, t("common.error")), variant: "destructive" });
           setDeleteTarget(null);
         },
       }
@@ -218,6 +219,7 @@ export default function PettyCash() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem
+                                disabled={!canChangeBankingJournal(e)}
                                 onClick={() => setDeleteTarget({ id: e.id, descriptionEn: e.descriptionEn })}
                                 className="text-destructive"
                               >

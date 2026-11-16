@@ -217,7 +217,7 @@ export default function JournalEntryDetail({ params }: Props) {
   const totalCredit = parseFloat(String(e.totalCredit || 0));
     const desc = pickDescription(e, lang);
 
-  const actions = getEntryActions(status, e.reversedByEntryId);
+  const actions = getEntryActions(status, e.reversedByEntryId, e.fiscalYear?.status, e.type);
   const canEdit = actions.canEdit && hasJournalPermission(currentUser, "update");
   const canSubmit = actions.canSubmit && hasJournalPermission(currentUser, "update");
   const canApprove = actions.canApprove && hasJournalPermission(currentUser, "approve");
@@ -259,7 +259,7 @@ export default function JournalEntryDetail({ params }: Props) {
 
             {/* Action buttons */}
             <div className="flex items-center gap-2 flex-wrap">
-              {hasJournalPermission(currentUser, "create") && <Button variant="outline" size="sm" className="gap-2" onClick={() => copyMutation.mutate({ id: e.id, data: {} } as any)} disabled={isBusy}>
+              {actions.canCopy && hasJournalPermission(currentUser, "create") && <Button variant="outline" size="sm" className="gap-2" onClick={() => copyMutation.mutate({ id: e.id, data: {} } as any)} disabled={isBusy}>
                 <Copy className="w-4 h-4" />
                 {t("je.copy")}
               </Button>}

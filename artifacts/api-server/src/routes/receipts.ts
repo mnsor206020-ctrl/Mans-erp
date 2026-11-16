@@ -1,6 +1,6 @@
-import { Router } from "express";
 import { requireAuth, getAuth } from "@clerk/express";
-import { prisma } from "@workspace/prisma";
+import { prisma as basePrisma } from "@workspace/prisma";
+import { createAccountingRouter, withJournalAccountingState } from "../lib/accounting-transaction";
 import { createSchema, updateSchema, voidSchema, formatReceiptNumber } from "../lib/receipt-utils";
 import {
   createAutoPostedJE,
@@ -9,7 +9,7 @@ import {
 } from "../lib/auto-journal-utils";
 import { requirePermission } from "../lib/authorize";
 
-const router = Router();
+const { router, prisma } = createAccountingRouter("receipts", basePrisma);
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -120,7 +120,7 @@ router.get("/", async (req, res) => {
       orderBy: { createdAt: "desc" },
     });
 
-    return res.json({ data: receipts });
+    return res.json({ data: await withJournalAccountingState(prisma, user.organizationId!, receipts) });
   } catch (err) {
     return res.status(500).json({ error: "Failed to fetch receipts" });
   }
@@ -417,7 +417,7 @@ router.post("/:id/confirm", requirePermission("receipts", "approve"), async (req
       prisma as any
     );
     if (!fiscalYear) {
-      return res.status(400).json({ error: "No open fiscal year covers this receipt date." });
+      return res.status(400).json({ error: "لا توجد سنة مالية مفتوحة لتاريخ السند؛ لا يمكن الترحيل إلى سنة مقفلة." });
     }
 
     const amountBase = Number(existing.amountBase);

@@ -1,13 +1,13 @@
-import { Router } from "express";
 import { getAuth } from "@clerk/express";
-import { prisma, type JournalEntryAttachment } from "@workspace/prisma";
+import { prisma as basePrisma, type JournalEntryAttachment } from "@workspace/prisma";
+import { createAccountingRouter } from "../lib/accounting-transaction";
 import multer from "multer";
 import { createHash, randomUUID } from "crypto";
 import { objectStorageClient, signObjectDownloadUrl } from "../lib/objectStorage";
 import { requirePermission } from "../lib/authorize";
 import { routeParam } from "../lib/route-param";
 
-const router = Router({ mergeParams: true });
+const { router, prisma } = createAccountingRouter("attachments", basePrisma);
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 

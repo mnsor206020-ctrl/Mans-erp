@@ -110,7 +110,7 @@ export default function JournalEntryForm({ params }: Props) {
   useEffect(() => {
     if (!isEdit || !existingEntry || initializedFor.current === entryId) return;
     const e = existingEntry;
-    if (!["DRAFT", "UNDER_REVIEW"].includes(e.status)) {
+    if (!["DRAFT", "UNDER_REVIEW"].includes(e.status) || e.fiscalYear?.status !== "OPEN") {
       toast({ title: jt(lang, "notEditable"), description: jt(lang, "notEditableDesc"), variant: "destructive" });
       navigate(`/journal-entries/${e.id}`);
       return;
@@ -217,6 +217,10 @@ export default function JournalEntryForm({ params }: Props) {
 
   const handleSubmit = () => {
     if (!loaded || !canSave || createMutation.isPending || updateMutation.isPending) return undefined;
+    if (isEdit && existingEntry?.fiscalYear?.status !== "OPEN") {
+      toast({ title: jt(lang, "notEditable"), description: "السنة المالية مقفلة؛ لا يمكن تغيير القيد.", variant: "destructive" });
+      return undefined;
+    }
     setShowErrors(true);
     const fail = (d: string) => void toast({ title: jt(lang, "validation"), description: d, variant: "destructive" });
     if (!fiscalYearId) return fail(jt(lang, "needFiscalYear"));

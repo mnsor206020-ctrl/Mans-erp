@@ -1,6 +1,6 @@
-import { Router } from "express";
 import { requireAuth, getAuth } from "@clerk/express";
-import { prisma } from "@workspace/prisma";
+import { prisma as basePrisma } from "@workspace/prisma";
+import { createAccountingRouter, withJournalAccountingState } from "../lib/accounting-transaction";
 import { createSchema, updateSchema, voidSchema, formatPaymentNumber } from "../lib/payment-utils";
 import {
   createAutoPostedJE,
@@ -9,7 +9,7 @@ import {
 } from "../lib/auto-journal-utils";
 import { requirePermission } from "../lib/authorize";
 
-const router = Router();
+const { router, prisma } = createAccountingRouter("payments", basePrisma);
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -120,7 +120,7 @@ router.get("/", async (req, res) => {
       orderBy: { createdAt: "desc" },
     });
 
-    return res.json({ data: payments });
+    return res.json({ data: await withJournalAccountingState(prisma, user.organizationId!, payments) });
   } catch (err) {
     return res.status(500).json({ error: "Failed to fetch payments" });
   }
@@ -417,7 +417,7 @@ router.post("/:id/confirm", requirePermission("payments", "approve"), async (req
       prisma as any
     );
     if (!fiscalYear) {
-      return res.status(400).json({ error: "No open fiscal year covers this payment date." });
+      return res.status(400).json({ error: "لا توجد سنة مالية مفتوحة لتاريخ السند؛ لا يمكن الترحيل إلى سنة مقفلة." });
     }
 
     const amountBase = Number(existing.amountBase);

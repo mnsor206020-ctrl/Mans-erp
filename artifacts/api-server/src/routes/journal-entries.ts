@@ -1,6 +1,6 @@
-import { Router } from "express";
 import { getAuth } from "@clerk/express";
-import { prisma } from "@workspace/prisma";
+import { prisma as basePrisma } from "@workspace/prisma";
+import { afterAccountingCommit, createAccountingRouter, inAccountingTransaction } from "../lib/accounting-transaction";
 import { computeIntegrityHash } from "../services/integrity-hash";
 import {
   formatJENumber,
@@ -17,7 +17,7 @@ import { notificationService } from "../services/notification";
 import { requirePermission } from "../lib/authorize";
 import { routeParam } from "../lib/route-param";
 
-const router = Router();
+const { router, prisma } = createAccountingRouter("journals", basePrisma);
 
 // Fail closed for every journal route, including attachments. Never infer a
 // financial organization from a body/query parameter or an empty user scope.
@@ -62,7 +62,9 @@ async function writeAuditLog(params: {
 }) {
   try {
     await (prisma.auditLog as any).create({ data: params });
-  } catch {}
+  } catch (error) {
+    if (inAccountingTransaction()) throw error;
+  }
 }
 
 async function writeApprovalRecord(params: {
@@ -96,7 +98,9 @@ async function writeApprovalRecord(params: {
         userAgent:       params.userAgent,
       },
     });
-  } catch {}
+  } catch (error) {
+    if (inAccountingTransaction()) throw error;
+  }
 }
 
 async function generateJournalNumber(orgId: string, year: number): Promise<string> {
@@ -122,6 +126,7 @@ async function emitNotification(params: {
   bodyEn: string;
   bodyAr: string;
 }): Promise<void> {
+  if (afterAccountingCommit(() => emitNotification(params))) return;
   try {
     const userIds = await getOrgUserIds(params.organizationId);
     await notificationService.emit({ ...params, entityType: "JournalEntry", userIds });
@@ -167,7 +172,7 @@ router.get("/", async (req, res) => {
         orderBy: [{ entryDate: "desc" }, { number: "desc" }],
         include: {
           createdBy:  { select: { id: true, firstNameEn: true, lastNameEn: true, email: true } },
-          fiscalYear: { select: { id: true, nameEn: true, nameAr: true } },
+          fiscalYear: { select: { id: true, nameEn: true, nameAr: true, status: true } },
           _count: { select: { lines: true } },
         },
       }),

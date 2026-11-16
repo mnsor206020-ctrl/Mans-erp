@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { canChangeBankingJournal, getApiErrorMessage } from "@/lib/journal-entry-ui";
 import { useLanguage } from "@/lib/language-provider";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -131,7 +132,7 @@ export default function Payments() {
           invalidate();
         },
         onError: (err: any) => {
-          toast({ title: err?.response?.data?.error ?? t("common.error"), variant: "destructive" });
+          toast({ title: getApiErrorMessage(err, t("common.error")), variant: "destructive" });
           setDeleteTarget(null);
         },
       }
@@ -149,7 +150,7 @@ export default function Payments() {
           invalidate();
         },
         onError: (err: any) => {
-          toast({ title: err?.response?.data?.error ?? t("common.error"), variant: "destructive" });
+          toast({ title: getApiErrorMessage(err, t("common.error")), variant: "destructive" });
           setConfirmTarget(null);
         },
       }
@@ -168,7 +169,7 @@ export default function Payments() {
           invalidate();
         },
         onError: (err: any) => {
-          toast({ title: err?.response?.data?.error ?? t("common.error"), variant: "destructive" });
+          toast({ title: getApiErrorMessage(err, t("common.error")), variant: "destructive" });
         },
       }
     );
@@ -312,7 +313,7 @@ export default function Payments() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              {p.status === "DRAFT" && (
+                              {p.status === "DRAFT" && canChangeBankingJournal(p) && (
                                 <>
                                   <DropdownMenuItem onClick={() => openEdit(p)}>
                                     <Pencil className="w-4 h-4 me-2" />
@@ -332,13 +333,13 @@ export default function Payments() {
                                   </DropdownMenuItem>
                                 </>
                               )}
-                              {p.status === "CONFIRMED" && (
+                              {p.status === "CONFIRMED" && canChangeBankingJournal(p) && (
                                 <DropdownMenuItem onClick={() => { setVoidTarget({ id: p.id, number: p.number }); setVoidReason(""); }}>
                                   <XCircle className="w-4 h-4 me-2 text-red-600" />
                                   {t("banking.void")}
                                 </DropdownMenuItem>
                               )}
-                              {(p.status === "RECONCILED" || p.status === "VOIDED") && (
+                              {(p.status === "RECONCILED" || p.status === "VOIDED" || !canChangeBankingJournal(p)) && (
                                 <DropdownMenuItem disabled className="text-muted-foreground">
                                   {lang === "ar" ? "لا إجراءات متاحة" : "No actions available"}
                                 </DropdownMenuItem>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { getApiErrorMessage } from "@/lib/journal-entry-ui";
 import { useLanguage } from "@/lib/language-provider";
 import { useToast } from "@/hooks/use-toast";
 import { unwrapPaginatedList } from "@/lib/paginated-list";
@@ -138,7 +139,7 @@ export function PettyCashFormDialog({
         },
         onError: (err) => {
           toast({
-            title: err.message || t("common.error"),
+            title: getApiErrorMessage(err, t("common.error")),
             variant: "destructive",
           });
         },

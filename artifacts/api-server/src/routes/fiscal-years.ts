@@ -1,6 +1,6 @@
-import { Router } from "express";
 import { requireAuth, getAuth } from "@clerk/express";
-import { prisma } from "@workspace/prisma";
+import { prisma as basePrisma } from "@workspace/prisma";
+import { createAccountingRouter } from "../lib/accounting-transaction";
 import { z } from "zod";
 import {
   generateJournalNumber as generateJournalNumberUtil,
@@ -8,7 +8,7 @@ import {
 import { requirePermission } from "../lib/authorize";
 import { financialJournalStatusFilter } from "../lib/financial-journal-status";
 
-const router = Router();
+const { router, prisma } = createAccountingRouter("years", basePrisma);
 
 const isoDate = z.string().refine((v) => !isNaN(new Date(v).getTime()), {
   message: "must be a valid date",

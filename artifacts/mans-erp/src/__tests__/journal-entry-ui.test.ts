@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildDescriptionPayload, initDescriptionState, newDescriptionState,
   computeTotals, isBalancedTotals, getEntryActions, getApiErrorMessage,
-  hasJournalPermission,
+  hasJournalPermission, canChangeBankingJournal,
 } from "@/lib/journal-entry-ui";
 
 describe("Single journal description editor", () => {
@@ -32,6 +32,22 @@ describe("Single journal description editor", () => {
 });
 
 describe("Accounting presentation remains consistent with the server", () => {
+  it.each(["DRAFT", "UNDER_REVIEW", "APPROVED", "POSTED", "LOCKED", "REVERSED"])(
+    "disables every journal mutation in CLOSED (%s)", (status) => {
+      expect(Object.values(getEntryActions(status, null, "CLOSED", "MANUAL"))).not.toContain(true);
+    },
+  );
+  it("retains OPEN actions but never reverses or voids CLOSING", () => {
+    expect(getEntryActions("POSTED", null, "OPEN", "MANUAL").canReverse).toBe(true);
+    expect(getEntryActions("POSTED", null, "OPEN", "CLOSING")).toMatchObject({ canReverse: false, canVoid: false, canCopy: true });
+    expect(getEntryActions("DRAFT", null, "OPEN")).toMatchObject({ canEdit: true, canSubmit: true });
+  });
+  it("disables automatic banking reversal for closed years and closing entries", () => {
+    expect(canChangeBankingJournal({ accountingState: { fiscalYearStatus: "CLOSED", type: "AUTOMATIC" } })).toBe(false);
+    expect(canChangeBankingJournal({ accountingState: { fiscalYearStatus: "OPEN", type: "CLOSING" } })).toBe(false);
+    expect(canChangeBankingJournal({ accountingState: { fiscalYearStatus: "OPEN", type: "AUTOMATIC" } })).toBe(true);
+    expect(canChangeBankingJournal({ accountingState: null })).toBe(true);
+  });
   it("totals decimal string amounts and reports imbalance", () => {
     expect(computeTotals([{ debit: "1500", credit: "" }, { debit: "", credit: "1300" }]))
       .toMatchObject({ totalDebit: 1500, totalCredit: 1300, difference: 200, isBalanced: false });

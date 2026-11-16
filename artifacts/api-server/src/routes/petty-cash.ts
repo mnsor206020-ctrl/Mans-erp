@@ -1,6 +1,6 @@
-import { Router } from "express";
 import { requireAuth, getAuth } from "@clerk/express";
-import { prisma } from "@workspace/prisma";
+import { prisma as basePrisma } from "@workspace/prisma";
+import { createAccountingRouter, withJournalAccountingState } from "../lib/accounting-transaction";
 import { createSchema } from "../lib/petty-cash-utils";
 import {
   createAutoPostedJE,
@@ -9,7 +9,7 @@ import {
 } from "../lib/auto-journal-utils";
 import { requirePermission } from "../lib/authorize";
 
-const router = Router();
+const { router, prisma } = createAccountingRouter("pettyCash", basePrisma);
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -59,7 +59,7 @@ router.get("/", async (req, res) => {
       orderBy: { createdAt: "desc" },
     });
 
-    return res.json({ data: entries });
+    return res.json({ data: await withJournalAccountingState(prisma, user.organizationId!, entries) });
   } catch (err) {
     return res.status(500).json({ error: "Failed to fetch petty cash entries" });
   }
@@ -113,7 +113,7 @@ router.post("/", requirePermission("petty_cash", "create"), async (req, res) => 
       prisma as any
     );
     if (!fiscalYear) {
-      return res.status(400).json({ error: "No open fiscal year covers this transaction date." });
+      return res.status(400).json({ error: "لا توجد سنة مالية مفتوحة لتاريخ العملية؛ لا يمكن الترحيل إلى سنة مقفلة." });
     }
 
     const [entry] = await prisma.$transaction(async (tx) => {

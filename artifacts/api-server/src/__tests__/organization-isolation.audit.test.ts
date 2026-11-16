@@ -4,6 +4,7 @@
  * Regression coverage for the previously confirmed guards. Real PostgreSQL/HTTP
  * coverage lives in organization-isolation.postgres.test.ts.
  */
+import "./helpers/legacy-accounting-boundary";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import express from "express";
 import request from "supertest";

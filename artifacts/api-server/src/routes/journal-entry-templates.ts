@@ -1,11 +1,11 @@
-import { Router } from "express";
 import { getAuth } from "@clerk/express";
-import { prisma } from "@workspace/prisma";
+import { prisma as basePrisma } from "@workspace/prisma";
+import { createAccountingRouter } from "../lib/accounting-transaction";
 import { z } from "zod";
 import { requirePermission } from "../lib/authorize";
 import { routeParam } from "../lib/route-param";
 
-const router = Router();
+const { router, prisma } = createAccountingRouter("templates", basePrisma);
 
 async function getUser(clerkId: string) {
   return prisma.user.findFirst({ where: { clerkId, deletedAt: null } });

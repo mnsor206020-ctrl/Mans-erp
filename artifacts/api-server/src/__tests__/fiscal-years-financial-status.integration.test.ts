@@ -1,3 +1,4 @@
+import "./helpers/legacy-accounting-boundary";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import express from "express";
 import request from "supertest";

@@ -128,19 +128,26 @@ export function hasJournalPermission(user: unknown, action: string): boolean {
 }
 
 /** Status-based action availability (mirrors previous UI rules; server stays authoritative). */
-export function getEntryActions(status: string, reversedByEntryId?: string | null) {
+export function getEntryActions(status: string, reversedByEntryId?: string | null, fiscalYearStatus?: string, type?: string) {
+  const open = fiscalYearStatus === undefined || fiscalYearStatus === "OPEN";
+  const reversible = type !== "CLOSING";
   return {
-    canCopy: true,
-    canEdit: status === "DRAFT" || status === "UNDER_REVIEW",
-    canSubmit: status === "DRAFT",
-    canApprove: status === "UNDER_REVIEW",
-    canReject: status === "UNDER_REVIEW" || status === "APPROVED",
-    canPost: status === "APPROVED",
+    canCopy: open,
+    canEdit: open && (status === "DRAFT" || status === "UNDER_REVIEW"),
+    canSubmit: open && status === "DRAFT",
+    canApprove: open && status === "UNDER_REVIEW",
+    canReject: open && (status === "UNDER_REVIEW" || status === "APPROVED"),
+    canPost: open && status === "APPROVED",
     canLock: false,
-    canReverse: (status === "POSTED" || status === "LOCKED") && !reversedByEntryId,
-    canVoid: status === "POSTED",
-    canDelete: status === "DRAFT",
+    canReverse: open && reversible && (status === "POSTED" || status === "LOCKED") && !reversedByEntryId,
+    canVoid: open && reversible && status === "POSTED",
+    canDelete: open && status === "DRAFT",
   };
+}
+
+export function canChangeBankingJournal(record: { accountingState?: { fiscalYearStatus: string; type: string } | null }) {
+  return !record.accountingState
+    || (record.accountingState.fiscalYearStatus === "OPEN" && record.accountingState.type !== "CLOSING");
 }
 
 export const STATUS_STYLES: Record<string, string> = {
