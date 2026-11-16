@@ -120,6 +120,120 @@ describe.skipIf(!process.env.MANS_ISOLATION_PGROOT)("phase three: financial date
   });
   afterAll(async () => { await prisma.$disconnect(); });
 
+  it.each(["2026-01-01", "2026-06-01", "2026-12-31"])("resolves %s without a supplied year and saves the correct link", async (date) => {
+    const f = await fixture();
+    await prisma.fiscalYear.create({ data: {
+      organizationId: f.org, nameEn: "TEST default outside date", nameAr: "اختبار", isDefault: true,
+      startDate: new Date("2027-01-01"), endDate: new Date("2027-12-31"),
+    } });
+    const { fiscalYearId: _ignored, ...body } = journalBody(f, date);
+    const response = await call(f, "post", "/journals", body);
+    expect(response.status).toBe(201);
+    expect(response.body.fiscalYearId).toBe(f.year);
+    const saved = await prisma.journalEntry.findUniqueOrThrow({ where: { id: response.body.id } });
+    expect(saved.fiscalYearId).toBe(f.year);
+    expect(saved.entryDate.toISOString().slice(0, 10)).toBe(date);
+    expect(await prisma.auditLog.count({ where: { entityId: saved.id, action: "CREATE" } })).toBe(1);
+  });
+  it.each(["CLOSED", "missing", "ambiguous-open", "ambiguous-closed", "invalid"] as const)(
+    "date resolution rejects %s without any writes", async (scenario) => {
+      const f = await fixture(scenario === "CLOSED" ? "CLOSED" : "OPEN");
+      if (scenario.startsWith("ambiguous")) await prisma.fiscalYear.create({ data: {
+        organizationId: f.org, nameEn: "TEST legacy overlapping", nameAr: "اختبار",
+        startDate: new Date("2026-03-01"), endDate: new Date("2026-10-31"),
+        status: scenario === "ambiguous-closed" ? "CLOSED" : "OPEN",
+      } });
+      const { fiscalYearId: _ignored, ...body } = journalBody(f,
+        scenario === "missing" ? "2028-01-01" : scenario === "invalid" ? "2026-02-30" : "2026-06-01");
+      await rejectsUnchanged(f, call(f, "post", "/journals", body),
+        scenario === "CLOSED" ? "مقفلة" : scenario === "missing" ? "لا توجد" : scenario === "invalid" ? "غير صالح" : "أكثر من");
+    });
+  it("never selects a foreign organization's year or accepts a forged year ID", async () => {
+    const f = await fixture(), foreign = await fixture();
+    const beforeForeign = await snapshot(foreign);
+    await rejectsUnchanged(f, call(f, "post", "/journals", journalBody(f, "2026-06-01", foreign.year)), "لا تطابق");
+    const foreignFuture = await prisma.fiscalYear.create({ data: {
+      organizationId: foreign.org, nameEn: "TEST foreign future", nameAr: "اختبار",
+      startDate: new Date("2027-01-01"), endDate: new Date("2027-12-31"),
+    } });
+    const { fiscalYearId: _ignored, ...body } = journalBody(f, "2027-06-01", foreignFuture.id);
+    await rejectsUnchanged(f, call(f, "post", "/journals", body), "لا توجد");
+    // Remove only our synthetic extra year before comparing the original foreign snapshot.
+    await prisma.fiscalYear.delete({ where: { id: foreignFuture.id } });
+    expect(await snapshot(foreign)).toBe(beforeForeign);
+  });
+  it("changing a draft date does not automatically move its linked year", async () => {
+    const f = await fixture();
+    await call(f, "post", "/years", fyBody());
+    const { fiscalYearId: _ignored, ...body } = journalBody(f);
+    const created = await call(f, "post", "/journals", body);
+    expect(created.status).toBe(201);
+    await rejectsUnchanged(f, call(f, "patch", `/journals/${created.body.id}`, { entryDate: "2027-06-01" }), "تاريخ القيد");
+    expect((await prisma.journalEntry.findUniqueOrThrow({ where: { id: created.body.id } })).fiscalYearId).toBe(f.year);
+  });
+  it("void validates the original date before generating a reversal", async () => {
+    const f = await fixture();
+    const entry = await seed(f, { date: "2027-06-01" });
+    await rejectsUnchanged(f, call(f, "post", `/journals/${entry.id}/void`, { voidReason: "TEST" }), "تاريخ القيد");
+  });
+  it.each([
+    ["copy", "2027-06-01"], ["template", "2027-06-01"],
+    ["copy", undefined], ["template", undefined],
+  ] as const)("%s resolves the target year from supplied/default date %s", async (kind, date) => {
+    const f = await fixture();
+    const future = await call(f, "post", "/years", fyBody());
+    expect(future.status).toBe(201);
+    let path: string;
+    if (kind === "copy") {
+      const source = await seed(f, { status: "DRAFT" });
+      path = `/journals/${source.id}/copy`;
+    } else {
+      const template = await prisma.journalEntryTemplate.create({ data: {
+        organizationId: f.org, nameEn: "TEST", nameAr: "اختبار", currencyCode: "SAR",
+        lines: { create: [
+          { accountId: f.cash, lineNumber: 1, debit: 100, credit: 0 },
+          { accountId: f.revenue, lineNumber: 2, debit: 0, credit: 100 },
+        ] },
+      } });
+      path = `/templates/${template.id}/use`;
+    }
+    if (!date) {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(new Date("2026-06-15T12:00:00Z"));
+    }
+    let response: request.Response;
+    try { response = await call(f, "post", path, date ? { entryDate: date } : {}); }
+    finally { vi.useRealTimers(); }
+    const expectedYear = date ? future.body.id : f.year;
+    expect(response.status).toBe(kind === "copy" ? 200 : 201);
+    expect(response.body.fiscalYearId).toBe(expectedYear);
+    const saved = await prisma.journalEntry.findUniqueOrThrow({ where: { id: response.body.id } });
+    expect(saved.fiscalYearId).toBe(expectedYear);
+    expect(saved.entryDate.toISOString().slice(0, 10)).toBe(date ?? "2026-06-15");
+  });
+  it.each(["receipts", "payments", "petty"] as const)("automatic %s rejects closed and ambiguous date matches atomically", async (kind) => {
+    for (const scenario of ["closed", "ambiguous"] as const) {
+      const f = await fixture(scenario === "closed" ? "CLOSED" : "OPEN");
+      if (scenario === "ambiguous") await prisma.fiscalYear.create({ data: {
+        organizationId: f.org, nameEn: "TEST legacy overlap", nameAr: "اختبار",
+        startDate: new Date("2026-03-01"), endDate: new Date("2026-10-31"), status: "CLOSED",
+      } });
+      let path: string, body: object;
+      if (kind === "petty") {
+        path = "/petty";
+        body = { cashBoxId: f.box, type: "IN", transactionDate: "2026-06-01", amount: 100,
+          glAccountId: f.revenue, descriptionAr: "اختبار", descriptionEn: "TEST" };
+      } else {
+        const data = { organizationId: f.org, number: `TEST-${randomUUID()}`, paymentMethod: "CASH" as const,
+          currencyCode: "SAR", amount: 100, amountBase: 100, cashBoxId: f.box, glAccountId: f.revenue };
+        const row = kind === "receipts"
+          ? await prisma.receipt.create({ data: { ...data, receiptDate: new Date("2026-06-01") } })
+          : await prisma.payment.create({ data: { ...data, paymentDate: new Date("2026-06-01") } });
+        path = `/${kind}/${row.id}/confirm`; body = {};
+      }
+      await rejectsUnchanged(f, call(f, "post", path, body), scenario === "closed" ? "مقفلة" : "أكثر من");
+    }
+  });
   it("creates a valid year and permits the same window in another organization", async () => {
     const a = await fixture(), b = await fixture();
     for (const f of [a, b]) expect((await call(f, "post", "/years", fyBody())).status).toBe(201);

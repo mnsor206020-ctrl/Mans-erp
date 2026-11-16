@@ -6,8 +6,11 @@
  * OpenAPI spec version: 0.1.0
  */
 
+/**
+ * The server resolves the fiscal year from entryDate; a supplied fiscalYearId must match.
+ */
 export type UseJournalEntryTemplateBody = {
-  fiscalYearId: string;
+  fiscalYearId?: string;
   entryDate?: Date;
   exchangeRate?: number;
 };

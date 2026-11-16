@@ -1,5 +1,6 @@
 import { computeIntegrityHash } from "../services/integrity-hash";
 import { generateJournalNumber } from "./journal-entry-utils";
+import { resolveAccountingYear } from "./accounting-period";
 
 // ─── Prisma DI interfaces ─────────────────────────────────────────────────────
 // These minimal interfaces allow this module to be imported in unit tests
@@ -37,7 +38,7 @@ interface PrismaForAutoJE {
     update(args: any):   Promise<any>;
   };
   fiscalYear: {
-    findFirst(args: any): Promise<{ id: string; status: string } | null>;
+    findMany(args: any): Promise<{ id: string; status: string }[]>;
   };
 }
 
@@ -85,22 +86,14 @@ export interface ReversalParams {
 
 /**
  * Finds an OPEN fiscal year covering the given transaction date.
- * Returns null if no open fiscal year covers the date.
+ * Rejects missing, closed or ambiguous matches instead of selecting arbitrarily.
  */
 export async function resolveOpenFiscalYear(
   orgId: string,
   txDate: Date,
   prismaClient: PrismaForAutoJE
 ): Promise<{ id: string } | null> {
-  return prismaClient.fiscalYear.findFirst({
-    where: {
-      organizationId: orgId,
-      status: "OPEN",
-      startDate: { lte: txDate },
-      endDate:   { gte: txDate },
-      deletedAt:  null,
-    } as any,
-  });
+  return resolveAccountingYear(prismaClient, orgId, txDate);
 }
 
 // ─── Create auto-posted JE ────────────────────────────────────────────────────

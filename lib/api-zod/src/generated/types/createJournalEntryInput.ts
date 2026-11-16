@@ -10,7 +10,7 @@ import type { JournalEntryLineInput } from './journalEntryLineInput';
 
 export interface CreateJournalEntryInput {
   organizationId?: string;
-  fiscalYearId: string;
+  fiscalYearId?: string;
   entryDate: Date;
   type?: CreateJournalEntryInputType;
   currencyCode?: string;

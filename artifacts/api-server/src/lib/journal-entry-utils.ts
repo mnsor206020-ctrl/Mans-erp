@@ -142,7 +142,7 @@ export const lineSchema = z
  */
 export const createHeaderSchema = z.object({
   organizationId: z.string().uuid().optional(),
-  fiscalYearId:   z.string().uuid(),
+  fiscalYearId:   z.string().uuid().optional(),
   entryDate:      z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "entryDate must be YYYY-MM-DD"),
   type:           z.enum(["MANUAL", "AUTOMATIC", "OPENING", "CLOSING", "ADJUSTMENT"]).default("MANUAL"),
   currencyCode:   z.string().default("SAR"),

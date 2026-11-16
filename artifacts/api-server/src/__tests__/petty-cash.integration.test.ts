@@ -28,6 +28,7 @@ vi.mock("@workspace/prisma", () => ({
     },
     fiscalYear: {
       findFirst: vi.fn(),
+      findMany: vi.fn(),
     },
     journalEntry: {
       findFirst: vi.fn(),
@@ -128,6 +129,7 @@ describe("Petty Cash API — Integration", () => {
     (prisma.user.findFirst        as any).mockResolvedValue(mockUser);
     (prisma.cashBox.findFirst     as any).mockResolvedValue(mockCashBox);
     (prisma.fiscalYear.findFirst  as any).mockResolvedValue(mockFiscalYear);
+    (prisma.fiscalYear.findMany as any).mockResolvedValue([mockFiscalYear]);
     (prisma.journalEntry.findFirst as any).mockResolvedValue(null);
   });
 

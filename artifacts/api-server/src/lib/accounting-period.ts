@@ -13,8 +13,33 @@ export const CLOSING_ENTRY_MESSAGE = "لا يمكن إبطال أو عكس قي�
 function day(value: unknown): number {
   if (!(value instanceof Date) && typeof value !== "string") return NaN;
   const date = new Date(value);
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)
+    && Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) !== value) return NaN;
   return Number.isFinite(date.getTime())
     ? Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()) : NaN;
+}
+
+/** Resolve under the organization's accounting transaction lock; never pick an arbitrary match. */
+export async function resolveAccountingYear(
+  db: { fiscalYear: { findMany(args: Prisma.FiscalYearFindManyArgs): Promise<{ id: string; status: string }[]> } },
+  organizationId: string, entryDate: unknown, suppliedId?: unknown,
+) {
+  if (!organizationId) throw new AccountingPeriodError("حسابك غير مرتبط بمنظمة.");
+  const value = day(entryDate);
+  if (!Number.isFinite(value)) throw new AccountingPeriodError("تاريخ القيد غير صالح.");
+  const date = new Date(value);
+  const matches = await db.fiscalYear.findMany({
+    where: { organizationId, deletedAt: null, startDate: { lte: date }, endDate: { gte: date } },
+    select: { id: true, status: true }, take: 2,
+  });
+  if (!matches.length) throw new AccountingPeriodError("لا توجد سنة مالية تغطي تاريخ القيد؛ لا يمكن الحفظ.");
+  if (matches.length > 1) throw new AccountingPeriodError("توجد أكثر من سنة مالية تطابق تاريخ القيد؛ راجع إعدادات السنوات المالية.");
+  const year = matches[0]!;
+  if (year.status !== "OPEN") throw new AccountingPeriodError("السنة المالية التي تغطي تاريخ القيد مقفلة؛ لا يمكن إنشاء القيد.");
+  if (suppliedId !== undefined && suppliedId !== year.id) {
+    throw new AccountingPeriodError("السنة المالية المرسلة لا تطابق سنة تاريخ القيد ضمن منظمتك.");
+  }
+  return year;
 }
 
 export function assertJournalDate(entryDate: unknown, year: { startDate: Date; endDate: Date }) {

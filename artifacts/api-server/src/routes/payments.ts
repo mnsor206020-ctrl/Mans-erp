@@ -1,3 +1,4 @@
+import { AccountingPeriodError } from "../lib/accounting-period";
 import { requireAuth, getAuth } from "@clerk/express";
 import { prisma as basePrisma } from "@workspace/prisma";
 import { createAccountingRouter, withJournalAccountingState } from "../lib/accounting-transaction";
@@ -485,6 +486,7 @@ router.post("/:id/confirm", requirePermission("payments", "approve"), async (req
 
     return res.json(updated);
   } catch (err) {
+    if (err instanceof AccountingPeriodError) return res.status(err.status).json({ error: err.message });
     return res.status(500).json({ error: "Failed to confirm payment" });
   }
 });

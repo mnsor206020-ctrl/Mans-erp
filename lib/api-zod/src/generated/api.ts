@@ -1204,7 +1204,7 @@ export const createJournalEntryBodyLinesMin = 2;
 
 export const CreateJournalEntryBody = zod.object({
   "organizationId": zod.string().uuid().optional(),
-  "fiscalYearId": zod.string().uuid(),
+  "fiscalYearId": zod.string().uuid().optional(),
   "entryDate": zod.coerce.date(),
   "type": zod.enum(['MANUAL', 'AUTOMATIC', 'OPENING', 'CLOSING', 'ADJUSTMENT']).default(createJournalEntryBodyTypeDefault),
   "currencyCode": zod.string().default(createJournalEntryBodyCurrencyCodeDefault),
@@ -2686,10 +2686,10 @@ export const UseJournalEntryTemplateParams = zod.object({
 })
 
 export const UseJournalEntryTemplateBody = zod.object({
-  "fiscalYearId": zod.string().uuid(),
+  "fiscalYearId": zod.string().uuid().optional(),
   "entryDate": zod.coerce.date().optional(),
   "exchangeRate": zod.number().optional()
-})
+}).describe('The server resolves the fiscal year from entryDate; a supplied fiscalYearId must match.')
 
 export const UseJournalEntryTemplateResponse = zod.object({
   "id": zod.string().uuid(),

@@ -1,3 +1,4 @@
+import { AccountingPeriodError } from "../lib/accounting-period";
 import { requireAuth, getAuth } from "@clerk/express";
 import { prisma as basePrisma } from "@workspace/prisma";
 import { createAccountingRouter, withJournalAccountingState } from "../lib/accounting-transaction";
@@ -182,6 +183,7 @@ router.post("/", requirePermission("petty_cash", "create"), async (req, res) => 
 
     return res.status(201).json(entry);
   } catch (err) {
+    if (err instanceof AccountingPeriodError) return res.status(err.status).json({ error: err.message });
     return res.status(500).json({ error: "Failed to create petty cash entry" });
   }
 });

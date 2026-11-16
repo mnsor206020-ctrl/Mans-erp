@@ -38,6 +38,7 @@ vi.mock("@workspace/prisma", () => ({
     },
     fiscalYear: {
       findFirst: vi.fn(),
+      findMany: vi.fn(),
     },
     journalEntry: {
       findFirst: vi.fn(),
@@ -157,6 +158,7 @@ describe("Payments API — Integration", () => {
     (prisma.bankAccount.findFirst as any).mockResolvedValue(mockBankAccount);
     (prisma.cashBox.findFirst     as any).mockResolvedValue(mockCashBox);
     (prisma.fiscalYear.findFirst  as any).mockResolvedValue(mockFiscalYear);
+    (prisma.fiscalYear.findMany as any).mockResolvedValue([mockFiscalYear]);
     (prisma.journalEntry.findFirst as any).mockResolvedValue(null);
   });
 

@@ -25,6 +25,20 @@ function mockResponse(body: unknown, status = 200) {
 }
 
 describe("Journal entry request contracts", () => {
+  it("sends the automatically resolved year with the actual outgoing creation body", async () => {
+    const fetch = mockResponse({ id: "test-entry", fiscalYearId: "resolved-2026" });
+    await createJournalEntry({ ...payload, fiscalYearId: "resolved-2026" });
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toMatchObject({
+      entryDate: payload.entryDate, fiscalYearId: "resolved-2026",
+    });
+  });
+  it("supports server-side resolution when no year is supplied", async () => {
+    const fetch = mockResponse({ id: "test-entry", fiscalYearId: "resolved-2026" });
+    const { fiscalYearId: _ignored, ...withoutYear } = payload;
+    await createJournalEntry(withoutYear);
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual(withoutYear);
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).not.toHaveProperty("fiscalYearId");
+  });
   it("creates a draft with the actual JSON body, including a mixed-language description", async () => {
     const fetch = mockResponse({ id: "test-entry", status: "DRAFT" });
     await expect(createJournalEntry(payload)).resolves.toMatchObject({ status: "DRAFT" });

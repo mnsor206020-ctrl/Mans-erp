@@ -2,7 +2,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { Router, type Request, type RequestHandler, type Response } from "express";
 import { getAuth } from "@clerk/express";
 import type { Prisma, PrismaClient } from "@workspace/prisma";
-import { AccountingPeriodError, assertJournalDate, assertMutableJournal, assertOpenAccountingYear } from "./accounting-period";
+import { AccountingPeriodError, assertJournalDate, assertMutableJournal, assertOpenAccountingYear, resolveAccountingYear } from "./accounting-period";
 
 type Domain = "journals" | "attachments" | "years" | "templates" | "receipts" | "payments" | "pettyCash";
 interface Context {
@@ -66,7 +66,17 @@ async function guard(
   if ((domain === "journals" || domain === "attachments") && id) {
     original = await assertMutableJournal(tx, org, id, path.endsWith("/reverse") || path.endsWith("/void"));
   }
-  if ((domain === "journals" || (domain === "templates" && path.endsWith("/use")))
+  const createsByDate = req.method === "POST" && (
+    (domain === "journals" && (!id || path.endsWith("/copy")))
+    || (domain === "templates" && path.endsWith("/use"))
+  );
+  if (createsByDate) {
+    const date = domain === "journals" && !id ? req.body?.entryDate : req.body?.entryDate ?? new Date();
+    const year = await resolveAccountingYear(tx, org, date, req.body?.fiscalYearId);
+    // Freeze default copy/template dates too, including across a midnight/year boundary.
+    req.body = { ...req.body, entryDate: date instanceof Date ? date.toISOString() : date, fiscalYearId: year.id };
+  }
+  if (domain === "journals" && !createsByDate
     && typeof req.body?.fiscalYearId === "string") {
     await assertOpenAccountingYear(tx, org, req.body.fiscalYearId);
   }
@@ -74,10 +84,10 @@ async function guard(
     await assertOpenAccountingYear(tx, org, id);
   }
   // Validate effective values, including PATCH requests supplying just one field.
-  // No automatic year selection: a date outside the selected year is rejected.
-  if (domain === "journals" && (
+  // Editing/posting/reversal retain the existing year; only new entries resolve by date.
+  if (domain === "journals" && !createsByDate && (
     (!id && req.method === "POST") || req.method === "PATCH"
-    || path.endsWith("/post") || path.endsWith("/copy") || path.endsWith("/reverse")
+    || path.endsWith("/post") || path.endsWith("/copy") || path.endsWith("/reverse") || path.endsWith("/void")
   )) {
     const fiscalYearId = req.method === "PATCH" || !id
       ? req.body?.fiscalYearId ?? original?.fiscalYearId : original?.fiscalYearId;
@@ -85,14 +95,10 @@ async function guard(
       const year = await assertOpenAccountingYear(tx, org, fiscalYearId);
       const date = path.endsWith("/reverse") ? req.body?.reverseDate ?? new Date()
         : path.endsWith("/copy") ? req.body?.entryDate ?? new Date()
-        : path.endsWith("/post") ? original?.entryDate
+        : path.endsWith("/post") || path.endsWith("/void") ? original?.entryDate
         : req.body?.entryDate ?? original?.entryDate;
       assertJournalDate(date, year);
     }
-  }
-  if (domain === "templates" && path.endsWith("/use") && typeof req.body?.fiscalYearId === "string") {
-    const year = await assertOpenAccountingYear(tx, org, req.body.fiscalYearId);
-    assertJournalDate(req.body?.entryDate ?? new Date(), year);
   }
   if ((domain === "receipts" || domain === "payments" || domain === "pettyCash") && id) {
     const model = domain === "receipts" ? tx.receipt : domain === "payments" ? tx.payment : tx.pettyCash;

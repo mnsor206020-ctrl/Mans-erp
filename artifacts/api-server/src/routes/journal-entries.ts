@@ -247,6 +247,8 @@ router.post("/", requirePermission("journal_entries", "create"), async (req, res
     const data = parsed.data;
     const orgId = user.organizationId;
     if (!orgId) return res.status(400).json({ error: "organizationId is required" });
+    // The accounting transaction resolves this from the date before validation.
+    if (!data.fiscalYearId) return res.status(400).json({ error: "تعذر تحديد السنة المالية من تاريخ القيد." });
 
     const fiscalYear = await prisma.fiscalYear.findFirst({
       where: { id: data.fiscalYearId, organizationId: orgId, deletedAt: null },
@@ -863,7 +865,7 @@ router.post("/:id/copy", requirePermission("journal_entries", "create"), async (
     const copy = await prisma.journalEntry.create({
       data: {
         organizationId:  entry.organizationId,
-        fiscalYearId:    entry.fiscalYearId,
+        fiscalYearId:    req.body.fiscalYearId,
         number,
         entryDate:       copyDate,
         type:            entry.type,
