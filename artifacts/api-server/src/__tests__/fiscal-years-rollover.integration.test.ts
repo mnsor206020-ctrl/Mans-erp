@@ -125,7 +125,7 @@ describe("POST /fiscal-years/:id/rollover", () => {
     const res = await request(app).post("/fiscal-years/fy-1/rollover").send({});
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/already exists/i);
+    expect(res.body.error).toContain("تتداخل");
   });
 
   it("returns 400 when there are no balance sheet balances to roll forward", async () => {
@@ -133,7 +133,8 @@ describe("POST /fiscal-years/:id/rollover", () => {
     prismaFiscalYearMock.findFirst
       .mockResolvedValueOnce(mockClosedFY)
       .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce(null);
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(mockClosedFY); // immediate preceding year
     prismaJELineMock.findMany.mockResolvedValue([]);
 
     const res = await request(app).post("/fiscal-years/fy-1/rollover").send({});
@@ -153,7 +154,8 @@ describe("POST /fiscal-years/:id/rollover", () => {
     prismaFiscalYearMock.findFirst
       .mockResolvedValueOnce(mockClosedFY) // source lookup
       .mockResolvedValueOnce(null)          // no existing next FY
-      .mockResolvedValueOnce(null);         // no overlap
+      .mockResolvedValueOnce(null)          // no overlap
+      .mockResolvedValueOnce(mockClosedFY); // immediate preceding year
     prismaJELineMock.findMany.mockResolvedValue(mockPostedLines);
     prismaJEMock.findMany.mockResolvedValue([]); // for generateJournalNumber
 

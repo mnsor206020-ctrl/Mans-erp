@@ -7,6 +7,8 @@ import {
 } from "../lib/journal-entry-utils";
 import { requirePermission } from "../lib/authorize";
 import { financialJournalStatusFilter } from "../lib/financial-journal-status";
+import { fiscalYearWindowError } from "../lib/accounting-period";
+import { Prisma } from "@prisma/client";
 
 const { router, prisma } = createAccountingRouter("years", basePrisma);
 
@@ -22,6 +24,7 @@ const createSchema = z.object({
   endDate:        isoDate,
   isDefault:      z.boolean().optional(),
 });
+const updateSchema = createSchema.partial().strict();
 
 const closeSchema = z.object({
   retainedEarningsAccountId: z.string().min(1),
@@ -84,6 +87,9 @@ router.post("/", requirePermission("fiscal_years", "create"), async (req, res) =
       return res.status(403).json({ error: "Forbidden: organization does not match the authenticated user" });
     }
 
+    const windowError = await fiscalYearWindowError(prisma, orgId, new Date(startDate), new Date(endDate));
+    if (windowError) return res.status(400).json({ error: windowError });
+
     const fy = await prisma.fiscalYear.create({
       data: {
         organizationId: orgId,
@@ -102,6 +108,70 @@ router.post("/", requirePermission("fiscal_years", "create"), async (req, res) =
     res.status(500).json({ error: "Failed to create fiscal year" });
   }
   return undefined;
+});
+
+// Date/name edits only. Closing/reopening cannot be requested through PATCH.
+router.patch("/:id", requirePermission("fiscal_years", "update"), async (req, res): Promise<void> => {
+  try {
+    const user = req.currentUser!;
+    const id = req.params.id as string;
+    const existing = await prisma.fiscalYear.findFirst({
+      where: { id, organizationId: user.organizationId!, deletedAt: null },
+    });
+    if (!existing) { res.status(404).json({ error: "السنة المالية غير موجودة ضمن منظمتك." }); return; }
+    const parsed = updateSchema.safeParse(req.body);
+    if (!parsed.success) { res.status(400).json({ error: "بيانات تعديل السنة المالية غير صالحة.", details: parsed.error.flatten() }); return; }
+    const data = parsed.data;
+    if (data.organizationId && data.organizationId !== user.organizationId) {
+      res.status(403).json({ error: "لا يمكن نقل السنة المالية إلى منظمة أخرى." }); return;
+    }
+    const startDate = data.startDate ? new Date(data.startDate) : existing.startDate;
+    const endDate = data.endDate ? new Date(data.endDate) : existing.endDate;
+    const error = await fiscalYearWindowError(prisma, user.organizationId!, startDate, endDate, id);
+    if (error) { res.status(400).json({ error }); return; }
+    if (existing.previousFiscalYearId) {
+      const previous = await prisma.fiscalYear.findFirst({
+        where: { id: existing.previousFiscalYearId, organizationId: user.organizationId!, deletedAt: null },
+      });
+      if (!previous || startDate <= previous.endDate) {
+        res.status(400).json({ error: "تواريخ السنة يجب أن تظل بعد السنة المالية السابقة المرتبطة بها." }); return;
+      }
+    }
+    const successor = await prisma.fiscalYear.findFirst({
+      where: { previousFiscalYearId: id, organizationId: user.organizationId!, deletedAt: null },
+    });
+    if (successor && endDate >= successor.startDate) {
+      res.status(400).json({ error: "تواريخ السنة يجب أن تظل قبل السنة المالية التالية المرتبطة بها." }); return;
+    }
+    const outsideEntry = await prisma.journalEntry.findFirst({
+      where: {
+        organizationId: user.organizationId!, fiscalYearId: id,
+        OR: [{ entryDate: { lt: startDate } }, { entryDate: { gt: endDate } }],
+      },
+    });
+    if (outsideEntry) {
+      res.status(400).json({ error: "لا يمكن تغيير حدود السنة المالية بما يستبعد قيودًا مرتبطة بها." }); return;
+    }
+    const updated = await prisma.fiscalYear.update({
+      where: { id },
+      data: {
+        startDate, endDate,
+        ...(data.nameEn !== undefined ? { nameEn: data.nameEn } : {}),
+        ...(data.nameAr !== undefined ? { nameAr: data.nameAr } : {}),
+        ...(data.isDefault !== undefined ? { isDefault: data.isDefault } : {}),
+      },
+    });
+    await prisma.auditLog.create({ data: {
+      userId: user.id, userEmail: user.email, action: "UPDATE", entityType: "fiscal_year", entityId: id,
+      oldValues: { startDate: existing.startDate.toISOString(), endDate: existing.endDate.toISOString() },
+      newValues: { startDate: startDate.toISOString(), endDate: endDate.toISOString() },
+      description: "Updated fiscal year definition",
+    } });
+    res.json(updated);
+  } catch (error) {
+    req.log?.error({ err: error }, "Fiscal year update failed");
+    res.status(500).json({ error: "تعذر تعديل السنة المالية؛ لم تُحفظ أي تغييرات." });
+  }
 });
 
 // ── POST /:id/close — create closing entries and mark fiscal year CLOSED ───────
@@ -347,18 +417,17 @@ router.post("/:id/rollover", requirePermission("fiscal_years", "update"), async 
     const newNameEn = nameEn || `FY ${newYearLabel}`;
     const newNameAr = nameAr || `السنة المالية ${newYearLabel}`;
 
-    // ── 4. Duplicate fiscal year window guard ───────────────────────────────────
-    const overlapping = await prisma.fiscalYear.findFirst({
-      where: {
-        organizationId: user.organizationId,
-        deletedAt: null,
-        startDate: newStartDate,
-        endDate:   newEndDate,
-      },
+    const windowError = await fiscalYearWindowError(prisma, user.organizationId, newStartDate, newEndDate);
+    if (windowError) { res.status(400).json({ error: windowError }); return; }
+    if (newStartDate <= sourceFY.endDate) {
+      res.status(400).json({ error: "يجب أن تبدأ السنة الجديدة بعد نهاية السنة المالية المصدر." }); return;
+    }
+    const previousYear = await prisma.fiscalYear.findFirst({
+      where: { organizationId: user.organizationId, deletedAt: null, endDate: { lt: newStartDate } },
+      orderBy: { endDate: "desc" },
     });
-    if (overlapping) {
-      res.status(400).json({ error: "A fiscal year with these dates already exists." });
-      return;
+    if (!previousYear || previousYear.id !== sourceFY.id) {
+      res.status(400).json({ error: "يجب ترحيل الأرصدة من السنة المالية السابقة مباشرة ضمن المنظمة نفسها." }); return;
     }
 
     // Source-year balances already include its opening entry. Historical years
@@ -381,41 +450,45 @@ router.post("/:id/rollover", requirePermission("fiscal_years", "update"), async 
     });
 
     // ── 6. Group by account ─────────────────────────────────────────────────────
-    const accountMap = new Map<string, { accountId: string; totalDebit: number; totalCredit: number }>();
+    const accountMap = new Map<string, { accountId: string; totalDebit: Prisma.Decimal; totalCredit: Prisma.Decimal }>();
     for (const line of postedLines) {
       const existing = accountMap.get(line.accountId);
       if (existing) {
-        existing.totalDebit  += Number(line.debit);
-        existing.totalCredit += Number(line.credit);
+        existing.totalDebit  = existing.totalDebit.plus(line.debit);
+        existing.totalCredit = existing.totalCredit.plus(line.credit);
       } else {
         accountMap.set(line.accountId, {
           accountId:   line.accountId,
-          totalDebit:  Number(line.debit),
-          totalCredit: Number(line.credit),
+          totalDebit:  new Prisma.Decimal(line.debit.toString()),
+          totalCredit: new Prisma.Decimal(line.credit.toString()),
         });
       }
     }
 
     // ── 7. Build opening entry lines (carry forward each account's balance) ────
-    const openingLines: { accountId: string; lineNumber: number; debit: number; credit: number }[] = [];
+    const openingLines: { accountId: string; lineNumber: number; debit: Prisma.Decimal; credit: Prisma.Decimal }[] = [];
     let lineNumber = 1;
-    let totalOpeningDebits  = 0;
-    let totalOpeningCredits = 0;
+    let totalOpeningDebits  = new Prisma.Decimal(0);
+    let totalOpeningCredits = new Prisma.Decimal(0);
 
     for (const acc of accountMap.values()) {
-      const netDebit = acc.totalDebit - acc.totalCredit;
-      if (netDebit === 0) continue;
-      if (netDebit > 0) {
-        openingLines.push({ accountId: acc.accountId, lineNumber: lineNumber++, debit: netDebit, credit: 0 });
-        totalOpeningDebits += netDebit;
+      const netDebit = acc.totalDebit.minus(acc.totalCredit);
+      if (netDebit.isZero()) continue;
+      if (netDebit.isPositive()) {
+        openingLines.push({ accountId: acc.accountId, lineNumber: lineNumber++, debit: netDebit, credit: new Prisma.Decimal(0) });
+        totalOpeningDebits = totalOpeningDebits.plus(netDebit);
       } else {
-        openingLines.push({ accountId: acc.accountId, lineNumber: lineNumber++, debit: 0, credit: -netDebit });
-        totalOpeningCredits += -netDebit;
+        openingLines.push({ accountId: acc.accountId, lineNumber: lineNumber++, debit: new Prisma.Decimal(0), credit: netDebit.negated() });
+        totalOpeningCredits = totalOpeningCredits.minus(netDebit);
       }
     }
 
     if (openingLines.length === 0) {
       res.status(400).json({ error: "No balance sheet account balances found to roll forward." });
+      return;
+    }
+    if (!totalOpeningDebits.equals(totalOpeningCredits)) {
+      res.status(400).json({ error: "الأرصدة الافتتاحية غير متوازنة؛ لم تُنشأ السنة الجديدة أو القيد الافتتاحي." });
       return;
     }
 

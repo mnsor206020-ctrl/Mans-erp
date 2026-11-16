@@ -991,6 +991,35 @@ export const CreateFiscalYearResponse = zod.object({
 
 
 /**
+ * @summary Update an open fiscal year without overlapping years or excluding its journal entries
+ */
+export const UpdateFiscalYearParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const UpdateFiscalYearBody = zod.object({
+  "organizationId": zod.string().uuid().optional(),
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional(),
+  "startDate": zod.coerce.date().optional(),
+  "endDate": zod.coerce.date().optional(),
+  "isDefault": zod.boolean().optional()
+})
+
+export const UpdateFiscalYearResponse = zod.object({
+  "id": zod.string().uuid(),
+  "organizationId": zod.string().uuid(),
+  "nameEn": zod.string(),
+  "nameAr": zod.string(),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date(),
+  "status": zod.enum(['OPEN', 'CLOSED', 'LOCKED']),
+  "isDefault": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
  * @summary Close a fiscal year (create closing entries)
  */
 export const CloseFiscalYearParams = zod.object({

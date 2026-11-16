@@ -237,7 +237,7 @@ describe.skipIf(!process.env.MANS_ISOLATION_PGROOT)("closed fiscal year: real is
   it("OPEN retains reject, void and changing between open years", async () => {
     const f = await fixture();
     const draft = await seedEntry(f, "DRAFT");
-    expect((await api(f).patch(`/journal-entries/${draft.id}`, { fiscalYearId: f.next })).status).toBe(200);
+    expect((await api(f).patch(`/journal-entries/${draft.id}`, { fiscalYearId: f.next, entryDate: "2027-01-01" })).status).toBe(200);
     const approved = await seedEntry(f, "APPROVED");
     expect((await api(f).post(`/journal-entries/${approved.id}/reject`, { comment: "TEST reject" })).status).toBe(200);
     const posted = await seedEntry(f);
@@ -399,7 +399,10 @@ describe.skipIf(!process.env.MANS_ISOLATION_PGROOT)("closed fiscal year: real is
     expect(closed.body.netIncome).toBe(kind === "manual" ? 200 : 150);
     expect(await prisma.journalEntry.count({ where: { organizationId: f.org, type: "CLOSING" } })).toBe(1);
     expect((await api(f).post(`/fiscal-years/${f.fy}/close`, { retainedEarningsAccountId: f.equity })).status).toBe(400);
-    const rollover = await api(f).post(`/fiscal-years/${f.fy}/rollover`, { startDate: "2028-01-01", endDate: "2028-12-31" });
+    // Remove only the unused synthetic future year in this disposable fixture;
+    // rollover must target the immediate next year, not skip an intervening one.
+    await prisma.fiscalYear.delete({ where: { id: f.next } });
+    const rollover = await api(f).post(`/fiscal-years/${f.fy}/rollover`);
     expect(rollover.status).toBe(201);
     expect((await api(f).post(`/fiscal-years/${f.fy}/rollover`)).status).toBe(400);
   });

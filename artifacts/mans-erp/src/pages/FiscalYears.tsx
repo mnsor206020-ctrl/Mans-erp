@@ -1,3 +1,4 @@
+import { getApiErrorMessage } from "@/lib/journal-entry-ui";
 import { useState } from "react";
 import { useLanguage } from "@/lib/language-provider";
 import {
@@ -107,10 +108,7 @@ export default function FiscalYears() {
       await queryClient.invalidateQueries();
       setRollingOverFY(null);
     } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message :
-        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
-        t("fiscalYears.rolloverError");
+      const message = getApiErrorMessage(err, t("fiscalYears.rolloverError"));
       toast({ title: t("fiscalYears.rolloverError"), description: message, variant: "destructive" });
     } finally {
       setIsRollingOver(false);

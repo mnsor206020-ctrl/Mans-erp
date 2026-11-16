@@ -94,7 +94,9 @@ describe.each(["POSTED", "REVERSED", "LOCKED"])("fiscal aggregation recognizes %
 
   it.each(["DRAFT", "POSTED"])("rollover with a %s reversal carries only recognized source balances", async (reversalStatus) => {
     db.fiscalYear.findFirst.mockResolvedValueOnce({ ...fy, status: "CLOSED" })
-      .mockResolvedValue(null);
+      .mockResolvedValueOnce(null) // no existing rollover
+      .mockResolvedValueOnce(null) // no overlapping year
+      .mockResolvedValueOnce({ ...fy, status: "CLOSED" }); // immediate predecessor
     lines = [
       ...posting(status, cash, equity, 1500),
       ...posting(reversalStatus, equity, cash, 1500),
@@ -112,12 +114,12 @@ describe.each(["POSTED", "REVERSED", "LOCKED"])("fiscal aggregation recognizes %
     const generated = db.journalEntry.create.mock.calls[0]![0].data;
     expect(generated).toMatchObject({
       type: "OPENING", status: "POSTED",
-      totalDebit: reversalStatus === "POSTED" ? 200 : 1700,
-      totalCredit: reversalStatus === "POSTED" ? 200 : 1700,
     });
-    expect(generated.lines.create).toContainEqual(expect.objectContaining({
-      accountId: cash.id, debit: reversalStatus === "POSTED" ? 200 : 1700, credit: 0,
-    }));
+    expect(Number(generated.totalDebit)).toBe(reversalStatus === "POSTED" ? 200 : 1700);
+    expect(Number(generated.totalCredit)).toBe(reversalStatus === "POSTED" ? 200 : 1700);
+    const cashLine = generated.lines.create.find((line: { accountId: string }) => line.accountId === cash.id);
+    expect(Number(cashLine.debit)).toBe(reversalStatus === "POSTED" ? 200 : 1700);
+    expect(Number(cashLine.credit)).toBe(0);
     expect(db.journalEntryLine.findMany.mock.calls[0]![0].where.journalEntry.fiscalYear)
       .toEqual({ organizationId: "org" });
   });

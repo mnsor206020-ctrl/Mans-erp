@@ -59,6 +59,7 @@ import type {
   DeleteJournalEntryAttachment200,
   DeleteJournalEntryTemplate200,
   FiscalYear,
+  FiscalYearUpdateInput,
   GetAccountLedgerParams,
   GetBalanceSheetParams,
   GetChartOfAccountsTreeParams,
@@ -3137,6 +3138,93 @@ export const useCreateFiscalYear = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getCreateFiscalYearMutationOptions(options), queryClient);
+    }
+
+export const getUpdateFiscalYearUrl = (id: string,) => {
+
+
+
+
+  return `/api/fiscal-years/${id}`
+}
+
+/**
+ * @summary Update an open fiscal year without overlapping years or excluding its journal entries
+ */
+export const updateFiscalYear = async (id: string,
+    fiscalYearUpdateInput: FiscalYearUpdateInput, options?: Parameters<typeof customFetch>[1]): Promise<FiscalYear> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<FiscalYear>(getUpdateFiscalYearUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(fiscalYearUpdateInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateFiscalYearMutationKey = () => ['updateFiscalYear'] as const;
+
+export const getUpdateFiscalYearMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateFiscalYear>>, TError,UpdateFiscalYearMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateFiscalYear>>, TError,UpdateFiscalYearMutationVariables, TContext> => {
+
+const mutationKey = getUpdateFiscalYearMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateFiscalYear>>, UpdateFiscalYearMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateFiscalYear(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateFiscalYearMutationResult = NonNullable<Awaited<ReturnType<typeof updateFiscalYear>>>
+    export type UpdateFiscalYearMutationBody = BodyType<FiscalYearUpdateInput>
+    export type UpdateFiscalYearMutationError = ErrorType<void>
+    export type UpdateFiscalYearMutationVariables = {id: string;data: BodyType<FiscalYearUpdateInput>}
+
+    /** @summary Update an open fiscal year without overlapping years or excluding its journal entries */
+export const useUpdateFiscalYear = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateFiscalYear>>, TError,UpdateFiscalYearMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateFiscalYear>>,
+        TError,
+        UpdateFiscalYearMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateFiscalYearMutationOptions(options), queryClient);
     }
 
 export const getCloseFiscalYearUrl = (id: string,) => {

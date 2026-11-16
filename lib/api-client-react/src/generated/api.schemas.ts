@@ -504,6 +504,15 @@ export interface CreateFiscalYearInput {
   isDefault?: boolean;
 }
 
+export interface FiscalYearUpdateInput {
+  organizationId?: string;
+  nameEn?: string;
+  nameAr?: string;
+  startDate?: string;
+  endDate?: string;
+  isDefault?: boolean;
+}
+
 export interface CloseFiscalYearInput {
   retainedEarningsAccountId: string;
 }

@@ -2,7 +2,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { Router, type Request, type RequestHandler, type Response } from "express";
 import { getAuth } from "@clerk/express";
 import type { Prisma, PrismaClient } from "@workspace/prisma";
-import { AccountingPeriodError, assertMutableJournal, assertOpenAccountingYear } from "./accounting-period";
+import { AccountingPeriodError, assertJournalDate, assertMutableJournal, assertOpenAccountingYear } from "./accounting-period";
 
 type Domain = "journals" | "attachments" | "years" | "templates" | "receipts" | "payments" | "pettyCash";
 interface Context {
@@ -62,12 +62,37 @@ async function guard(
 ) {
   const rawId = req.params.id;
   const id = Array.isArray(rawId) ? rawId[0] : rawId;
+  let original: Awaited<ReturnType<typeof assertMutableJournal>> | undefined;
   if ((domain === "journals" || domain === "attachments") && id) {
-    await assertMutableJournal(tx, org, id, path.endsWith("/reverse") || path.endsWith("/void"));
+    original = await assertMutableJournal(tx, org, id, path.endsWith("/reverse") || path.endsWith("/void"));
   }
   if ((domain === "journals" || (domain === "templates" && path.endsWith("/use")))
     && typeof req.body?.fiscalYearId === "string") {
     await assertOpenAccountingYear(tx, org, req.body.fiscalYearId);
+  }
+  if (domain === "years" && req.method === "PATCH" && id) {
+    await assertOpenAccountingYear(tx, org, id);
+  }
+  // Validate effective values, including PATCH requests supplying just one field.
+  // No automatic year selection: a date outside the selected year is rejected.
+  if (domain === "journals" && (
+    (!id && req.method === "POST") || req.method === "PATCH"
+    || path.endsWith("/post") || path.endsWith("/copy") || path.endsWith("/reverse")
+  )) {
+    const fiscalYearId = req.method === "PATCH" || !id
+      ? req.body?.fiscalYearId ?? original?.fiscalYearId : original?.fiscalYearId;
+    if (typeof fiscalYearId === "string") {
+      const year = await assertOpenAccountingYear(tx, org, fiscalYearId);
+      const date = path.endsWith("/reverse") ? req.body?.reverseDate ?? new Date()
+        : path.endsWith("/copy") ? req.body?.entryDate ?? new Date()
+        : path.endsWith("/post") ? original?.entryDate
+        : req.body?.entryDate ?? original?.entryDate;
+      assertJournalDate(date, year);
+    }
+  }
+  if (domain === "templates" && path.endsWith("/use") && typeof req.body?.fiscalYearId === "string") {
+    const year = await assertOpenAccountingYear(tx, org, req.body.fiscalYearId);
+    assertJournalDate(req.body?.entryDate ?? new Date(), year);
   }
   if ((domain === "receipts" || domain === "payments" || domain === "pettyCash") && id) {
     const model = domain === "receipts" ? tx.receipt : domain === "payments" ? tx.payment : tx.pettyCash;
@@ -77,7 +102,11 @@ async function guard(
         : { id, organizationId: org, deletedAt: null },
     });
     if (voucher?.journalEntryId) {
-      await assertMutableJournal(tx, org, voucher.journalEntryId, true);
+      const entry = await assertMutableJournal(tx, org, voucher.journalEntryId, true);
+      if (path.endsWith("/void") || (domain === "pettyCash" && req.method === "DELETE")) {
+        const year = await assertOpenAccountingYear(tx, org, entry.fiscalYearId);
+        assertJournalDate(new Date(), year);
+      }
     }
   }
 }

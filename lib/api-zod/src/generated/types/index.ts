@@ -59,6 +59,7 @@ export * from './deleteJournalEntryAttachment200';
 export * from './deleteJournalEntryTemplate200';
 export * from './fiscalYear';
 export * from './fiscalYearStatus';
+export * from './fiscalYearUpdateInput';
 export * from './getAccountLedgerParams';
 export * from './getBalanceSheetParams';
 export * from './getChartOfAccountsTreeParams';

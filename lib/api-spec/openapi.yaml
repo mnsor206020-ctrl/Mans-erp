@@ -921,6 +921,36 @@ paths:
               schema:
                 $ref: "#/components/schemas/FiscalYear"
 
+  /fiscal-years/{id}:
+    patch:
+      operationId: updateFiscalYear
+      tags: [fiscal-years]
+      summary: Update an open fiscal year without overlapping years or excluding its journal entries
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FiscalYearUpdateInput"
+      responses:
+        "200":
+          description: Updated fiscal year
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FiscalYear"
+        "400":
+          description: Invalid dates, overlapping year, closed year, or existing entries outside the proposed dates
+        "403":
+          description: Permission denied
+
   /fiscal-years/{id}/close:
     post:
       operationId: closeFiscalYear
@@ -3689,6 +3719,26 @@ components:
         - nameAr
         - startDate
         - endDate
+
+    FiscalYearUpdateInput:
+      type: object
+      additionalProperties: false
+      properties:
+        organizationId:
+          type: string
+          format: uuid
+        nameEn:
+          type: string
+        nameAr:
+          type: string
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        isDefault:
+          type: boolean
 
     CloseFiscalYearInput:
       type: object
