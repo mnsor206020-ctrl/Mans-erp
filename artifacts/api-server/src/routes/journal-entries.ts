@@ -16,6 +16,7 @@ import attachmentsRouter from "./journal-entry-attachments";
 import { notificationService } from "../services/notification";
 import { requirePermission } from "../lib/authorize";
 import { routeParam } from "../lib/route-param";
+import { AccountingPeriodError, assertMutableJournal } from "../lib/accounting-period";
 
 const { router, prisma } = createAccountingRouter("journals", basePrisma);
 
@@ -431,6 +432,31 @@ router.delete("/:id", requirePermission("journal_entries", "delete"), async (req
     if (!entry) return res.status(404).json({ error: "Journal entry not found" });
     if (entry.status !== "DRAFT") return res.status(400).json({ error: "Only DRAFT journal entries can be deleted" });
 
+    if (entry.reversalOfEntryId) {
+      // Cancelling an unfinished reversal must restore its original atomically.
+      // Never infer the historic POSTED/LOCKED state when its audit is absent.
+      const original = await assertMutableJournal(prisma, user.organizationId!, entry.reversalOfEntryId, true);
+      const reversalRecord = await prisma.journalEntryApproval.findFirst({
+        where: { journalEntryId: original.id, action: "REVERSE", toStatus: "REVERSED" },
+        orderBy: { createdAt: "desc" },
+      });
+      if (original.status !== "REVERSED" || original.reversedByEntryId !== entry.id
+        || !["POSTED", "LOCKED"].includes(reversalRecord?.fromStatus ?? "")) {
+        return res.status(400).json({ error: "تعذر إلغاء العكس بأمان؛ ارتباط القيد الأصلي أو سجل حالته السابقة غير مكتمل." });
+      }
+      const restoredStatus = reversalRecord!.fromStatus as "POSTED" | "LOCKED";
+      await prisma.journalEntry.update({
+        where: { id: original.id }, data: { status: restoredStatus, reversedByEntryId: null },
+      });
+      await writeApprovalRecord({
+        journalEntryId: original.id, userId: user.id, action: "CANCEL_REVERSAL",
+        comment: `Cancelled draft reversal ${entry.number}`, fromStatus: "REVERSED", toStatus: restoredStatus,
+      });
+      await writeAuditLog({
+        userId: user.id, userEmail: user.email, action: "UPDATE", entityType: "journal_entry",
+        entityId: original.id, description: `Cancelled draft reversal ${entry.number}; restored ${restoredStatus}`,
+      });
+    }
     await prisma.journalEntry.update({ where: { id: routeParam(req.params.id) }, data: { deletedAt: new Date() } });
     await writeAuditLog({
       userId:     user.id,
@@ -443,6 +469,7 @@ router.delete("/:id", requirePermission("journal_entries", "delete"), async (req
 
     res.json({ success: true });
   } catch (err) {
+    if (err instanceof AccountingPeriodError) return res.status(err.status).json({ error: err.message });
     console.error(err);
     res.status(500).json({ error: "Failed to delete journal entry" });
   }

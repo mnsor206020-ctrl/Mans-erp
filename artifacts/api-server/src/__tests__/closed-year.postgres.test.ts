@@ -357,16 +357,30 @@ describe.skipIf(!process.env.MANS_ISOLATION_PGROOT)("closed fiscal year: real is
     const noPermission = await prisma.user.create({ data: { clerkId: `TEST_${randomUUID()}`, email: `${randomUUID()}@example.invalid`, organizationId: f.org } });
     expect((await request(app).post("/journal-entries").set("x-test-identity", noPermission.clerkId!).send(body(f))).status).toBe(403);
   });
-  it.each(["manual", "automatic"] as const)("close before %s posting: posting waits then rejects, no omitted movement", async (kind) => {
+  it("close refuses pending manual posting, which can then complete before closing", async () => {
     const f = await fixture();
     await seedEntry(f);
-    const pending = kind === "manual" ? await seedEntry(f, "APPROVED") : await voucher(f, "receipts");
+    const pending = await seedEntry(f, "APPROVED");
+    const before = await snapshot(f);
+    const refused = await api(f).post(`/fiscal-years/${f.fy}/close`, { retainedEarningsAccountId: f.equity });
+    expect(refused.status).toBe(400);
+    expect(refused.body.error).toContain("غير مرحلة");
+    expect(await snapshot(f)).toBe(before);
+    expect((await api(f).post(`/journal-entries/${pending.id}/post`)).status).toBe(200);
+    const closed = await api(f).post(`/fiscal-years/${f.fy}/close`, { retainedEarningsAccountId: f.equity });
+    expect(closed.status).toBe(200);
+    expect(closed.body.netIncome).toBe(200);
+  });
+  it("close before automatic posting: posting waits then rejects, no omitted movement", async () => {
+    const f = await fixture();
+    await seedEntry(f);
+    const pending = await voucher(f, "receipts");
     const gate = await pauseFinancialWrite(f, "NEW.type = 'CLOSING'");
     const close = api(f).post(`/fiscal-years/${f.fy}/close`, { retainedEarningsAccountId: f.equity }).then((r) => r);
     let post: Promise<request.Response> | undefined;
     try {
       await waitForBlockedLock();
-      post = api(f).post(kind === "manual" ? `/journal-entries/${pending.id}/post` : `/receipts/${pending.id}/confirm`).then((r) => r);
+      post = api(f).post(`/receipts/${pending.id}/confirm`).then((r) => r);
       await waitForBlockedLock(2);
     } finally { gate.release(); }
     const [closed, posted] = await Promise.all([close, post!]);
@@ -374,10 +388,8 @@ describe.skipIf(!process.env.MANS_ISOLATION_PGROOT)("closed fiscal year: real is
     expect(closed.status).toBe(200);
     expect(closed.body.netIncome).toBe(100);
     expect(posted.status).toBe(400);
-    const row = kind === "manual"
-      ? await prisma.journalEntry.findUniqueOrThrow({ where: { id: pending.id } })
-      : await prisma.receipt.findUniqueOrThrow({ where: { id: pending.id } });
-    expect(row.status).toBe(kind === "manual" ? "APPROVED" : "DRAFT");
+    const row = await prisma.receipt.findUniqueOrThrow({ where: { id: pending.id } });
+    expect(row.status).toBe("DRAFT");
     expect(Number((await prisma.cashBox.findUniqueOrThrow({ where: { id: f.box } })).currentBalance)).toBe(0);
   });
   it.each(["manual", "automatic"] as const)("%s posting before close: close waits and includes movement exactly once", async (kind) => {

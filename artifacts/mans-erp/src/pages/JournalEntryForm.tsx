@@ -2,13 +2,11 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { useLanguage } from "@/lib/language-provider";
 import { useToast } from "@/hooks/use-toast";
-import { journalFiscalYearState } from "@/lib/fiscal-year-selection";
 import {
   useCreateJournalEntry,
   useGetCurrentUser,
   useGetJournalEntry,
   useUpdateJournalEntry,
-  useListFiscalYears,
   useListCostCenters,
   useListChartOfAccounts,
   getListJournalEntriesQueryKey,
@@ -76,7 +74,6 @@ export default function JournalEntryForm({ params }: Props) {
   const { data: currentUser } = useGetCurrentUser();
   const canSave = hasJournalPermission(currentUser, isEdit ? "update" : "create");
 
-  const [editedFiscalYearId, setFiscalYearId] = useState("");
   const [entryDate, setEntryDate] = useState(new Date().toISOString().split("T")[0]);
   const [type, setType] = useState("MANUAL");
   const [currencyCode, setCurrencyCode] = useState("SAR");
@@ -92,12 +89,6 @@ export default function JournalEntryForm({ params }: Props) {
   const [showErrors, setShowErrors] = useState(false);
   const initializedFor = useRef<string | null>(null);
 
-  const fiscalYearsQuery = useListFiscalYears();
-  const fiscalYears = fiscalYearsQuery.data ?? [];
-  const yearState = journalFiscalYearState(fiscalYears, entryDate, isEdit ? editedFiscalYearId : undefined);
-  const fiscalYearId = isEdit ? editedFiscalYearId : yearState.error ? "" : yearState.year?.id ?? "";
-  const fiscalYearError = fiscalYearsQuery.isPending ? "جارٍ تحديد السنة المالية..."
-    : fiscalYearsQuery.isError ? "تعذر تحميل السنوات المالية؛ أعد المحاولة قبل الحفظ." : yearState.error;
   const { data: costCentersRaw } = useListCostCenters({ isActive: "true" });
   const costCenters = (costCentersRaw as any) ?? [];
   const { data: accountsRaw } = useListChartOfAccounts({ pageSize: "500" } as any);
@@ -121,7 +112,6 @@ export default function JournalEntryForm({ params }: Props) {
       return;
     }
     initializedFor.current = entryId;
-    setFiscalYearId(e.fiscalYearId || "");
     setEntryDate(e.entryDate ? e.entryDate.split("T")[0] : new Date().toISOString().split("T")[0]);
     setType(e.type || "MANUAL");
     setCurrencyCode(e.currencyCode || "SAR");
@@ -165,7 +155,6 @@ export default function JournalEntryForm({ params }: Props) {
     setLines((prev) => prev.map((l) => (l._key === key ? { ...l, accountId, accountLabel } : l)));
 
   const buildPayload = () => ({
-    fiscalYearId,
     entryDate,
     type: type as any,
     currencyCode,
@@ -221,8 +210,6 @@ export default function JournalEntryForm({ params }: Props) {
     }
     setShowErrors(true);
     const fail = (d: string) => void toast({ title: jt(lang, "validation"), description: d, variant: "destructive" });
-    if (fiscalYearError) return fail(fiscalYearError);
-    if (!fiscalYearId) return fail(jt(lang, "needFiscalYear"));
     if (!entryDate) return fail(jt(lang, "needDate"));
     if (lines.some((l) => !l.accountId)) return fail(jt(lang, "needAccounts"));
     if (!totals.isBalanced) return fail(jt(lang, "blocking"));
@@ -288,7 +275,7 @@ export default function JournalEntryForm({ params }: Props) {
         </div>
         <Button
           onClick={handleSubmit}
-          disabled={isBusy || !canSave || !!fiscalYearError || !fiscalYearId || !entryDate || !totals.isBalanced}
+          disabled={isBusy || !canSave || !entryDate || !totals.isBalanced}
           className="hidden md:inline-flex gap-2 shrink-0"
           data-testid="button-save-header"
         >
@@ -308,33 +295,6 @@ export default function JournalEntryForm({ params }: Props) {
           <div className="space-y-1.5">
             <Label htmlFor="reference">{t("je.reference")}</Label>
             <Input id="reference" value={reference} onChange={(e) => setReference(e.target.value)} placeholder={jt(lang, "optional")} data-testid="input-reference" />
-          </div>
-          <div className="space-y-1.5">
-            <Label>{t("je.fiscalYear")} *</Label>
-            {isEdit ? <Select value={fiscalYearId} onValueChange={setFiscalYearId}>
-              <SelectTrigger data-testid="select-fiscal-year" className={showErrors && !fiscalYearId ? "border-destructive/60" : ""}>
-                <SelectValue placeholder={t("je.selectFiscalYear")} />
-              </SelectTrigger>
-              <SelectContent>
-                {fiscalYears.length === 0 ? (
-                  <SelectItem value="_none" disabled>{jt(lang, "noFiscalYears")}</SelectItem>
-                ) : (
-                  fiscalYears.filter(fy => fy.status === "OPEN").map((fy) => (
-                    <SelectItem key={fy.id} value={fy.id}>
-                      {lang === "ar" ? fy.nameAr || fy.nameEn : fy.nameEn}
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select> : <Input readOnly aria-label={t("je.fiscalYear")} data-testid="resolved-fiscal-year"
-              value={yearState.year ? (lang === "ar" ? yearState.year.nameAr || yearState.year.nameEn : yearState.year.nameEn) : ""}
-              placeholder={fiscalYearsQuery.isPending ? "جارٍ تحديد السنة المالية..." : "تُحدد تلقائيًا من تاريخ القيد"}
-            />}
-            <p aria-live="polite" role={fiscalYearError && !fiscalYearsQuery.isPending ? "alert" : "status"}
-              className={`text-xs ${fiscalYearError && !fiscalYearsQuery.isPending ? "text-destructive" : "text-muted-foreground"}`}>
-              {fiscalYearError || (!isEdit ? "تم تحديد السنة المالية تلقائيًا من تاريخ القيد." : "")}
-            </p>
-            {fiscalYearsQuery.isError && <Button type="button" variant="outline" size="sm" onClick={() => fiscalYearsQuery.refetch()}>إعادة المحاولة</Button>}
           </div>
           <div className="space-y-1.5">
             <Label>{t("je.type")}</Label>
@@ -417,7 +377,7 @@ export default function JournalEntryForm({ params }: Props) {
           </Link>
           <Button
             onClick={handleSubmit}
-            disabled={isBusy || !canSave || !!fiscalYearError || !fiscalYearId || !entryDate || !totals.isBalanced}
+            disabled={isBusy || !canSave || !entryDate || !totals.isBalanced}
             className="gap-2 min-w-[150px]"
             data-testid="button-save"
           >

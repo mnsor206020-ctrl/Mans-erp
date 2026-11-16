@@ -211,6 +211,24 @@ router.post("/:id/close", requirePermission("fiscal_years", "update"), async (re
       return;
     }
 
+    // Includes draft reversals: never strand unfinished work in an immutable year.
+    const pendingEntry = await prisma.journalEntry.findFirst({
+      where: {
+        organizationId: user.organizationId, fiscalYearId: fy.id, deletedAt: null,
+        status: { in: ["DRAFT", "UNDER_REVIEW", "APPROVED"] },
+      },
+      select: { id: true, number: true },
+    });
+    if (pendingEntry) {
+      res.status(400).json({ error: `لا يمكن إقفال السنة لوجود قيود غير مرحلة، منها ${pendingEntry.number}. استكمل اعتمادها وترحيلها أو احذف المسودات غير المطلوبة، بما فيها القيود العكسية.` });
+      return;
+    }
+    const organization = await prisma.organization.findFirst({
+      where: { id: user.organizationId, deletedAt: null },
+      select: { baseCurrencyCode: true },
+    });
+    if (!organization) { res.status(400).json({ error: "المنظمة غير متاحة." }); return; }
+
     // ── 3. Validate retained earnings account ─────────────────────────────────
     const reAccount = await prisma.chartOfAccount.findFirst({
       where: {
@@ -240,40 +258,40 @@ router.post("/:id/close", requirePermission("fiscal_years", "update"), async (re
     // ── 5. Group by account ────────────────────────────────────────────────────
     const accountMap = new Map<string, {
       accountId:   string;
-      totalDebit:  number;
-      totalCredit: number;
+      totalDebit:  Prisma.Decimal;
+      totalCredit: Prisma.Decimal;
     }>();
     for (const line of postedLines) {
       const existing = accountMap.get(line.accountId);
       if (existing) {
-        existing.totalDebit  += Number(line.debit);
-        existing.totalCredit += Number(line.credit);
+        existing.totalDebit  = existing.totalDebit.plus(line.debitBase);
+        existing.totalCredit = existing.totalCredit.plus(line.creditBase);
       } else {
         accountMap.set(line.accountId, {
           accountId:   line.accountId,
-          totalDebit:  Number(line.debit),
-          totalCredit: Number(line.credit),
+          totalDebit:  new Prisma.Decimal(line.debitBase.toString()),
+          totalCredit: new Prisma.Decimal(line.creditBase.toString()),
         });
       }
     }
 
     // ── 6. Build closing entry lines (zero out each account's net position) ────
-    const closingLines: { accountId: string; lineNumber: number; debit: number; credit: number }[] = [];
+    const closingLines: { accountId: string; lineNumber: number; debit: Prisma.Decimal; credit: Prisma.Decimal }[] = [];
     let lineNumber = 1;
-    let totalClosingDebits  = 0;
-    let totalClosingCredits = 0;
+    let totalClosingDebits  = new Prisma.Decimal(0);
+    let totalClosingCredits = new Prisma.Decimal(0);
 
     for (const acc of accountMap.values()) {
-      const netDebit = acc.totalDebit - acc.totalCredit;
-      if (netDebit === 0) continue;
-      if (netDebit > 0) {
+      const netDebit = acc.totalDebit.minus(acc.totalCredit).toDecimalPlaces(4);
+      if (netDebit.isZero()) continue;
+      if (netDebit.isPositive()) {
         // Net debit balance → close with a credit
-        closingLines.push({ accountId: acc.accountId, lineNumber: lineNumber++, debit: 0, credit: netDebit });
-        totalClosingCredits += netDebit;
+        closingLines.push({ accountId: acc.accountId, lineNumber: lineNumber++, debit: new Prisma.Decimal(0), credit: netDebit });
+        totalClosingCredits = totalClosingCredits.plus(netDebit);
       } else {
         // Net credit balance → close with a debit
-        closingLines.push({ accountId: acc.accountId, lineNumber: lineNumber++, debit: -netDebit, credit: 0 });
-        totalClosingDebits += -netDebit;
+        closingLines.push({ accountId: acc.accountId, lineNumber: lineNumber++, debit: netDebit.negated(), credit: new Prisma.Decimal(0) });
+        totalClosingDebits = totalClosingDebits.minus(netDebit);
       }
     }
 
@@ -287,21 +305,19 @@ router.post("/:id/close", requirePermission("fiscal_years", "update"), async (re
     //   balances (profit) → need Cr RE to balance
     // imbalance < 0: closing credits > debits → expense accounts had more debit
     //   balances (loss) → need Dr RE to balance
-    const imbalance = totalClosingDebits - totalClosingCredits;
-    if (imbalance > 0) {
-      closingLines.push({ accountId: retainedEarningsAccountId, lineNumber: lineNumber++, debit: 0, credit: imbalance });
-      totalClosingCredits += imbalance;
-    } else if (imbalance < 0) {
-      closingLines.push({ accountId: retainedEarningsAccountId, lineNumber: lineNumber++, debit: -imbalance, credit: 0 });
-      totalClosingDebits += -imbalance;
+    const imbalance = totalClosingDebits.minus(totalClosingCredits).toDecimalPlaces(4);
+    if (imbalance.isPositive()) {
+      closingLines.push({ accountId: retainedEarningsAccountId, lineNumber: lineNumber++, debit: new Prisma.Decimal(0), credit: imbalance });
+      totalClosingCredits = totalClosingCredits.plus(imbalance);
+    } else if (imbalance.isNegative()) {
+      closingLines.push({ accountId: retainedEarningsAccountId, lineNumber: lineNumber++, debit: imbalance.negated(), credit: new Prisma.Decimal(0) });
+      totalClosingDebits = totalClosingDebits.minus(imbalance);
     }
 
-    // Net income from the perspective of P&L: revenue credit balances - expense debit balances.
-    // In closing terms: closing debits (from revenue) - closing credits (from expenses).
-    // When profit: totalClosingDebits (rev) > totalClosingCredits (exp) → net = positive.
-    const netIncome = totalClosingDebits - totalClosingCredits + (imbalance > 0 ? -imbalance : (imbalance < 0 ? -imbalance : 0));
-    // Simpler: net income = imbalance before RE line was added (positive = profit, negative = loss).
-    const netIncomeValue = imbalance; // positive = profit (Cr RE), negative = loss (Dr RE)
+    if (!totalClosingDebits.equals(totalClosingCredits)) {
+      res.status(400).json({ error: "قيد الإقفال غير متوازن بدقة أربع منازل عشرية؛ لم تُحفظ أي تغييرات." });
+      return;
+    }
 
     // ── 8. Create closing JE + mark FY closed — all in one transaction ────────
     const entryYear = fy.endDate.getFullYear();
@@ -317,7 +333,7 @@ router.post("/:id/close", requirePermission("fiscal_years", "update"), async (re
           entryDate:       closingDate,
           type:            "CLOSING",
           status:          "POSTED",
-          currencyCode:    "SAR",
+          currencyCode:    organization.baseCurrencyCode,
           exchangeRate:    1,
           totalDebit:      totalClosingDebits,
           totalCredit:     totalClosingCredits,
@@ -358,7 +374,7 @@ router.post("/:id/close", requirePermission("fiscal_years", "update"), async (re
       fiscalYearId:          fy.id,
       status:                "CLOSED",
       closingJournalEntryId: result.closingEntry.id,
-      netIncome:             netIncomeValue,
+      netIncome:             imbalance.toNumber(),
       closedAt:              result.closedFY.closedAt,
     });
   } catch (err) {
@@ -384,6 +400,11 @@ router.post("/:id/rollover", requirePermission("fiscal_years", "update"), async 
       res.status(400).json({ error: `Fiscal year must be CLOSED before it can be rolled over. Current status: ${sourceFY.status}.` });
       return;
     }
+    const organization = await prisma.organization.findFirst({
+      where: { id: user.organizationId, deletedAt: null },
+      select: { baseCurrencyCode: true },
+    });
+    if (!organization) { res.status(400).json({ error: "المنظمة غير متاحة." }); return; }
 
     // ── 2. Prevent duplicate rollovers ──────────────────────────────────────────
     const existingNext = await prisma.fiscalYear.findFirst({
@@ -454,13 +475,13 @@ router.post("/:id/rollover", requirePermission("fiscal_years", "update"), async 
     for (const line of postedLines) {
       const existing = accountMap.get(line.accountId);
       if (existing) {
-        existing.totalDebit  = existing.totalDebit.plus(line.debit);
-        existing.totalCredit = existing.totalCredit.plus(line.credit);
+        existing.totalDebit  = existing.totalDebit.plus(line.debitBase);
+        existing.totalCredit = existing.totalCredit.plus(line.creditBase);
       } else {
         accountMap.set(line.accountId, {
           accountId:   line.accountId,
-          totalDebit:  new Prisma.Decimal(line.debit.toString()),
-          totalCredit: new Prisma.Decimal(line.credit.toString()),
+          totalDebit:  new Prisma.Decimal(line.debitBase.toString()),
+          totalCredit: new Prisma.Decimal(line.creditBase.toString()),
         });
       }
     }
@@ -472,7 +493,7 @@ router.post("/:id/rollover", requirePermission("fiscal_years", "update"), async 
     let totalOpeningCredits = new Prisma.Decimal(0);
 
     for (const acc of accountMap.values()) {
-      const netDebit = acc.totalDebit.minus(acc.totalCredit);
+      const netDebit = acc.totalDebit.minus(acc.totalCredit).toDecimalPlaces(4);
       if (netDebit.isZero()) continue;
       if (netDebit.isPositive()) {
         openingLines.push({ accountId: acc.accountId, lineNumber: lineNumber++, debit: netDebit, credit: new Prisma.Decimal(0) });
@@ -517,7 +538,7 @@ router.post("/:id/rollover", requirePermission("fiscal_years", "update"), async 
           entryDate:       newStartDate,
           type:            "OPENING",
           status:          "POSTED",
-          currencyCode:    "SAR",
+          currencyCode:    organization.baseCurrencyCode,
           exchangeRate:    1,
           totalDebit:      totalOpeningDebits,
           totalCredit:     totalOpeningCredits,

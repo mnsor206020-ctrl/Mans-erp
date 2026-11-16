@@ -166,7 +166,15 @@ export default function JournalEntryDetail({ params }: Props) {
   }});
 
   const deleteMutation = useDeleteJournalEntry({ mutation: {
-    onSuccess: () => { toast({ title: jt(lang, "deleted") }); queryClient.invalidateQueries({ queryKey: getListJournalEntriesQueryKey() }); navigate("/journal-entries"); },
+    onSuccess: () => {
+      toast({ title: jt(lang, "deleted") });
+      queryClient.invalidateQueries({ queryKey: getListJournalEntriesQueryKey() });
+      queryClient.invalidateQueries({ queryKey: getGetJournalEntryQueryKey(params.id) });
+      if (entry?.reversalOfEntryId) {
+        queryClient.invalidateQueries({ queryKey: getGetJournalEntryQueryKey(entry.reversalOfEntryId) });
+      }
+      navigate("/journal-entries");
+    },
     onError: onErr,
   }});
 
@@ -629,7 +637,11 @@ export default function JournalEntryDetail({ params }: Props) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t("je.confirmDelete")}</AlertDialogTitle>
-            <AlertDialogDescription>{t("je.confirmDelete.desc")}</AlertDialogDescription>
+            <AlertDialogDescription>
+              {e.isReversal
+                ? (lang === "ar" ? "سيُلغى القيد العكسي المسودة وتُستعاد حالة القيد الأصلي السابقة دون تغيير مبالغه." : "The draft reversal will be cancelled and the original entry's previous status restored without changing its amounts.")
+                : t("je.confirmDelete.desc")}
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>

@@ -34,16 +34,19 @@ const mockPostedLines = [
   {
     id: "jl-1", accountId: "cash-1",
     debit: makeDecimal(80000), credit: makeDecimal(0),
+    debitBase: "80000", creditBase: "0",
     account: { id: "cash-1", code: "1010", nameEn: "Cash", nameAr: "نقدية", type: "ASSET", nature: "DEBIT" },
   },
   {
     id: "jl-2", accountId: "ap-1",
     debit: makeDecimal(0), credit: makeDecimal(20000),
+    debitBase: "0", creditBase: "20000",
     account: { id: "ap-1", code: "2010", nameEn: "Accounts Payable", nameAr: "ذمم دائنة", type: "LIABILITY", nature: "CREDIT" },
   },
   {
     id: "jl-3", accountId: "capital-1",
     debit: makeDecimal(0), credit: makeDecimal(60000),
+    debitBase: "0", creditBase: "60000",
     account: { id: "capital-1", code: "3010", nameEn: "Capital", nameAr: "رأس المال", type: "EQUITY", nature: "CREDIT" },
   },
 ];
@@ -58,6 +61,7 @@ const prismaTransactionMock    = vi.fn();
 vi.mock("@workspace/prisma", () => ({
   prisma: {
     user:             prismaUserMock,
+    organization: { findFirst: async () => ({ baseCurrencyCode: "SAR" }) },
     fiscalYear:       prismaFiscalYearMock,
     journalEntry:     prismaJEMock,
     journalEntryLine: prismaJELineMock,

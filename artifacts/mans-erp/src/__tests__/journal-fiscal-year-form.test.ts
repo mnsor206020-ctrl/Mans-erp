@@ -1,25 +1,32 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { readFileSync } from "node:fs";
 
 const state = vi.hoisted(() => ({
-  years: { data: [] as Array<{ id: string; status: string; startDate: string; endDate: string; nameEn: string; nameAr: string }>,
-    isPending: false, isError: false, refetch: vi.fn() },
+  toast: vi.fn(),
+  createOptions: {} as { mutation?: { onError: (error: unknown) => void } },
+  updateOptions: {} as { mutation?: { onError: (error: unknown) => void } },
 }));
 vi.mock("@workspace/api-client-react", () => ({
-  useListFiscalYears: () => state.years,
   useGetCurrentUser: () => ({ data: {} }),
   useGetJournalEntry: () => ({ data: undefined }),
   useListCostCenters: () => ({ data: [] }),
   useListChartOfAccounts: () => ({ data: { data: [] } }),
-  useCreateJournalEntry: () => ({ isPending: false, mutate: vi.fn() }),
-  useUpdateJournalEntry: () => ({ isPending: false, mutate: vi.fn() }),
+  useCreateJournalEntry: (options: typeof state.createOptions) => {
+    state.createOptions = options;
+    return { isPending: false, mutate: vi.fn() };
+  },
+  useUpdateJournalEntry: (options: typeof state.updateOptions) => {
+    state.updateOptions = options;
+    return { isPending: false, mutate: vi.fn() };
+  },
   getListJournalEntriesQueryKey: () => [],
   getGetJournalEntryQueryKey: () => [],
 }));
 vi.mock("@tanstack/react-query", () => ({ useQueryClient: () => ({ invalidateQueries: vi.fn() }) }));
 vi.mock("@/lib/language-provider", () => ({ useLanguage: () => ({ lang: "ar", t: (key: string) => key }) }));
-vi.mock("@/hooks/use-toast", () => ({ useToast: () => ({ toast: vi.fn() }) }));
+vi.mock("@/hooks/use-toast", () => ({ useToast: () => ({ toast: state.toast }) }));
 vi.mock("wouter", () => ({
   useLocation: () => ["/journal-entries/new", vi.fn()],
   Link: ({ children }: { children: unknown }) => children,
@@ -30,42 +37,37 @@ vi.mock("@/components/journal-entries/AttachmentsPanel", () => ({ AttachmentsPan
 vi.mock("@/components/journal-entries/SourceTrackingFields", () => ({ SourceTrackingFields: () => null }));
 import JournalEntryForm from "../pages/JournalEntryForm";
 
-const year = { id: "TEST-year", status: "OPEN", startDate: "2026-01-01", endDate: "2026-12-31",
-  nameEn: "TEST year", nameAr: "سنة اختبار تلقائية" };
-const html = () => renderToStaticMarkup(createElement(JournalEntryForm));
-describe("journal creation fiscal-year field", () => {
+describe("journal form uses the date without a fiscal-year field", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-06-15T12:00:00Z"));
-    state.years.data = [year];
-    state.years.isPending = false;
-    state.years.isError = false;
+    state.toast.mockClear();
   });
   afterEach(() => vi.useRealTimers());
-  it("renders the resolved year read-only, with no manual fiscal-year selector", () => {
-    const markup = html();
-    expect(markup).toContain('data-testid="resolved-fiscal-year"');
-    expect(markup).toMatch(/readonly=""/i);
-    expect(markup).toContain(year.nameAr);
-    expect(markup).not.toContain('data-testid="select-fiscal-year"');
+  it("renders creation without a year picker, readonly field, hint or pre-save year error", () => {
+    const markup = renderToStaticMarkup(createElement(JournalEntryForm));
+    expect(markup).toContain('data-testid="input-entry-date"');
+    for (const text of ["resolved-fiscal-year", "select-fiscal-year", "je.fiscalYear",
+      "تُحدد تلقائيًا", "تم تحديد السنة", "لا توجد سنة"]) expect(markup).not.toContain(text);
   });
-  it("shows a loading state without selecting any default year", () => {
-    state.years.isPending = true;
-    state.years.data = [];
-    expect(html()).toContain("جارٍ تحديد السنة المالية");
+  it("has no fiscal-year query, field or payload assignment in create or edit code", () => {
+    const source = readFileSync(new URL("../pages/JournalEntryForm.tsx", import.meta.url), "utf8");
+    expect(source).not.toMatch(/useListFiscalYears|setFiscalYearId|select-fiscal-year|resolved-fiscal-year/);
+    expect(source).not.toMatch(/^\s*fiscalYearId[,:]/m);
+    expect(source).toContain("updateMutation.mutate({ id: entryId, data: payload })");
+    expect(source).toContain("createMutation.mutate({ data: payload })");
   });
-  it("shows a retry action when the fiscal-year request fails", () => {
-    state.years.isError = true;
-    state.years.data = [];
-    const markup = html();
-    expect(markup).toContain("تعذر تحميل السنوات المالية");
-    expect(markup).toContain("إعادة المحاولة");
-  });
-  it.each(["CLOSED", "missing", "ambiguous"])("renders an Arabic rejection for %s", scenario => {
-    state.years.data = scenario === "missing" ? [] : scenario === "CLOSED"
-      ? [{ ...year, status: "CLOSED" }] : [year, { ...year, id: "TEST-overlap" }];
-    const markup = html();
-    expect(markup).toContain('role="alert"');
-    expect(markup).toContain(scenario === "missing" ? "لا توجد سنة" : scenario === "CLOSED" ? "مقفلة" : "أكثر من");
+  it.each([
+    "لا توجد سنة مالية تغطي تاريخ القيد؛ لا يمكن الحفظ.",
+    "السنة المالية التي تغطي تاريخ القيد مقفلة؛ لا يمكن إنشاء القيد.",
+    "تاريخ القيد يجب أن يقع ضمن بداية ونهاية السنة المالية المرتبطة به.",
+  ])("displays the API save rejection: %s", message => {
+    renderToStaticMarkup(createElement(JournalEntryForm));
+    for (const options of [state.createOptions, state.updateOptions]) {
+      options.mutation!.onError({ data: { error: message }, message: `HTTP 400: ${message}` });
+      expect(state.toast).toHaveBeenLastCalledWith(expect.objectContaining({
+        description: message, variant: "destructive",
+      }));
+    }
   });
 });
