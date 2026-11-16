@@ -20,6 +20,8 @@ const mockLines = [
     lineNumber:     1,
     debit:          { valueOf: () => 1000, toString: () => "1000" },
     credit:         { valueOf: () => 0,    toString: () => "0"    },
+    debitBase:      { valueOf: () => 1000, toString: () => "1000" },
+    creditBase:     { valueOf: () => 0,    toString: () => "0"    },
     journalEntry: {
       id:            "je-1",
       number:        "JE-001",
@@ -36,6 +38,8 @@ const mockLines = [
     lineNumber:     1,
     debit:          { valueOf: () => 0,   toString: () => "0"   },
     credit:         { valueOf: () => 300, toString: () => "300" },
+    debitBase:      { valueOf: () => 0,   toString: () => "0"   },
+    creditBase:     { valueOf: () => 300, toString: () => "300" },
     journalEntry: {
       id:            "je-2",
       number:        "JE-002",
@@ -50,11 +54,13 @@ const mockLines = [
 const prismaUserMock    = { findFirst: vi.fn() };
 const prismaAccountMock = { findFirst: vi.fn() };
 const prismaLineMock    = { findMany:  vi.fn() };
+const prismaFiscalYearMock = { findMany: vi.fn() };
 
 vi.mock("@workspace/prisma", () => ({
   prisma: {
     user:             prismaUserMock,
     chartOfAccount:   prismaAccountMock,
+    fiscalYear:       prismaFiscalYearMock,
     journalEntryLine: prismaLineMock,
   },
 }));
@@ -74,6 +80,23 @@ describe("GET /reports/account-ledger", () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
+    prismaFiscalYearMock.findMany.mockResolvedValue([{
+      id: "fy-1",
+      organizationId: "org-1",
+      previousFiscalYearId: null,
+      startDate: new Date("2025-01-01"),
+      endDate: new Date("2025-12-31"),
+    }]);
+    prismaLineMock.findMany.mockImplementation(({ where }: any) => {
+      const entryDate = where.journalEntry.entryDate;
+      return Promise.resolve(mockLines.filter((line) => {
+        const date = line.journalEntry.entryDate;
+        if (entryDate?.lt) return date < entryDate.lt;
+        if (entryDate?.gte && date < entryDate.gte) return false;
+        if (entryDate?.lte && date > entryDate.lte) return false;
+        return true;
+      }));
+    });
     app = await buildApp();
   });
 
@@ -221,7 +244,7 @@ describe("GET /reports/account-ledger", () => {
       .query({ accountId: "acc-1", from: "2025-01-01", to: "2025-12-31" });
 
     const callArgs = prismaLineMock.findMany.mock.calls[0][0];
-    expect(callArgs.where.journalEntry.status).toEqual({ in: ["POSTED", "REVERSED"] });
+    expect(callArgs.where.journalEntry.status).toEqual({ in: ["POSTED", "REVERSED", "LOCKED"] });
     expect(callArgs.where.journalEntry.organizationId).toBe("org-1");
     expect(callArgs.where.accountId).toBe("acc-1");
   });

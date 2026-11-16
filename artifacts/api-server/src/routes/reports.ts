@@ -70,16 +70,16 @@ router.get("/trial-balance", async (req, res): Promise<void> => {
       const key      = line.accountId;
       const existing = accountMap.get(key);
       if (existing) {
-        existing.totalDebit  += Number(line.debit);
-        existing.totalCredit += Number(line.credit);
+        existing.totalDebit  += Number(line.debitBase);
+        existing.totalCredit += Number(line.creditBase);
       } else {
         accountMap.set(key, {
           accountId:     line.accountId,
           accountCode:   line.account.code,
           accountNameEn: line.account.nameEn,
           accountNameAr: line.account.nameAr,
-          totalDebit:    Number(line.debit),
-          totalCredit:   Number(line.credit),
+          totalDebit:    Number(line.debitBase),
+          totalCredit:   Number(line.creditBase),
         });
       }
     }
@@ -209,10 +209,10 @@ router.get("/account-ledger", async (req, res): Promise<void> => {
           entryDate:      { gte: firstYear.startDate, lt: fromDate },
         },
       },
-      select: { debit: true, credit: true },
+      select: { debitBase: true, creditBase: true },
     });
     const beginningBalance = priorLines.reduce(
-      (sum, l) => sum + Number(l.debit) - Number(l.credit),
+      (sum, l) => sum + Number(l.debitBase) - Number(l.creditBase),
       0,
     );
 
@@ -252,8 +252,8 @@ router.get("/account-ledger", async (req, res): Promise<void> => {
     let totalDebit     = 0;
     let totalCredit    = 0;
     const rows = lines.map((line) => {
-      const debit  = Number(line.debit);
-      const credit = Number(line.credit);
+      const debit  = Number(line.debitBase);
+      const credit = Number(line.creditBase);
       totalDebit  += debit;
       totalCredit += credit;
       runningBalance += debit - credit;
@@ -368,8 +368,8 @@ router.get("/balance-sheet", async (req, res): Promise<void> => {
       const key      = line.accountId;
       const existing = accountMap.get(key);
       if (existing) {
-        existing.totalDebit  += Number(line.debit);
-        existing.totalCredit += Number(line.credit);
+        existing.totalDebit  += Number(line.debitBase);
+        existing.totalCredit += Number(line.creditBase);
       } else {
         accountMap.set(key, {
           accountId:     line.accountId,
@@ -378,8 +378,8 @@ router.get("/balance-sheet", async (req, res): Promise<void> => {
           accountNameAr: line.account.nameAr,
           type:          line.account.type,
           nature:        line.account.nature,
-          totalDebit:    Number(line.debit),
-          totalCredit:   Number(line.credit),
+          totalDebit:    Number(line.debitBase),
+          totalCredit:   Number(line.creditBase),
         });
       }
     }
@@ -532,8 +532,8 @@ router.get("/income-statement", async (req, res): Promise<void> => {
       const key      = line.accountId;
       const existing = accountMap.get(key);
       if (existing) {
-        existing.totalDebit  += Number(line.debit);
-        existing.totalCredit += Number(line.credit);
+        existing.totalDebit  += Number(line.debitBase);
+        existing.totalCredit += Number(line.creditBase);
       } else {
         accountMap.set(key, {
           accountId:     line.accountId,
@@ -542,8 +542,8 @@ router.get("/income-statement", async (req, res): Promise<void> => {
           accountNameAr: line.account.nameAr,
           type:          line.account.type,
           nature:        line.account.nature,
-          totalDebit:    Number(line.debit),
-          totalCredit:   Number(line.credit),
+          totalDebit:    Number(line.debitBase),
+          totalCredit:   Number(line.creditBase),
         });
       }
     }

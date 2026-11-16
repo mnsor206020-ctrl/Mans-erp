@@ -21,16 +21,19 @@ const mockLines = [
   {
     id: "jl-1", journalEntryId: "je-1", accountId: "acc-asset-1",
     debit:  makeDecimal(10000), credit: makeDecimal(0),
+    debitBase: makeDecimal(10000), creditBase: makeDecimal(0),
     account: { id: "acc-asset-1", code: "1010", nameEn: "Cash", nameAr: "نقد", type: "ASSET", nature: "DEBIT" },
   },
   {
     id: "jl-2", journalEntryId: "je-1", accountId: "acc-liab-1",
     debit:  makeDecimal(0), credit: makeDecimal(4000),
+    debitBase: makeDecimal(0), creditBase: makeDecimal(4000),
     account: { id: "acc-liab-1", code: "2010", nameEn: "AP", nameAr: "ذمم دائنة", type: "LIABILITY", nature: "CREDIT" },
   },
   {
     id: "jl-3", journalEntryId: "je-1", accountId: "acc-equity-1",
     debit:  makeDecimal(0), credit: makeDecimal(6000),
+    debitBase: makeDecimal(0), creditBase: makeDecimal(6000),
     account: { id: "acc-equity-1", code: "3010", nameEn: "Capital", nameAr: "رأس المال", type: "EQUITY", nature: "CREDIT" },
   },
 ];
@@ -228,7 +231,7 @@ describe("GET /reports/balance-sheet", () => {
       .query({ fiscalYearId: "fy-1", asOf: "2025-12-31" });
 
     const callArgs = prismaLineMock.findMany.mock.calls[0][0];
-    expect(callArgs.where.journalEntry.status).toEqual({ in: ["POSTED", "REVERSED"] });
+    expect(callArgs.where.journalEntry.status).toEqual({ in: ["POSTED", "REVERSED", "LOCKED"] });
     expect(callArgs.where.journalEntry.fiscalYearId).toBe("fy-1");
   });
 

@@ -49,18 +49,24 @@ const mockLines = [
     accountId: ACCT_A_ID,
     debit:     "1000.0000",
     credit:    "0.0000",
+    debitBase: "1000.0000",
+    creditBase:"0.0000",
     account:   { id: ACCT_A_ID, code: "1000", nameEn: "Cash",    nameAr: "النقدية"    },
   },
   {
     accountId: ACCT_A_ID,
     debit:     "500.0000",
     credit:    "0.0000",
+    debitBase: "500.0000",
+    creditBase:"0.0000",
     account:   { id: ACCT_A_ID, code: "1000", nameEn: "Cash",    nameAr: "النقدية"    },
   },
   {
     accountId: ACCT_B_ID,
     debit:     "0.0000",
     credit:    "1500.0000",
+    debitBase: "0.0000",
+    creditBase:"1500.0000",
     account:   { id: ACCT_B_ID, code: "2000", nameEn: "Revenue", nameAr: "الإيرادات" },
   },
 ];
@@ -160,7 +166,7 @@ describe("GET /reports/trial-balance", () => {
     (prisma.journalEntryLine.findMany as any).mockResolvedValue([]);
     await request(createApp()).get(`/reports/trial-balance?fiscalYearId=${FY_ID}`);
     const callArg = (prisma.journalEntryLine.findMany as any).mock.calls[0][0];
-    expect(callArg.where.journalEntry.status).toEqual({ in: ["POSTED", "REVERSED"] });
+    expect(callArg.where.journalEntry.status).toEqual({ in: ["POSTED", "REVERSED", "LOCKED"] });
     expect(callArg.where.journalEntry.fiscalYearId).toBe(FY_ID);
   });
 
@@ -168,9 +174,9 @@ describe("GET /reports/trial-balance", () => {
     (prisma.user.findFirst as any).mockResolvedValue(mockUser);
     (prisma.fiscalYear.findFirst as any).mockResolvedValue(mockFiscalYear);
     (prisma.journalEntryLine.findMany as any).mockResolvedValue([
-      { accountId: ACCT_B_ID, debit: "0.0000", credit: "1000.0000",
+      { accountId: ACCT_B_ID, debit: "0.0000", credit: "1000.0000", debitBase: "0.0000", creditBase: "1000.0000",
         account: { id: ACCT_B_ID, code: "2000", nameEn: "Revenue", nameAr: "الإيرادات" } },
-      { accountId: ACCT_A_ID, debit: "1000.0000", credit: "0.0000",
+      { accountId: ACCT_A_ID, debit: "1000.0000", credit: "0.0000", debitBase: "1000.0000", creditBase: "0.0000",
         account: { id: ACCT_A_ID, code: "1000", nameEn: "Cash", nameAr: "النقدية" } },
     ]);
     const res = await request(createApp()).get(`/reports/trial-balance?fiscalYearId=${FY_ID}`);

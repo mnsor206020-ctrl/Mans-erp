@@ -21,16 +21,19 @@ const mockLines = [
   {
     id: "jl-1", journalEntryId: "je-1", accountId: "acc-rev-1",
     debit:  makeDecimal(0), credit: makeDecimal(50000),
+    debitBase: makeDecimal(0), creditBase: makeDecimal(50000),
     account: { id: "acc-rev-1", code: "4010", nameEn: "Sales", nameAr: "مبيعات", type: "REVENUE", nature: "CREDIT" },
   },
   {
     id: "jl-2", journalEntryId: "je-1", accountId: "acc-exp-1",
     debit:  makeDecimal(20000), credit: makeDecimal(0),
+    debitBase: makeDecimal(20000), creditBase: makeDecimal(0),
     account: { id: "acc-exp-1", code: "5010", nameEn: "Salaries", nameAr: "رواتب", type: "EXPENSE", nature: "DEBIT" },
   },
   {
     id: "jl-3", journalEntryId: "je-1", accountId: "acc-exp-2",
     debit:  makeDecimal(10000), credit: makeDecimal(0),
+    debitBase: makeDecimal(10000), creditBase: makeDecimal(0),
     account: { id: "acc-exp-2", code: "5020", nameEn: "Rent", nameAr: "إيجار", type: "EXPENSE", nature: "DEBIT" },
   },
 ];
@@ -198,11 +201,13 @@ describe("GET /reports/income-statement", () => {
       {
         id: "jl-x", journalEntryId: "je-x", accountId: "acc-rev-x",
         debit: makeDecimal(0), credit: makeDecimal(1000),
+        debitBase: makeDecimal(0), creditBase: makeDecimal(1000),
         account: { id: "acc-rev-x", code: "4010", nameEn: "Sales", nameAr: "مبيعات", type: "REVENUE", nature: "CREDIT" },
       },
       {
         id: "jl-y", journalEntryId: "je-x", accountId: "acc-exp-x",
         debit: makeDecimal(5000), credit: makeDecimal(0),
+        debitBase: makeDecimal(5000), creditBase: makeDecimal(0),
         account: { id: "acc-exp-x", code: "5010", nameEn: "Cost", nameAr: "تكاليف", type: "EXPENSE", nature: "DEBIT" },
       },
     ];
@@ -257,7 +262,7 @@ describe("GET /reports/income-statement", () => {
       .query({ fiscalYearId: "fy-1", from: "2025-01-01", to: "2025-12-31" });
 
     const callArgs = prismaLineMock.findMany.mock.calls[0][0];
-    expect(callArgs.where.journalEntry.status).toEqual({ in: ["POSTED", "REVERSED"] });
+    expect(callArgs.where.journalEntry.status).toEqual({ in: ["POSTED", "REVERSED", "LOCKED"] });
     expect(callArgs.where.journalEntry.fiscalYearId).toBe("fy-1");
   });
 

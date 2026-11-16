@@ -18,14 +18,23 @@ const cash = { id: "cash", code: "1000", nameEn: "Cash", nameAr: "النقد", t
 const revenue = { ...cash, id: "revenue", code: "4000", nameEn: "Revenue", type: "REVENUE", nature: "CREDIT" };
 const expense = { ...cash, id: "expense", code: "5000", nameEn: "Expense", type: "EXPENSE" };
 
-function posting(id: string, status: string, date: string, debit: typeof cash, credit: typeof cash, amount: number, type = "MANUAL") {
+function posting(
+  id: string,
+  status: string,
+  date: string,
+  debit: typeof cash,
+  credit: typeof cash,
+  amount: number,
+  type = "MANUAL",
+  baseAmount = amount,
+) {
   const journalEntry = {
     id, number: id, status, type, entryDate: new Date(date), fiscalYearId: "fy", organizationId: "org",
     deletedAt: null as Date | null, descriptionEn: null, descriptionAr: null, reference: null,
   };
   return [
-    { account: debit, debit: String(amount), credit: "0" },
-    { account: credit, debit: "0", credit: String(amount) },
+    { account: debit, debit: String(amount), credit: "0", debitBase: String(baseAmount), creditBase: "0" },
+    { account: credit, debit: "0", credit: String(amount), debitBase: "0", creditBase: String(baseAmount) },
   ].map((line, index) => ({
     ...line, id: `${id}-${index}`, accountId: line.account.id,
     journalEntryId: id, journalEntry, lineNumber: index + 1,
@@ -278,5 +287,77 @@ describe("financial reports include reversed originals exactly once", () => {
     expect((await trial()).body).toMatchObject({ totalDebit: 3200, totalCredit: 3200 });
     expect((await income()).body).toMatchObject({ totalRevenue: 0, totalExpenses: 200, netIncome: -200 });
     expect((await balance()).body).toMatchObject({ totalAssets: -200, totalEquity: -200, isBalanced: true });
+  });
+});
+
+describe("financial reports aggregate in organization base currency", () => {
+  const liability = { ...cash, id: "liability", code: "2000", nameEn: "Liability", type: "LIABILITY", nature: "CREDIT" };
+  const fxRevenue = { ...cash, id: "fx-revenue", code: "4000", nameEn: "FX Revenue", type: "REVENUE", nature: "CREDIT" };
+  const fxExpense = { ...cash, id: "fx-expense", code: "5000", nameEn: "FX Expense", type: "EXPENSE", nature: "DEBIT" };
+
+  beforeEach(() => {
+    lines = [
+      ...posting("usd-revenue", "POSTED", "2026-01-10", cash, fxRevenue, 1000, "MANUAL", 3750),
+      ...posting("eur-expense", "POSTED", "2026-02-10", fxExpense, cash, 200, "MANUAL", 800),
+      ...posting("usd-liability", "POSTED", "2026-03-10", cash, liability, 100, "MANUAL", 375),
+    ];
+  });
+
+  it("uses base amounts in all four reports, including the ledger opening balance", async () => {
+    const tb = await trial();
+    expect(tb.status).toBe(200);
+    expect(tb.body).toMatchObject({ totalDebit: 4925, totalCredit: 4925 });
+    expect(tb.body.lines).toEqual(expect.arrayContaining([
+      expect.objectContaining({ accountId: "cash", totalDebit: 4125, totalCredit: 800, balance: 3325 }),
+      expect.objectContaining({ accountId: "liability", totalDebit: 0, totalCredit: 375, balance: -375 }),
+      expect.objectContaining({ accountId: "fx-revenue", totalDebit: 0, totalCredit: 3750, balance: -3750 }),
+      expect.objectContaining({ accountId: "fx-expense", totalDebit: 800, totalCredit: 0, balance: 800 }),
+    ]));
+
+    const bs = await balance();
+    expect(bs.status).toBe(200);
+    expect(bs.body).toMatchObject({
+      totalAssets: 3325,
+      totalLiabilities: 375,
+      totalEquity: 2950,
+      isBalanced: true,
+    });
+
+    const is = await income();
+    expect(is.status).toBe(200);
+    expect(is.body).toMatchObject({ totalRevenue: 3750, totalExpenses: 800, netIncome: 2950 });
+
+    db.chartOfAccount.findFirst.mockResolvedValue(cash);
+    const ledger = await request(app).get("/reports/account-ledger")
+      .query({ accountId: "cash", from: "2026-01-01", to: "2026-12-31" });
+    expect(ledger.status).toBe(200);
+    expect(ledger.body).toMatchObject({
+      beginningBalance: 0,
+      totalDebit: 4125,
+      totalCredit: 800,
+      endingBalance: 3325,
+    });
+  });
+
+  it("uses base amounts for the ledger opening balance and period movements", async () => {
+    db.chartOfAccount.findFirst.mockResolvedValue(cash);
+    const ledger = await request(app).get("/reports/account-ledger")
+      .query({ accountId: "cash", from: "2026-02-01", to: "2026-12-31" });
+
+    expect(ledger.status).toBe(200);
+    expect(ledger.body).toMatchObject({
+      beginningBalance: 3750,
+      totalDebit: 375,
+      totalCredit: 800,
+      endingBalance: 3325,
+    });
+    expect(ledger.body.lines.map((line: { debit: number; credit: number; runningBalance: number }) => ({
+      debit: line.debit,
+      credit: line.credit,
+      runningBalance: line.runningBalance,
+    }))).toEqual([
+      { debit: 0, credit: 800, runningBalance: 2950 },
+      { debit: 375, credit: 0, runningBalance: 3325 },
+    ]);
   });
 });
