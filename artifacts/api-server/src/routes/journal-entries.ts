@@ -727,47 +727,9 @@ router.post("/:id/post", requirePermission("journal_entries", "approve"), async 
   return undefined;
 });
 
-// ── LOCK (POSTED → LOCKED) ────────────────────────────────────────────────
-router.post("/:id/lock", requirePermission("journal_entries", "approve"), async (req, res) => {
-  try {
-    const { userId } = getAuth(req);
-    const user = await getUser(userId!);
-    if (!user) return res.status(401).json({ error: "User not found" });
-
-    const entry = await prisma.journalEntry.findFirst({ where: { id: routeParam(req.params.id), ...journalOrganizationScope(user.organizationId), deletedAt: null } });
-    if (!entry) return res.status(404).json({ error: "Journal entry not found" });
-    if (entry.status !== "POSTED") return res.status(400).json({ error: "Only POSTED entries can be locked" });
-
-    const updated = await prisma.journalEntry.update({
-      where: { id: routeParam(req.params.id) },
-      data: { status: "LOCKED" },
-    });
-    await writeApprovalRecord({
-      journalEntryId: routeParam(req.params.id),
-      userId: user.id,
-      action: "LOCK",
-      fromStatus: "POSTED",
-      toStatus: "LOCKED",
-      ipAddress: req.ip ?? undefined,
-      userAgent: req.headers["user-agent"] ?? undefined,
-    });
-
-    await emitNotification({
-      organizationId: entry.organizationId,
-      event:          "journal_entry.locked",
-      entityId:       entry.id,
-      titleEn:        "Entry locked",
-      titleAr:        "تم قفل القيد",
-      bodyEn:         `${entry.number} has been locked.`,
-      bodyAr:         `تم قفل القيد ${entry.number}.`,
-    });
-
-    res.json(updated);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to lock journal entry" });
-  }
-  return undefined;
+// Retired action: keep authentication/RBAC and reject old clients without writes.
+router.post("/:id/lock", requirePermission("journal_entries", "approve"), (_req, res) => {
+  res.status(410).json({ error: "تم إيقاف قفل القيود. القيود المقفلة سابقًا محفوظة وتحتسب ماليًا." });
 });
 
 // ── REVERSE (create reversal + mark REVERSED) ────────────────────────────

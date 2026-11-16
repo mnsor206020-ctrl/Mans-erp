@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { getAuth } from "@clerk/express";
 import { prisma } from "@workspace/prisma";
+import { financialJournalStatusFilter } from "../lib/financial-journal-status";
 
 const router = Router();
 
@@ -42,7 +43,7 @@ router.get("/trial-balance", async (req, res): Promise<void> => {
       fiscalYearId,
       organizationId: user.organizationId,
       fiscalYear: { organizationId: user.organizationId },
-      status: { in: ["POSTED", "REVERSED"] },
+      status: financialJournalStatusFilter(),
       deletedAt: null,
     };
     if (asOf) {
@@ -176,7 +177,7 @@ router.get("/account-ledger", async (req, res): Promise<void> => {
         where: {
           organizationId: user.organizationId, fiscalYearId: current.id,
           type: "OPENING", entryDate: current.startDate,
-          status: { in: ["POSTED", "REVERSED"] }, deletedAt: null,
+          status: financialJournalStatusFilter(), deletedAt: null,
         },
       });
       if (openingCount !== 1) {
@@ -203,7 +204,7 @@ router.get("/account-ledger", async (req, res): Promise<void> => {
           organizationId: user.organizationId,
           fiscalYearId: firstYear.id,
           fiscalYear: { organizationId: user.organizationId },
-          status:         { in: ["POSTED", "REVERSED"] },
+          status:         financialJournalStatusFilter(),
           deletedAt:      null,
           entryDate:      { gte: firstYear.startDate, lt: fromDate },
         },
@@ -222,7 +223,7 @@ router.get("/account-ledger", async (req, res): Promise<void> => {
         journalEntry: {
           organizationId: user.organizationId,
           fiscalYear: { organizationId: user.organizationId },
-          status:         { in: ["POSTED", "REVERSED"] },
+          status:         financialJournalStatusFilter(),
           deletedAt:      null,
           OR: yearScopes,
           entryDate:      { gte: fromDate, lte: toDate },
@@ -332,7 +333,7 @@ router.get("/balance-sheet", async (req, res): Promise<void> => {
           fiscalYearId,
           organizationId: user.organizationId,
           fiscalYear: { organizationId: user.organizationId },
-          status:    { in: ["POSTED", "REVERSED"] },
+          status:    financialJournalStatusFilter(),
           deletedAt: null,
           entryDate: { lte: new Date(asOf) },
         },
@@ -495,7 +496,7 @@ router.get("/income-statement", async (req, res): Promise<void> => {
           fiscalYearId,
           organizationId: user.organizationId,
           fiscalYear: { organizationId: user.organizationId },
-          status:    { in: ["POSTED", "REVERSED"] },
+          status:    financialJournalStatusFilter(),
           deletedAt: null,
           type:      { not: "CLOSING" },
           entryDate: { gte: new Date(from), lte: new Date(to) },

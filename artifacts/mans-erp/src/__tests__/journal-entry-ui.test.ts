@@ -54,6 +54,12 @@ describe("Accounting presentation remains consistent with the server", () => {
     expect(getApiErrorMessage({ data: { error: "القيد غير متوازن" } }, "فشل")).toBe("القيد غير متوازن");
     expect(getApiErrorMessage(undefined, "تعذر الحفظ")).toBe("تعذر الحفظ");
   });
+  it.each(["DRAFT", "UNDER_REVIEW", "APPROVED", "POSTED", "REVERSED", "LOCKED", "VOIDED"])(
+    "never offers locking for %s while preserving legacy reversal availability", (status) => {
+      expect(getEntryActions(status).canLock).toBe(false);
+      expect(getEntryActions(status).canReverse).toBe(["POSTED", "LOCKED"].includes(status));
+    },
+  );
   it("uses explicit permissions from the existing profile and fails closed while loading", () => {
     expect(hasJournalPermission(undefined, "approve")).toBe(false);
     expect(hasJournalPermission({ userRoles: [{ role: { nameEn: "Super Admin" } }] }, "approve")).toBe(false);

@@ -216,19 +216,25 @@ describe("Journal Entry Workflow — Notification emission (Milestone 3B)", () =
   });
 
   // ── N-07: lock ─────────────────────────────────────────────────────────────
-  it("N-07: POST /:id/lock emits journal_entry.locked with correct entityId", async () => {
+  it("N-07: retired lock returns 410 without writes, approvals or notifications", async () => {
     (prisma.journalEntry.findFirst as any).mockResolvedValue(mockPosted);
     (prisma.journalEntry.update    as any).mockResolvedValue({ ...mockPosted, status: "LOCKED" });
 
     const res = await request(app).post(`/api/journal-entries/${ENTRY_ID}/lock`);
 
-    expect(res.status).toBe(200);
-    expect(mockEmit).toHaveBeenCalledOnce();
-    expect(mockEmit).toHaveBeenCalledWith(expect.objectContaining({
-      event:      "journal_entry.locked",
-      entityId:   ENTRY_ID,
-      entityType: "JournalEntry",
-    }));
+    expect(res.status).toBe(410);
+    expect(res.body.error).toContain("تم إيقاف قفل القيود");
+    expect(prisma.journalEntry.update).not.toHaveBeenCalled();
+    expect(prisma.journalEntryApproval.create).not.toHaveBeenCalled();
+    expect(prisma.auditLog.create).not.toHaveBeenCalled();
+    expect(mockEmit).not.toHaveBeenCalled();
+  });
+
+  it("retired lock still requires existing approve permission", async () => {
+    (prisma.user.findFirst as any).mockResolvedValue({ ...mockUser, userRoles: [] });
+    const res = await request(app).post(`/api/journal-entries/${ENTRY_ID}/lock`);
+    expect(res.status).toBe(403);
+    expect(prisma.journalEntry.update).not.toHaveBeenCalled();
   });
 
   // ── N-08: void ─────────────────────────────────────────────────────────────
@@ -264,8 +270,8 @@ describe("Journal Entry Workflow — Notification emission (Milestone 3B)", () =
   });
 
   // ── N-10: reverse ──────────────────────────────────────────────────────────
-  it("N-10: POST /:id/reverse emits journal_entry.reversed with correct entityId", async () => {
-    (prisma.journalEntry.findFirst as any).mockResolvedValue({ ...mockPosted, lines: twoLines });
+  it.each(["POSTED", "LOCKED"])("N-10: reversing %s creates a draft and marks the original without losing audit", async (status) => {
+    (prisma.journalEntry.findFirst as any).mockResolvedValue({ ...mockPosted, status, lines: twoLines });
     (prisma.journalEntry.create    as any).mockResolvedValue({ ...mockDraft, number: "JE-2026-0002", id: "rev-id-001" });
     (prisma.journalEntry.update    as any).mockResolvedValue({ ...mockPosted, status: "REVERSED" });
     (prisma.journalEntry.findMany  as any).mockResolvedValue([{ number: "JE-2026-0001" }]);
@@ -275,12 +281,73 @@ describe("Journal Entry Workflow — Notification emission (Milestone 3B)", () =
       .send({ reason: "Correction required" });
 
     expect(res.status).toBe(200);
+    expect(prisma.journalEntry.create).toHaveBeenCalledOnce();
+    expect(prisma.journalEntry.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        status: "DRAFT", type: "ADJUSTMENT", isReversal: true, reversalOfEntryId: ENTRY_ID,
+        lines: { create: expect.arrayContaining([
+          expect.objectContaining({ accountId: ACCT_1, debit: "0.0000", credit: "500.0000" }),
+          expect.objectContaining({ accountId: ACCT_2, debit: "500.0000", credit: "0.0000" }),
+        ]) },
+      }),
+    }));
+    expect(prisma.journalEntry.update).toHaveBeenCalledOnce();
+    expect(prisma.journalEntry.update).toHaveBeenCalledWith({
+      where: { id: ENTRY_ID }, data: { status: "REVERSED", reversedByEntryId: "rev-id-001" },
+    });
+    expect(prisma.journalEntryApproval.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ action: "REVERSE", fromStatus: status, toStatus: "REVERSED" }),
+    }));
+    expect(prisma.auditLog.create).toHaveBeenCalledOnce();
     expect(mockEmit).toHaveBeenCalledOnce();
     expect(mockEmit).toHaveBeenCalledWith(expect.objectContaining({
       event:      "journal_entry.reversed",
       entityId:   ENTRY_ID,
       entityType: "JournalEntry",
     }));
+  });
+
+  it("rejects a second reversal without creating or changing a journal", async () => {
+    (prisma.journalEntry.findFirst as any).mockResolvedValue({
+      ...mockPosted, status: "REVERSED", reversedByEntryId: "rev-id-001", lines: twoLines,
+    });
+    const res = await request(app).post(`/api/journal-entries/${ENTRY_ID}/reverse`).send({});
+    expect(res.status).toBe(400);
+    expect(prisma.journalEntry.create).not.toHaveBeenCalled();
+    expect(prisma.journalEntry.update).not.toHaveBeenCalled();
+  });
+
+  it("posts the existing reversal only after approval, without reposting or recreating the original", async () => {
+    const reversal = {
+      ...mockDraft, id: "rev-id-001", type: "ADJUSTMENT", isReversal: true,
+      reversalOfEntryId: ENTRY_ID, fiscalYear: mockOpenFY,
+      lines: linesWithAccount.map((line) => ({
+        ...line, debit: line.credit, credit: line.debit,
+        debitBase: line.creditBase, creditBase: line.debitBase,
+      })),
+    };
+    (prisma.journalEntry.findFirst as any).mockResolvedValue(reversal);
+    const draft = await request(app).post("/api/journal-entries/rev-id-001/post");
+    expect(draft.status).toBe(400);
+    expect(prisma.journalEntry.update).not.toHaveBeenCalled();
+
+    (prisma.journalEntry.findFirst as any).mockResolvedValue({ ...reversal, status: "APPROVED" });
+    (prisma.journalEntry.update as any).mockResolvedValue({ ...reversal, status: "POSTED" });
+    const posted = await request(app).post("/api/journal-entries/rev-id-001/post");
+    expect(posted.status).toBe(200);
+    expect(prisma.journalEntry.update).toHaveBeenCalledOnce();
+    expect(prisma.journalEntry.update).toHaveBeenCalledWith({
+      where: { id: reversal.id }, data: expect.objectContaining({ status: "POSTED" }),
+    });
+    expect(prisma.journalEntry.create).not.toHaveBeenCalled();
+    expect(prisma.journalEntryApproval.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ action: "POST", journalEntryId: reversal.id }),
+    }));
+
+    (prisma.journalEntry.findFirst as any).mockResolvedValue({ ...reversal, status: "POSTED" });
+    const repeated = await request(app).post("/api/journal-entries/rev-id-001/post");
+    expect(repeated.status).toBe(400);
+    expect(prisma.journalEntry.update).toHaveBeenCalledOnce();
   });
 
   // ── N-11: notification failure does not fail the response ─────────────────

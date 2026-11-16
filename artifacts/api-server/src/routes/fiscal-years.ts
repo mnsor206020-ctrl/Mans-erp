@@ -6,6 +6,7 @@ import {
   generateJournalNumber as generateJournalNumberUtil,
 } from "../lib/journal-entry-utils";
 import { requirePermission } from "../lib/authorize";
+import { financialJournalStatusFilter } from "../lib/financial-journal-status";
 
 const router = Router();
 
@@ -155,10 +156,10 @@ router.post("/:id/close", requirePermission("fiscal_years", "update"), async (re
       return;
     }
 
-    // ── 4. Aggregate POSTED journal entry lines for REVENUE & EXPENSE accounts ─
+    // ── 4. Aggregate recognized journal lines for REVENUE & EXPENSE accounts ─
     const postedLines = await prisma.journalEntryLine.findMany({
       where: {
-        journalEntry: { organizationId: user.organizationId, fiscalYearId: fy.id, status: "POSTED", deletedAt: null },
+        journalEntry: { organizationId: user.organizationId, fiscalYearId: fy.id, status: financialJournalStatusFilter(), deletedAt: null },
         account: { type: { in: ["REVENUE", "EXPENSE"] }, organizationId: user.organizationId },
       },
       include: {
@@ -368,7 +369,7 @@ router.post("/:id/rollover", requirePermission("fiscal_years", "update"), async 
           organizationId: user.organizationId,
           fiscalYearId: sourceFY.id,
           fiscalYear: { organizationId: user.organizationId },
-          status:  "POSTED",
+          status:  financialJournalStatusFilter(),
           entryDate: { lte: sourceFY.endDate },
           deletedAt: null,
         },

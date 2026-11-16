@@ -119,7 +119,7 @@ describe("income statement preserves activity after closing", () => {
         journalEntry: expect.objectContaining({
           fiscalYearId: "fy", organizationId: "org",
           fiscalYear: { organizationId: "org" },
-          status: { in: ["POSTED", "REVERSED"] },
+          status: { in: ["POSTED", "REVERSED", "LOCKED"] },
           type: { not: "CLOSING" },
           entryDate: { gte: new Date("2026-01-01"), lte: new Date("2026-12-31") },
         }),
@@ -169,6 +169,41 @@ const balance = (asOf = "2026-12-31") =>
   request(app).get("/reports/balance-sheet").query({ fiscalYearId: "fy", asOf });
 
 describe("financial reports include reversed originals exactly once", () => {
+  it.each(["POSTED", "REVERSED", "LOCKED"])("recognizes %s exactly once across all four reports", async (status) => {
+    lines = [
+      ...posting("recognized", status, "2026-01-10", cash, revenue, 1500),
+      ...posting("expense", "POSTED", "2026-02-20", expense, cash, 200),
+    ];
+    expect((await trial()).body).toMatchObject({ totalDebit: 1700, totalCredit: 1700 });
+    expect((await income()).body).toMatchObject({ totalRevenue: 1500, totalExpenses: 200, netIncome: 1300 });
+    expect((await balance()).body).toMatchObject({ totalAssets: 1300, totalEquity: 1300, isBalanced: true });
+    const ledger = await request(app).get("/reports/account-ledger")
+      .query({ accountId: "cash", from: "2026-02-01", to: "2026-12-31" });
+    expect(ledger.status).toBe(200);
+    expect(ledger.body).toMatchObject({ beginningBalance: 1500, totalCredit: 200, endingBalance: 1300 });
+    expect(ledger.body.lines).toHaveLength(1);
+  });
+
+  it.each(["DRAFT", "UNDER_REVIEW", "APPROVED", "POSTED"])(
+    "recognizes the original but only a posted reversal (reversal %s)", async (status) => {
+      lines.find((line) => line.journalEntryId === "reversal")!.journalEntry.status = status;
+      const posted = status === "POSTED";
+      const net = posted ? -200 : 1300;
+      const tb = await trial();
+      expect(tb.body).toMatchObject({
+        totalDebit: posted ? 3200 : 1700, totalCredit: posted ? 3200 : 1700,
+      });
+      expect((await income()).body).toMatchObject({
+        totalRevenue: posted ? 0 : 1500, totalExpenses: 200, netIncome: net,
+      });
+      expect((await balance()).body).toMatchObject({ totalAssets: net, totalEquity: net, isBalanced: true });
+      const ledger = await request(app).get("/reports/account-ledger")
+        .query({ accountId: "cash", from: "2026-01-01", to: "2026-12-31" });
+      expect(ledger.body.endingBalance).toBe(net);
+      expect(ledger.body.lines).toHaveLength(posted ? 3 : 2);
+    },
+  );
+
   it("trial balance nets Cash to -200 and Revenue to zero without duplicating debits/credits", async () => {
     const res = await trial();
     expect(res.status).toBe(200);

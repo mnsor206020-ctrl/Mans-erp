@@ -136,7 +136,7 @@ export function getEntryActions(status: string, reversedByEntryId?: string | nul
     canApprove: status === "UNDER_REVIEW",
     canReject: status === "UNDER_REVIEW" || status === "APPROVED",
     canPost: status === "APPROVED",
-    canLock: status === "POSTED",
+    canLock: false,
     canReverse: (status === "POSTED" || status === "LOCKED") && !reversedByEntryId,
     canVoid: status === "POSTED",
     canDelete: status === "DRAFT",

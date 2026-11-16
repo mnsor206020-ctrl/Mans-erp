@@ -9,7 +9,6 @@ import {
   useApproveJournalEntry,
   useRejectJournalEntry,
   usePostJournalEntry,
-  useLockJournalEntry,
   useReverseJournalEntry,
   useCopyJournalEntry,
   useVoidJournalEntry,
@@ -142,11 +141,6 @@ export default function JournalEntryDetail({ params }: Props) {
     onError: onErr,
   }});
 
-  const lockMutation = useLockJournalEntry({ mutation: {
-    onSuccess: () => { toast({ title: jt(lang, "locked") }); invalidate(); },
-    onError: onErr,
-  }});
-
   const reverseMutation = useReverseJournalEntry({ mutation: {
     onSuccess: (rev: any) => {
       toast({ title: jt(lang, "reversalCreated"), description: rev.number });
@@ -185,7 +179,7 @@ export default function JournalEntryDetail({ params }: Props) {
   };
 
   const isBusy = submitMutation.isPending || approveMutation.isPending || rejectMutation.isPending
-    || postMutation.isPending || lockMutation.isPending || reverseMutation.isPending
+    || postMutation.isPending || reverseMutation.isPending
     || copyMutation.isPending || voidMutation.isPending || deleteMutation.isPending;
 
   if (isLoading) {
@@ -229,7 +223,6 @@ export default function JournalEntryDetail({ params }: Props) {
   const canApprove = actions.canApprove && hasJournalPermission(currentUser, "approve");
   const canReject = actions.canReject && hasJournalPermission(currentUser, "approve");
   const canPost = actions.canPost && hasJournalPermission(currentUser, "approve");
-  const canLock = actions.canLock && hasJournalPermission(currentUser, "approve");
   const canReverse = actions.canReverse && hasJournalPermission(currentUser, "void");
   const canVoid = actions.canVoid && hasJournalPermission(currentUser, "void");
   const canDelete = actions.canDelete && hasJournalPermission(currentUser, "delete");
@@ -300,12 +293,6 @@ export default function JournalEntryDetail({ params }: Props) {
                 <Button size="sm" className="gap-2 bg-green-600 hover:bg-green-700 text-white" onClick={() => postMutation.mutate({ id: e.id } as any)} disabled={isBusy}>
                   <Bookmark className="w-4 h-4" />
                   {t("je.post")}
-                </Button>
-              )}
-              {canLock && (
-                <Button size="sm" variant="outline" className="gap-2 border-purple-300 text-purple-700 hover:bg-purple-50" onClick={() => lockMutation.mutate({ id: e.id } as any)} disabled={isBusy}>
-                  <Lock className="w-4 h-4" />
-                  {t("je.lock")}
                 </Button>
               )}
               {canReverse && (
